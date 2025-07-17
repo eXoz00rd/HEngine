@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net9.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+    
+    <PropertyGroup>
+        <WarningsNotAsErrors>$(WarningsNotAsErrors);S119</WarningsNotAsErrors>
+    </PropertyGroup>
+
+    
+    <ItemGroup>
+      <Folder Include="Components\Animation\" />
+      <Folder Include="Components\Audio\" />
+      <Folder Include="Components\Networking\" />
+      <Folder Include="Queries\Contracts\" />
+      <Folder Include="Time\" />
+    </ItemGroup>
+
+</Project>
