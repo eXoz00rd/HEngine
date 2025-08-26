@@ -6,9 +6,9 @@ Below is an ordered, actionable checklist covering architectural, code-level, te
 2. [x] Define clear ownership of IRenderContext creation and lifetime (RenderManager vs DI singleton) and remove the second registration to avoid duplicate instances.
 3. [x] Stabilize Core contracts: review IRenderingSystem, IRenderPipeline, IRenderContext, IRenderer for minimal cross-layer surface;
 4. [x] Make RenderingSystem.Render(IRenderContext) the only rendering method; deprecate parameterless Render() or make it internal to the pipeline to avoid hidden state reliance.
-5. [ ] Ensure RenderingSystem respects _disposed and _isInitialized in all public APIs; add ObjectDisposedException guards consistently (Initialize(WorldManager), Render, SetRenderContext).
-6. [ ] Remove runtime Console.WriteLine in rendering hot paths (RenderingSystem, RenderManager) and replace with ILogger usage; keep warnings/errors only.
-7. [ ] Normalize logging levels and messages for render lifecycle (BeginFrame/EndFrame/Clear/Present) with structured logs and event IDs for easier tracing.
+5. [x] Ensure RenderingSystem respects _disposed and _isInitialized in all public APIs; add ObjectDisposedException guards consistently (Initialize(WorldManager), Render, SetRenderContext).
+6. [x] Remove runtime Console.WriteLine in rendering hot paths (RenderingSystem, RenderManager) and replace with ILogger usage; keep warnings/errors only.
+7. [x] Normalize logging levels and messages for render lifecycle (BeginFrame/EndFrame/Clear/Present) with structured logs and event IDs for easier tracing.
 8. [ ] Align DI registrations: register concrete context (SilkRenderContext) as factory-scoped per device/window instead of singleton; avoid registering IRenderContext as a singleton in ServiceCollectionExtensions.
 9. [ ] Add IRenderManager.GetRenderContext nullability contract: annotate as non-null when IsInitialized == true, or split into TryGetRenderContext(out ctx) to avoid double null checks.
 10. [ ] Move matrix setup responsibilities fully into RenderPipeline (or a dedicated pass) and ensure all subsystems receive matrices via the provided IRenderContext only.

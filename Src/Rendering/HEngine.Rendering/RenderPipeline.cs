@@ -1,5 +1,6 @@
 ﻿using HEngine.Core.Rendering.Contracts;
 using Microsoft.Extensions.Logging;
+using HEngine.Rendering.Logging;
 
 namespace HEngine.Rendering;
 
@@ -24,12 +25,13 @@ public class RenderPipeline : IRenderPipeline
         var context = _renderManager.GetRenderContext();
         if (context == null)
         {
-            _logger.LogWarning("RenderContext is null, skipping frame.");
+            _logger.LogWarning(RenderLogEvents.PipelineContextNullWarn, "RenderContext is null, skipping frame.");
             return;
         }
 
         try
         {
+            _logger.LogDebug(RenderLogEvents.PipelineStart, "RenderFrame start");
             // Krok 1: Rozpocznij klatkę (czyści tło itp.)
             _renderManager.BeginRender();
 
@@ -44,10 +46,11 @@ public class RenderPipeline : IRenderPipeline
 
             // Krok 4: Zakończ klatkę i zaprezentuj wynik.
             _renderManager.EndRender();
+            _logger.LogDebug(RenderLogEvents.PipelineEnd, "RenderFrame end");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "A critical error occurred in the render pipeline.");
+            _logger.LogError(RenderLogEvents.PipelineError, ex, "A critical error occurred in the render pipeline.");
             throw;
         }
     }

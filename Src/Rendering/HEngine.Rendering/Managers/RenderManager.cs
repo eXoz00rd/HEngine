@@ -1,6 +1,7 @@
 ﻿using System.Numerics;
 using HEngine.Core.Rendering.Contracts;
 using Microsoft.Extensions.Logging;
+using HEngine.Rendering.Logging;
 
 namespace HEngine.Rendering.Managers;
 
@@ -33,7 +34,7 @@ public class RenderManager : IRenderManager
 
         try
         {
-            _logger.LogInformation("Initializing RenderManager with {Width}x{Height} '{Title}'", width, height, title);
+            _logger.LogInformation(RenderLogEvents.InitializeStart, "Initializing RenderManager with {Width}x{Height} '{Title}'", width, height, title);
 
             _renderer.Initialize(width, height, title);
 
@@ -46,11 +47,11 @@ public class RenderManager : IRenderManager
             // ======================================================
 
             IsInitialized = true;
-            _logger.LogInformation("RenderManager initialized successfully");
+            _logger.LogInformation(RenderLogEvents.InitializeSuccess, "RenderManager initialized successfully");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to initialize RenderManager");
+            _logger.LogError(RenderLogEvents.InitializeFailure, ex, "Failed to initialize RenderManager");
             IsInitialized = false;
             throw;
         }
@@ -62,11 +63,12 @@ public class RenderManager : IRenderManager
 
         try
         {
+            _logger.LogDebug(RenderLogEvents.PollEvents, "Polling events");
             _renderer.PollEvents();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error during input update");
+            _logger.LogError(RenderLogEvents.PollEvents, ex, "Error during input update");
         }
     }
 
@@ -76,13 +78,21 @@ public class RenderManager : IRenderManager
 
         try
         {
+            _logger.LogDebug(RenderLogEvents.BeginRender, "BeginRender");
+
+            _logger.LogDebug(RenderLogEvents.BeginFrame, "BeginFrame");
             _renderer.BeginFrame();
 
-            if (_renderContext != null) _renderer.Clear(_renderContext.ClearColor);
+            if (_renderContext != null)
+            {
+                var color = _renderContext.ClearColor;
+                _logger.LogDebug(RenderLogEvents.Clear, "Clear with color {Color}", color);
+                _renderer.Clear(color);
+            }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error during begin render");
+            _logger.LogError(RenderLogEvents.BeginRender, ex, "Error during begin render");
         }
     }
 
@@ -92,46 +102,47 @@ public class RenderManager : IRenderManager
 
         try
         {
+            _logger.LogDebug(RenderLogEvents.EndRender, "EndRender");
+
+            _logger.LogDebug(RenderLogEvents.EndFrame, "EndFrame");
             _renderer.EndFrame();
+
+            _logger.LogDebug(RenderLogEvents.Present, "Present");
             _renderer.Present();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error during end render");
+            _logger.LogError(RenderLogEvents.EndRender, ex, "Error during end render");
         }
     }
 
     public void Clear(Vector4 clearColor)
     {
-        Console.WriteLine($"DirectX12Device Clear with color: {clearColor}");
-
-
         if (!CanRender) return;
 
         try
         {
+            _logger.LogDebug(RenderLogEvents.Clear, "Clear with color {Color}", clearColor);
             _renderer.Clear(clearColor);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error during clear");
+            _logger.LogError(RenderLogEvents.Clear, ex, "Error during clear");
         }
     }
 
     public void Present()
     {
-        Console.WriteLine("DirectX12Device Present called");
-
-
         if (!CanRender) return;
 
         try
         {
+            _logger.LogDebug(RenderLogEvents.Present, "Present");
             _renderer.Present();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error during present");
+            _logger.LogError(RenderLogEvents.Present, ex, "Error during present");
         }
     }
 
@@ -147,7 +158,7 @@ public class RenderManager : IRenderManager
     {
         if (_disposed) return;
 
-        _logger.LogInformation("Disposing RenderManager");
+        _logger.LogInformation(RenderLogEvents.Dispose, "Disposing RenderManager");
 
         _renderContext = null;
         _renderer?.Dispose();

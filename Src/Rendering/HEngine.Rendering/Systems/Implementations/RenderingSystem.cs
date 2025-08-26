@@ -1,6 +1,8 @@
 ﻿using HEngine.Core.Managers;
 using HEngine.Core.Rendering.Contracts;
 using HEngine.Rendering.Systems.Contracts;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace HEngine.Rendering.Systems.Implementations;
 
@@ -8,28 +10,40 @@ public class RenderingSystem : IRenderingSystem
 {
     private readonly IMeshRenderingSystem _meshSystem;
     private readonly ISpriteRenderingSystem _spriteSystem;
+    private readonly ILogger<RenderingSystem> _logger;
     private bool _disposed;
     private bool _isInitialized;
     private IRenderContext _renderContext = null!;
+
+    public RenderingSystem(ISpriteRenderingSystem spriteSystem, IMeshRenderingSystem meshSystem, ILogger<RenderingSystem> logger)
+    {
+        _spriteSystem = spriteSystem;
+        _meshSystem = meshSystem;
+        _logger = logger ?? NullLogger<RenderingSystem>.Instance;
+    }
 
     public RenderingSystem(ISpriteRenderingSystem spriteSystem, IMeshRenderingSystem meshSystem)
     {
         _spriteSystem = spriteSystem;
         _meshSystem = meshSystem;
+        _logger = NullLogger<RenderingSystem>.Instance;
     }
 
     public RenderingSystem()
     {
         _spriteSystem = new SpriteRenderingSystem();
         _meshSystem = new MeshRenderingSystem();
+        _logger = NullLogger<RenderingSystem>.Instance;
     }
 
     public bool IsInitialized => _isInitialized && !_disposed;
 
     public void Update(float deltaTime)
     {
-        if (_disposed)
-            return;
+        if (_disposed) throw new ObjectDisposedException(nameof(RenderingSystem));
+        if (!_isInitialized)
+            throw new InvalidOperationException("RenderingSystem must be initialized before calling Update.");
+        // No per-frame logic yet.
     }
 
     public void Render(IRenderContext context)
@@ -76,7 +90,7 @@ public class RenderingSystem : IRenderingSystem
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error in RenderingSystem.Render: {ex.Message}");
+            _logger.LogError(ex, "Error in RenderingSystem.Render");
             throw;
         }
     }
@@ -97,6 +111,6 @@ public class RenderingSystem : IRenderingSystem
         if (_disposed) throw new ObjectDisposedException(nameof(RenderingSystem));
         ArgumentNullException.ThrowIfNull(renderContext);
         _renderContext = renderContext;
-        Console.WriteLine("RenderContext set successfully");
+        // Info logs in hot path removed per task #6 to avoid runtime Console output.
     }
 }
