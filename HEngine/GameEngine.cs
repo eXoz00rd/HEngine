@@ -1,210 +1,163 @@
 ﻿using System.Numerics;
+using HEngine.Builders;
 using HEngine.Core.Components.Transform;
 using HEngine.Core.Configuration;
+using HEngine.Core.Contracts;
 using HEngine.Core.Managers;
-using HEngine.Core.Time;
+using HEngine.Core.Rendering.Contracts;
 using HEngine.Rendering.Components;
-using HEngine.Rendering.Contracts;
-using HEngine.Rendering.Managers;
 using HEngine.Rendering.Systems;
+using HEngine.Rendering.Systems.Implementations;
+using Microsoft.Extensions.Logging;
 
 namespace HEngine;
 
 public class GameEngine : IDisposable
 {
-    private readonly GameTime _gameTime;
-    private readonly RenderingSystem _renderingSystem;
-    private readonly RenderManager _renderManager;
+    private readonly EngineConfiguration _config;
+    private readonly IGameLoop _gameLoop;
+    private readonly ILogger<GameEngine> _logger;
+    private readonly IRenderingSystem _renderingSystem;
+    private readonly IRenderManager _renderManager;
     private readonly SystemManager _systemManager;
     private readonly WorldManager _worldManager;
     private bool _disposed;
-    private bool _running;
 
-    public GameEngine() : this(new EngineConfiguration())
+    public GameEngine(
+        IGameLoop gameLoop,
+        SystemManager systemManager,
+        WorldManager worldManager,
+        IRenderManager renderManager,
+        IRenderingSystem renderingSystem,
+        EngineConfiguration config,
+        ILogger<GameEngine> logger)
     {
-    }
-
-    private GameEngine(EngineConfiguration config)
-    {
-        _gameTime = new GameTime();
-        _worldManager = new WorldManager();
-        _systemManager = new SystemManager();
-
-        var renderer = CreateRenderer();
-        _renderManager = new RenderManager(renderer, config);
-        _renderingSystem = CreateRenderingSystem();
+        _gameLoop = gameLoop ?? throw new ArgumentNullException(nameof(gameLoop));
+        _systemManager = systemManager ?? throw new ArgumentNullException(nameof(systemManager));
+        _worldManager = worldManager ?? throw new ArgumentNullException(nameof(worldManager));
+        _renderManager = renderManager ?? throw new ArgumentNullException(nameof(renderManager));
+        _renderingSystem = renderingSystem ?? throw new ArgumentNullException(nameof(renderingSystem));
+        _config = config ?? throw new ArgumentNullException(nameof(config));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
         Initialize();
     }
 
     public void Dispose()
     {
-        if (_disposed)
-            return;
+        if (_disposed) return;
 
-        _running = false;
-        _systemManager.Dispose();
-        _renderManager.Dispose();
-        _worldManager.Dispose();
+        _logger.LogInformation("Disposing game engine");
         _disposed = true;
+    }
+
+    // Factory method dla łatwiejszego użycia
+    public static GameEngine Create(EngineConfiguration? config = null)
+    {
+        var builder = new EngineBuilder(config);
+        return builder.AddCore()
+            .AddRendering()
+            .AddLogging()
+            .Build();
     }
 
     public void Run()
     {
-        try
+        if (_disposed)
         {
-            _running = true;
-            _gameTime.Reset();
-
-            Console.WriteLine("Starting game loop...");
-
-            if (!IsInitialized())
-            {
-                Console.WriteLine("Engine not properly initialized");
-                return;
-            }
-
-            var frameCount = 0;
-            var successfulFrames = 0;
-            var skippedFrames = 0;
-
-            var targetFrameTime = TimeSpan.FromMilliseconds(1000.0 / 60.0);
-            var lastFrameTime = DateTime.Now;
-
-            while (_running)
-            {
-                frameCount++;
-
-                if (_renderManager.ShouldClose)
-                {
-                    Console.WriteLine("Window should close - stopping game loop");
-                    break;
-                }
-
-                try
-                {
-                    _gameTime.Update();
-
-                    if (!_renderManager.CanRender)
-                    {
-                        if (frameCount % 60 == 0)
-                            Console.WriteLine("Cannot render - waiting...");
-                        Thread.Sleep(1);
-                        continue;
-                    }
-
-                    _renderManager.UpdateInput();
-                    _systemManager.Update(_gameTime.DeltaTime);
-
-                    _renderManager.BeginRender();
-                    _renderingSystem.Update(_gameTime.DeltaTime);
-                    _renderManager.EndRender();
-
-                    successfulFrames++;
-
-                    var currentTime = DateTime.Now;
-                    var frameTime = currentTime - lastFrameTime;
-                    if (frameTime < targetFrameTime) Thread.Sleep(targetFrameTime - frameTime);
-                    lastFrameTime = DateTime.Now;
-
-                    if (frameCount % 120 == 0)
-                    {
-                        Console.WriteLine(
-                            $"Frame {frameCount}: FPS: {_gameTime.FPS:F1}, Delta: {_gameTime.DeltaTime * 1000:F1}ms");
-                        Console.WriteLine(
-                            $"Successful: {successfulFrames}, Skipped: {skippedFrames}, Total: {frameCount}");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Error in game loop (frame {frameCount}): {ex.Message}");
-                    Thread.Sleep(10);
-                    skippedFrames++;
-
-                    if (frameCount - successfulFrames > 100)
-                    {
-                        Console.WriteLine("Too many failed frames - stopping engine");
-                        break;
-                    }
-                }
-            }
-
-            Console.WriteLine(
-                $"Game loop ended. Total: {frameCount}, Successful: {successfulFrames}, Skipped: {skippedFrames}");
+            _logger.LogError("Cannot run disposed engine");
+            return;
         }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Fatal error in game loop: {ex.Message}");
-            Console.WriteLine($"Stack trace: {ex.StackTrace}");
-            throw;
-        }
-    }
 
-    private bool IsInitialized()
-    {
-        return _renderManager != null && _systemManager != null && _worldManager != null;
+        _logger.LogInformation("Starting game engine");
+        _gameLoop.Run();
     }
 
     public void Stop()
     {
-        _running = false;
+        _logger.LogInformation("Stopping game engine");
+        _gameLoop.Stop();
     }
 
     private void Initialize()
     {
         try
         {
-            _renderManager.Initialize();
+            _logger.LogInformation("Initializing game engine...");
 
-            _renderingSystem.SetRenderContext(_renderManager.RenderContext);
+            // ✅ 1. Zainicjalizuj RenderManager z parametrami z konfiguracji
+            _renderManager.Initialize(
+                _config.Window.Width,
+                _config.Window.Height,
+                _config.Window.Title);
+
+            // ✅ 2. Zainicjalizuj RenderingSystem (teraz z WorldManager)
             _renderingSystem.Initialize(_worldManager);
+            
+            var renderContext = _renderManager.GetRenderContext(); // Musisz dodać tę metodę
+            if (renderContext != null && _renderingSystem is RenderingSystem rs) rs.SetRenderContext(renderContext);
 
+            // ✅ 4. Dodaj RenderingSystem bezpośrednio do SystemManager
             _systemManager.AddSystem(_renderingSystem);
 
+            // ✅ 5. Stwórz przykładowe entity
             CreateExampleEntities();
 
-            Console.WriteLine("Game engine initialized successfully");
+
+            _logger.LogInformation("Game engine initialized successfully");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Failed to initialize game engine: {ex.Message}");
-            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            _logger.LogError(ex, "Failed to initialize game engine");
             throw;
         }
     }
 
-    private IRenderer CreateRenderer()
-    {
-        return new SilkDirectX12Renderer();
-    }
-
-    private RenderingSystem CreateRenderingSystem()
-    {
-        var spriteSystem = new SpriteRenderingSystem();
-        var meshSystem = new MeshRenderingSystem();
-        return new RenderingSystem(spriteSystem, meshSystem);
-    }
-
     private void CreateExampleEntities()
     {
-        var spriteEntity = _worldManager.CreateEntity();
+        _logger.LogInformation("Creating example entities...");
 
-        _worldManager.AddComponent(
-            spriteEntity,
-            new Transform2D
-            {
-                Position = new Vector2(100, 100)
-            }
+        // Compute centered position for a 64x64 square in screen space (top-left origin)
+        var size = new Vector2(64, 64);
+        var centerPos = new Vector2(
+            _config.Window.Width * 0.5f - size.X * 0.5f,
+            _config.Window.Height * 0.5f - size.Y * 0.5f
         );
 
+        // First square: centered, nice blue-ish color
+        var eCenter = _worldManager.CreateEntity();
         _worldManager.AddComponent(
-            spriteEntity,
+            eCenter,
+            new Transform2D { Position = centerPos }
+        );
+        _worldManager.AddComponent(
+            eCenter,
             new Sprite
             {
-                Size = new Vector2(200, 64),
-                Color = new Vector4(1, 1, 0, 1),
+                Size = size,
+                Color = new Vector4(0.25f, 0.5f, 1f, 1f), // Cornflower-like blue
                 Origin = new Vector2(0.5f, 0.5f)
             }
         );
+
+        // Second square: placed to the right of the first one with a small gap
+        var gap = 12f;
+        var rightPos = new Vector2(centerPos.X + size.X + gap, centerPos.Y);
+        var eRight = _worldManager.CreateEntity();
+        _worldManager.AddComponent(
+            eRight,
+            new Transform2D { Position = rightPos }
+        );
+        _worldManager.AddComponent(
+            eRight,
+            new Sprite
+            {
+                Size = size,
+                Color = new Vector4(1f, 0.5f, 0.1f, 1f), // Warm orange
+                Origin = new Vector2(0.5f, 0.5f)
+            }
+        );
+
+        _logger.LogInformation("Created sprite entities: center={Center}, right={Right}", eCenter, eRight);
     }
 }

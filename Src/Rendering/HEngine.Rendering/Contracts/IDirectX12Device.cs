@@ -1,6 +1,7 @@
 ﻿using System.Numerics;
+using HEngine.Rendering.DirectX12;
 
-namespace HEngine.Core.Rendering.DirectX12.Contracts;
+namespace HEngine.Rendering.Contracts;
 
 public interface IDirectX12Device : IDisposable
 {

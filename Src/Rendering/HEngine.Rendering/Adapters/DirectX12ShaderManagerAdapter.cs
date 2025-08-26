@@ -1,6 +1,7 @@
-﻿using HEngine.Rendering.Managers;
+﻿using HEngine.Core.Rendering.Contracts;
+using HEngine.Rendering.Managers;
 
-namespace HEngine.Rendering.Adapters.HEngine.Rendering.Adapters;
+namespace HEngine.Rendering.Adapters;
 
 public class DirectX12ShaderManagerAdapter : IShaderManager
 {

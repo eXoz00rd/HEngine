@@ -1,28 +1,36 @@
 ﻿using System.Numerics;
+using HEngine.Core.Rendering.Contracts;
 using HEngine.Rendering.Batches;
-using HEngine.Rendering.Contracts;
-using HEngine.Rendering.Devices;
 using HEngine.Rendering.DirectX12;
-using HEngine.Rendering.Renderers;
+using Microsoft.Extensions.Logging;
 
 namespace HEngine.Rendering.Systems;
 
 public class SilkDirectX12Renderer : IRenderer
 {
-    private readonly DirectX12Device _device;
+    private readonly IGraphicsDevice _device;
+    private readonly ILogger<SilkDirectX12Renderer> _logger;
+    private readonly ILoggerFactory _loggerFactory;
+    private readonly IShaderManager _shaderManager;
     private readonly IRenderBatch<SpriteData> _spriteBatch;
-    private readonly DirectX12SpriteRenderer _spriteRenderer;
-    private IRenderCommandList _commandList;
+    private readonly ISpriteRenderer _spriteRenderer;
+
+    private DirectX12CommandList _commandList;
     private bool _disposed;
     private bool _frameInProgress;
     private bool _initialized;
 
-    public SilkDirectX12Renderer()
+    public SilkDirectX12Renderer(IGraphicsDevice device, IRenderBatch<SpriteData> spriteBatch,
+        ISpriteRenderer spriteRenderer, IShaderManager shaderManager, ILogger<SilkDirectX12Renderer> logger,
+        ILoggerFactory loggerFactory)
     {
-        _device = new DirectX12Device();
+        _device = device ?? throw new ArgumentNullException(nameof(device));
+        _spriteBatch = spriteBatch ?? throw new ArgumentNullException(nameof(spriteBatch));
+        _spriteRenderer = spriteRenderer ?? throw new ArgumentNullException(nameof(spriteRenderer));
+        _shaderManager = shaderManager ?? throw new ArgumentNullException(nameof(shaderManager));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
         _commandList = null!;
-        _spriteRenderer = new DirectX12SpriteRenderer();
-        _spriteBatch = new SpriteBatch();
     }
 
     public Action<float>? OnFrameUpdate { get; set; }
@@ -33,25 +41,34 @@ public class SilkDirectX12Renderer : IRenderer
     {
         try
         {
-            Console.WriteLine("Initializing SilkDirectX12Renderer...");
+            _logger.LogInformation("Initializing SilkDirectX12Renderer...");
 
             _device.Initialize(width, height, title);
 
             if (!_device.IsInitialized)
-                throw new InvalidOperationException("DirectX12Device failed to initialize");
+            {
+                var errorMessage = "GraphicsDevice failed to initialize";
+                _logger.LogError(errorMessage);
+                throw new InvalidOperationException(errorMessage);
+            }
+
+            _shaderManager.Initialize();
 
             var commandQueue = _device.GetCommandQueue();
-            _commandList = new DirectX12CommandList(commandQueue);
+
+            // Bezpośrednie tworzenie DirectX12CommandList
+            var commandListLogger = _loggerFactory.CreateLogger<DirectX12CommandList>();
+            _commandList = new DirectX12CommandList(commandQueue, commandListLogger);
 
             _spriteRenderer.Initialize(_device);
-            ((SpriteBatch)_spriteBatch).Initialize(_spriteRenderer);
+            _spriteBatch.Initialize(_spriteRenderer);
 
             _initialized = true;
-            Console.WriteLine("SilkDirectX12Renderer initialized successfully");
+            _logger.LogInformation("SilkDirectX12Renderer initialized successfully");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Failed to initialize SilkDirectX12Renderer: {ex.Message}");
+            _logger.LogError(ex, "Failed to initialize SilkDirectX12Renderer");
             _initialized = false;
             throw;
         }
@@ -74,7 +91,7 @@ public class SilkDirectX12Renderer : IRenderer
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error in Present: {ex.Message}");
+            _logger.LogError(ex, "Error in Present");
             throw;
         }
     }
@@ -96,7 +113,7 @@ public class SilkDirectX12Renderer : IRenderer
         {
             if (_frameInProgress)
             {
-                Console.WriteLine("Previous frame still in progress - skipping BeginFrame");
+                _logger.LogWarning("Previous frame still in progress - skipping BeginFrame");
                 return;
             }
 
@@ -108,7 +125,7 @@ public class SilkDirectX12Renderer : IRenderer
             var commandQueue = _device.GetCommandQueue();
             if (!commandQueue.IsFrameInProgress)
             {
-                Console.WriteLine("DirectX12Device failed to start frame - skipping");
+                _logger.LogWarning("GraphicsDevice failed to start frame - skipping");
                 return;
             }
 
@@ -116,11 +133,12 @@ public class SilkDirectX12Renderer : IRenderer
             _spriteBatch.Clear();
             _frameInProgress = true;
 
-            Console.WriteLine("SilkDirectX12Renderer BeginFrame completed successfully");
+            // Zmieniono z LogDebug na Console.WriteLine dla spójności
+            Console.WriteLine("Renderer: BeginFrame completed successfully");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Failed to begin frame: {ex.Message}");
+            _logger.LogError(ex, "Failed to begin frame");
             _frameInProgress = false;
             throw;
         }
@@ -138,25 +156,20 @@ public class SilkDirectX12Renderer : IRenderer
 
             if (!_frameInProgress)
             {
-                Console.WriteLine("No frame in progress - skipping EndFrame");
+                _logger.LogWarning("No frame in progress - skipping EndFrame");
                 return;
             }
-
-            // Renderuj sprite batch
-            _spriteBatch.Render(_commandList);
-
-            // Flush sprite renderer
-            _spriteRenderer.FlushBatch();
 
             _commandList.Close();
             _device.EndFrame();
             _frameInProgress = false;
 
-            Console.WriteLine("SilkDirectX12Renderer EndFrame completed successfully");
+            // Zmieniono z LogDebug na Console.WriteLine dla spójności
+            Console.WriteLine("Renderer: EndFrame completed successfully");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Failed to end frame: {ex.Message}");
+            _logger.LogError(ex, "Failed to end frame");
             _frameInProgress = false;
             throw;
         }
@@ -173,6 +186,7 @@ public class SilkDirectX12Renderer : IRenderer
     {
         if (_disposed || !IsInitialized)
             return;
+        Console.WriteLine($"Renderer SetViewMatrix: {viewMatrix}");
         _commandList.SetViewMatrix(viewMatrix);
     }
 
@@ -180,6 +194,7 @@ public class SilkDirectX12Renderer : IRenderer
     {
         if (_disposed || !IsInitialized)
             return;
+        Console.WriteLine($"Renderer SetProjectionMatrix: {projectionMatrix}");
         _commandList.SetProjectionMatrix(projectionMatrix);
     }
 
@@ -188,19 +203,34 @@ public class SilkDirectX12Renderer : IRenderer
         if (_disposed || !IsInitialized)
             return;
 
+        Console.WriteLine($"Renderer DrawSprite: Pos={position}, Size={size}, Color={color}");
         _spriteBatch.Add(new SpriteData
         {
             Position = position,
             Size = size,
             Color = color
         });
-        
-        _spriteRenderer.DrawSprite(position, size, color);
+    }
+
+    public void FlushBatch()
+    {
+        if (_disposed || !IsInitialized) return;
+
+        if (!_frameInProgress)
+        {
+            Console.WriteLine("Renderer FlushBatch SKIPPED: Frame not in progress.");
+            return;
+        }
+
+        Console.WriteLine("Renderer: Flushing batch...");
+        _spriteBatch.Render(_commandList);
+        Console.WriteLine("Renderer: Batch flushed.");
     }
 
     public void DrawMesh(Matrix4x4 transform, ReadOnlySpan<float> vertices, ReadOnlySpan<uint> indices)
     {
         // TODO: Implement mesh rendering through composition
+        _logger.LogWarning("Mesh rendering not yet implemented");
     }
 
     public void Dispose()
@@ -208,12 +238,13 @@ public class SilkDirectX12Renderer : IRenderer
         if (_disposed)
             return;
 
-        Console.WriteLine("Disposing SilkDirectX12Renderer");
+        _logger.LogInformation("Disposing SilkDirectX12Renderer");
         _initialized = false;
 
         _spriteBatch?.Dispose();
         _spriteRenderer?.Dispose();
         _commandList?.Dispose();
+        _shaderManager?.Dispose();
         _device?.Dispose();
         _disposed = true;
     }

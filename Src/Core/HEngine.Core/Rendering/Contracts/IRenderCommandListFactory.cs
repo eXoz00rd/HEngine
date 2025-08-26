@@ -1,6 +1,6 @@
 ﻿namespace HEngine.Core.Rendering.Contracts;
 
-public class IRenderCommandListFactory
+public interface IRenderCommandListFactory
 {
-    
+    IRenderCommandList CreateCommandList(ICommandQueue commandQueue);
 }

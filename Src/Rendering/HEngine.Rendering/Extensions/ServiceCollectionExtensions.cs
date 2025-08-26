@@ -1,32 +1,38 @@
-﻿// Src/Core/HEngine.Core/DI/ServiceCollectionExtensions.cs
-
-using HEngine.Core.Configuration;
-using HEngine.Core.Contracts;
-using HEngine.Core.Managers;
-using HEngine.Core.Time;
+﻿using HEngine.Core.Configuration;
+using HEngine.Core.Rendering.Contracts;
+using HEngine.Rendering.Batches;
+using HEngine.Rendering.Devices;
+using HEngine.Rendering.Managers;
+using HEngine.Rendering.Renderers;
+using HEngine.Rendering.Systems;
+using HEngine.Rendering.Systems.Contracts;
+using HEngine.Rendering.Systems.Implementations;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 
-namespace HEngine.Rendering.ServiceExtensions;
+namespace HEngine.Rendering.Extensions;
 
 public static class ServiceCollectionExtensions
 {
     public static IServiceCollection AddHEngineRendering(this IServiceCollection services, EngineConfiguration config)
     {
-        services.AddSingleton(config);
+        // Direct registration - no adapter needed
+        services.AddSingleton<IGraphicsDevice, DirectX12Device>();
+        services.AddSingleton<ISpriteRenderer, DirectX12SpriteRenderer>();
 
-        services.AddLogging(builder =>
-        {
-            builder.ClearProviders();
-            builder.AddConsole();
-            builder.SetMinimumLevel(LogLevel.Information);
-        });
+        // Other services
+        services.AddSingleton<IRenderer, SilkDirectX12Renderer>();
+        services.AddSingleton<IRenderManager, RenderManager>();
 
-        services.AddSingleton<GameTime>();
-        services.AddSingleton<WorldManager>();
-        services.AddSingleton<SystemManager>();
+        services.AddSingleton<IRenderBatch<SpriteData>, SpriteBatch>();
+        services.AddSingleton<IShaderManager, DirectX12ShaderManager>();
 
-        services.AddSingleton<IGameLoop, GameLoop>();
+        // ✅ Poprawiona rejestracja - użyj interfejsów z SpriteRenderingSystemImplementation.cs
+        services.AddSingleton<ISpriteRenderingSystem, SpriteRenderingSystem>();
+        services.AddSingleton<IMeshRenderingSystem, MeshRenderingSystem>();
+        services.AddSingleton<IRenderingSystem, RenderingSystem>();
+
+        services.AddSingleton<IRenderPipeline, RenderPipeline>();
+
 
         return services;
     }

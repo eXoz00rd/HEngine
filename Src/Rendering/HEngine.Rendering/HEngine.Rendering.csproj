@@ -10,12 +10,11 @@
     <ItemGroup>
       <Folder Include="Batches\" />
       <Folder Include="Components\" />
-      <Folder Include="Contracts\" />
       <Folder Include="Data\" />
       <Folder Include="Devices\" />
       <Folder Include="Enums\" />
       <Folder Include="Managers\" />
-      <Folder Include="Systems\" />
+      <Folder Include="Extensions\" />
     </ItemGroup>
 
     <ItemGroup>

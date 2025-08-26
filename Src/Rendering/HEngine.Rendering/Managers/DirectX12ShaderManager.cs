@@ -1,24 +1,24 @@
 ﻿using System.Runtime.InteropServices;
 using System.Text;
+using HEngine.Core.Rendering.Contracts;
 using Silk.NET.Core.Native;
 using Silk.NET.Direct3D.Compilers;
 
 namespace HEngine.Rendering.Managers;
 
-public class DirectX12ShaderManager : IDisposable
+public class DirectX12ShaderManager : IShaderManager, IDisposable
 {
-    private readonly D3DCompiler _compiler;
+    private readonly D3DCompiler _compiler = D3DCompiler.GetApi();
     private bool _disposed;
+    private bool _isInitialized;
     private ComPtr<ID3D10Blob> _pixelShader;
     private ComPtr<ID3D10Blob> _vertexShader;
 
-    public DirectX12ShaderManager()
-    {
-        _compiler = D3DCompiler.GetApi();
-    }
-
     public ComPtr<ID3D10Blob> VertexShader => _vertexShader;
     public ComPtr<ID3D10Blob> PixelShader => _pixelShader;
+
+    // ✅ Implementacja właściwości z interfejsu IShaderManager
+    public bool IsInitialized => _isInitialized && !_disposed;
 
     public void Dispose()
     {
@@ -27,13 +27,33 @@ public class DirectX12ShaderManager : IDisposable
         _vertexShader.Dispose();
         _pixelShader.Dispose();
         _compiler.Dispose();
+        _isInitialized = false;
         _disposed = true;
     }
 
     public void Initialize()
     {
-        _vertexShader = CompileShader(GetVertexShaderCode(), "main", "vs_5_0");
-        _pixelShader = CompileShader(GetPixelShaderCode(), "main", "ps_5_0");
+        if (_disposed)
+            throw new ObjectDisposedException(nameof(DirectX12ShaderManager));
+
+        if (_isInitialized)
+            return; // Już zainicjalizowane
+
+        try
+        {
+            _vertexShader = CompileShader(GetVertexShaderCode(), "main", "vs_5_0");
+            _pixelShader = CompileShader(GetPixelShaderCode(), "main", "ps_5_0");
+
+            _isInitialized = true;
+        }
+        catch
+        {
+            // Cleanup w przypadku błędu
+            _vertexShader.Dispose();
+            _pixelShader.Dispose();
+            _isInitialized = false;
+            throw;
+        }
     }
 
     private string GetVertexShaderCode()

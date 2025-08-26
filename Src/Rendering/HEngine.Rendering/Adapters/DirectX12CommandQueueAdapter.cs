@@ -1,4 +1,7 @@
-﻿namespace HEngine.Rendering.Adapters;
+﻿using HEngine.Core.Rendering.Contracts;
+using HEngine.Rendering.DirectX12;
+
+namespace HEngine.Rendering.Adapters;
 
 public class DirectX12CommandQueueAdapter : ICommandQueue
 {

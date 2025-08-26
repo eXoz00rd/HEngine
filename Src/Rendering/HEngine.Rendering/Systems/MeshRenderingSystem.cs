@@ -3,6 +3,7 @@ using HEngine.Core.Managers;
 using HEngine.Core.Queries;
 using HEngine.Core.Rendering.Contracts;
 using HEngine.Rendering.Components;
+using HEngine.Rendering.Systems.Contracts;
 
 namespace HEngine.Rendering.Systems;
 

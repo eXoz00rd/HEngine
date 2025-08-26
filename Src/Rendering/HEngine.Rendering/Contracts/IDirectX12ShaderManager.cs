@@ -1,4 +1,6 @@
-﻿namespace HEngine.Core.Rendering.DirectX12.Contracts;
+﻿using Silk.NET.Core.Native;
+
+namespace HEngine.Rendering.Contracts;
 
 public interface IDirectX12ShaderManager : IDisposable
 {

@@ -18,8 +18,6 @@ public class DirectX12SwapChain : IDisposable
     private ComPtr<IDXGISwapChain3> _swapChain;
     private IWindow _window;
 
-    public int FrameIndex { get; private set; }
-
     public void Dispose()
     {
         if (_disposed)
@@ -33,48 +31,43 @@ public class DirectX12SwapChain : IDisposable
         _disposed = true;
     }
 
-    public void Initialize(ComPtr<ID3D12Device> device, DirectX12CommandQueue commandQueue, IWindow window)
+    public unsafe void Initialize(ComPtr<ID3D12Device> device, DirectX12CommandQueue commandQueue, IWindow window)
     {
-        _window = window; // Zapisz referencję
+        _window = window;
 
-        unsafe
+        using var dxgi = DXGI.GetApi();
+        using var factory = dxgi.CreateDXGIFactory1<IDXGIFactory4>();
+
+        var swapChainDesc = new SwapChainDesc1
         {
-            using var dxgi = DXGI.GetApi();
-            using var factory = dxgi.CreateDXGIFactory1<IDXGIFactory4>();
+            BufferCount = FrameCount,
+            Width = (uint)window.Size.X,
+            Height = (uint)window.Size.Y,
+            Format = Format.FormatR8G8B8A8Unorm,
+            BufferUsage = DXGI.UsageRenderTargetOutput,
+            SwapEffect = SwapEffect.FlipDiscard,
+            SampleDesc = new SampleDesc(1, 0)
+        };
 
-            var swapChainDesc = new SwapChainDesc1
-            {
-                BufferCount = FrameCount,
-                Width = (uint)window.Size.X,
-                Height = (uint)window.Size.Y,
-                Format = Format.FormatR8G8B8A8Unorm,
-                BufferUsage = DXGI.UsageRenderTargetOutput,
-                SwapEffect = SwapEffect.FlipDiscard,
-                SampleDesc = new SampleDesc(1, 0)
-            };
+        IDXGISwapChain1* tempSwapChain;
+        var hresult = factory.CreateSwapChainForHwnd((IUnknown*)commandQueue.Queue.Handle,
+            window.Native!.Win32!.Value.Hwnd, in swapChainDesc, null, null, &tempSwapChain);
 
-            IDXGISwapChain1* tempSwapChain;
-            var result = factory.CreateSwapChainForHwnd(
-                (IUnknown*)commandQueue.Queue.Handle,
-                window.Native!.Win32!.Value.Hwnd,
-                in swapChainDesc,
-                null,
-                null,
-                &tempSwapChain
-            );
+        if (hresult < 0)
+            throw new Exception($"Failed to create swap chain. HRESULT: {hresult:X8}");
 
-            if (result < 0)
-                throw new Exception($"Failed to create swap chain. HRESULT: {result:X8}");
+        _swapChain = new ComPtr<IDXGISwapChain3>((IDXGISwapChain3*)tempSwapChain);
 
-            _swapChain = new ComPtr<IDXGISwapChain3>((IDXGISwapChain3*)tempSwapChain);
-            FrameIndex = (int)_swapChain.GetCurrentBackBufferIndex();
-
-            CreateDescriptorHeaps(device);
-            CreateRenderTargets(device);
-        }
+        CreateDescriptorHeaps(device);
+        CreateRenderTargets(device);
     }
 
-    public void BeginFrame(ComPtr<ID3D12GraphicsCommandList> commandList)
+    public uint GetCurrentBackBufferIndex()
+    {
+        return _swapChain.GetCurrentBackBufferIndex();
+    }
+
+    public void BeginFrame(ComPtr<ID3D12GraphicsCommandList> commandList, int frameIndex)
     {
         var barrier = new ResourceBarrier
         {
@@ -82,7 +75,7 @@ public class DirectX12SwapChain : IDisposable
             Flags = ResourceBarrierFlags.None,
             Transition = new ResourceTransitionBarrier
             {
-                PResource = _renderTargets[FrameIndex],
+                PResource = _renderTargets[frameIndex],
                 StateBefore = ResourceStates.Present,
                 StateAfter = ResourceStates.RenderTarget,
                 Subresource = D3D12.ResourceBarrierAllSubresources
@@ -92,13 +85,13 @@ public class DirectX12SwapChain : IDisposable
         commandList.ResourceBarrier(1, ref barrier);
 
         var rtvHandle = _rtvHeap.GetCPUDescriptorHandleForHeapStart();
-        rtvHandle.Ptr += (nuint)(FrameIndex * _rtvDescriptorSize);
+        rtvHandle.Ptr += (nuint)(frameIndex * _rtvDescriptorSize);
 
         unsafe
         {
             commandList.OMSetRenderTargets(1, &rtvHandle, false, (CpuDescriptorHandle*)null);
         }
-        
+
         var viewport = new Viewport
         {
             TopLeftX = 0,
@@ -111,15 +104,14 @@ public class DirectX12SwapChain : IDisposable
 
         commandList.RSSetViewports(1, ref viewport);
 
-        // Set scissor rect  
         var scissorRect = new Box2D<int>(0, 0, _window.Size.X, _window.Size.Y);
         commandList.RSSetScissorRects(1, in scissorRect);
     }
 
-    public void Clear(ComPtr<ID3D12GraphicsCommandList> commandList, Vector4 clearColor)
+    public void Clear(ComPtr<ID3D12GraphicsCommandList> commandList, Vector4 clearColor, int frameIndex)
     {
         var rtvHandle = _rtvHeap.GetCPUDescriptorHandleForHeapStart();
-        rtvHandle.Ptr += (nuint)(FrameIndex * _rtvDescriptorSize);
+        rtvHandle.Ptr += (nuint)(frameIndex * _rtvDescriptorSize);
 
         unsafe
         {
@@ -133,16 +125,15 @@ public class DirectX12SwapChain : IDisposable
         }
     }
 
-    public void EndFrame(ComPtr<ID3D12GraphicsCommandList> commandList)
+    public void EndFrame(ComPtr<ID3D12GraphicsCommandList> commandList, int frameIndex)
     {
-        // Transition render target back to present state
         var barrier = new ResourceBarrier
         {
             Type = ResourceBarrierType.Transition,
             Flags = ResourceBarrierFlags.None,
             Transition = new ResourceTransitionBarrier
             {
-                PResource = _renderTargets[FrameIndex],
+                PResource = _renderTargets[frameIndex],
                 StateBefore = ResourceStates.RenderTarget,
                 StateAfter = ResourceStates.Present,
                 Subresource = D3D12.ResourceBarrierAllSubresources
@@ -152,32 +143,11 @@ public class DirectX12SwapChain : IDisposable
         commandList.ResourceBarrier(1, ref barrier);
     }
 
-    public void BeginFrame()
-    {
-        // Set render target
-        var rtvHandle = _rtvHeap.GetCPUDescriptorHandleForHeapStart();
-        rtvHandle.Ptr += (nuint)(FrameIndex * _rtvDescriptorSize);
-
-        // This would be called from command list setup
-    }
-
-    public void EndFrame()
-    {
-        // Frame transition handled by command queue
-    }
-
-    public void Clear(Vector4 clearColor)
-    {
-        // This would be called from command list
-    }
-
     public void Present()
     {
         var result = _swapChain.Present(1, 0);
         if (result < 0)
             throw new Exception($"Failed to present. HRESULT: {result:X8}");
-
-        FrameIndex = (int)_swapChain.GetCurrentBackBufferIndex();
     }
 
     private void CreateDescriptorHeaps(ComPtr<ID3D12Device> device)
@@ -199,11 +169,10 @@ public class DirectX12SwapChain : IDisposable
     private void CreateRenderTargets(ComPtr<ID3D12Device> device)
     {
         var rtvHandle = _rtvHeap.GetCPUDescriptorHandleForHeapStart();
-
-        for (var i = 0; i < FrameCount; i++)
+        for (uint i = 0; i < FrameCount; i++)
             unsafe
             {
-                _renderTargets[i] = _swapChain.GetBuffer<ID3D12Resource>((uint)i);
+                _renderTargets[i] = _swapChain.GetBuffer<ID3D12Resource>(i);
                 device.CreateRenderTargetView(_renderTargets[i], null, rtvHandle);
                 rtvHandle.Ptr += _rtvDescriptorSize;
             }

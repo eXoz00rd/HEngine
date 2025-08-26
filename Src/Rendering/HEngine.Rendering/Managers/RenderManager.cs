@@ -1,96 +1,94 @@
 ﻿using System.Numerics;
-using HEngine.Core.Configuration;
-using HEngine.Rendering.Contracts;
-using HEngine.Rendering.Systems;
+using HEngine.Core.Rendering.Contracts;
+using Microsoft.Extensions.Logging;
 
 namespace HEngine.Rendering.Managers;
 
-public class RenderManager : IDisposable
+public class RenderManager : IRenderManager
 {
-    private readonly EngineConfiguration _config;
+    private readonly ILogger<RenderManager> _logger;
     private readonly IRenderer _renderer;
     private bool _disposed;
-    private bool _initialized;
+    private IRenderContext? _renderContext;
 
-    public RenderManager(IRenderer renderer, EngineConfiguration config)
+    public RenderManager(IRenderer renderer, ILogger<RenderManager> logger)
     {
-        _renderer = renderer;
-        _config = config;
-        RenderContext = new SilkRenderContext(_renderer);
-        ConfigureRenderContext();
+        _renderer = renderer ?? throw new ArgumentNullException(nameof(renderer));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public bool ShouldClose => _renderer.ShouldClose;
-    public bool IsInitialized => _initialized && !_disposed;
-    public bool CanRender => IsInitialized && !_renderer.ShouldClose;
-    public SilkRenderContext RenderContext { get; }
+    public bool ShouldClose => _renderer?.ShouldClose ?? false;
+    public bool CanRender => IsInitialized && !_disposed && _renderer != null;
+    public bool IsInitialized { get; private set; }
 
-    public void Dispose()
+    public void Initialize(int width, int height, string title)
     {
-        if (_disposed)
+        ObjectDisposedException.ThrowIf(_disposed, nameof(RenderManager));
+
+        if (IsInitialized)
+        {
+            _logger.LogWarning("RenderManager already initialized");
             return;
+        }
 
-        Console.WriteLine("Disposing RenderManager");
-        _initialized = false;
-        _renderer?.Dispose();
-        _disposed = true;
-    }
-
-    public void Initialize()
-    {
         try
         {
-            Console.WriteLine("Initializing RenderManager...");
-            _renderer.Initialize(
-                _config.Window.Width,
-                _config.Window.Height,
-                _config.Window.Title
-            );
+            _logger.LogInformation("Initializing RenderManager with {Width}x{Height} '{Title}'", width, height, title);
 
-            if (_renderer is SilkDirectX12Renderer { IsInitialized: false })
-                throw new InvalidOperationException("Renderer failed to initialize");
+            _renderer.Initialize(width, height, title);
 
-            _initialized = true;
-            Console.WriteLine("RenderManager initialized successfully");
+            _renderContext = new SilkRenderContext(_renderer);
+
+            // ===================== NAPRAWIONO =====================
+            // Tworzymy ortograficzną macierz projekcji, która mapuje współrzędne
+            // z przestrzeni ekranu (np. 0-1280) na znormalizowane współrzędne urządzenia (-1 do 1).
+            _renderContext.ProjectionMatrix = Matrix4x4.CreateOrthographicOffCenter(0, width, height, 0, -1.0f, 1.0f);
+            // ======================================================
+
+            IsInitialized = true;
+            _logger.LogInformation("RenderManager initialized successfully");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Failed to initialize RenderManager: {ex.Message}");
-            _initialized = false;
+            _logger.LogError(ex, "Failed to initialize RenderManager");
+            IsInitialized = false;
             throw;
         }
     }
 
     public void UpdateInput()
     {
-        if (!CanRender)
-            return;
-        _renderer.PollEvents();
+        if (!CanRender) return;
+
+        try
+        {
+            _renderer.PollEvents();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during input update");
+        }
     }
 
     public void BeginRender()
     {
-        if (!CanRender)
-            return;
+        if (!CanRender) return;
 
         try
         {
             _renderer.BeginFrame();
-            _renderer.Clear(RenderContext.ClearColor);
-            _renderer.SetViewMatrix(RenderContext.ViewMatrix);
-            _renderer.SetProjectionMatrix(RenderContext.ProjectionMatrix);
+
+            if (_renderContext != null) _renderer.Clear(_renderContext.ClearColor);
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error in BeginRender: {ex.Message}");
-            throw;
+            _logger.LogError(ex, "Error during begin render");
         }
     }
 
     public void EndRender()
     {
-        if (!CanRender)
-            return;
+        if (!CanRender) return;
 
         try
         {
@@ -99,24 +97,61 @@ public class RenderManager : IDisposable
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error in EndRender: {ex.Message}");
-            throw;
+            _logger.LogError(ex, "Error during end render");
         }
     }
 
-    private void ConfigureRenderContext()
+    public void Clear(Vector4 clearColor)
     {
-        RenderContext.ClearColor = _config.Rendering.ClearColor;
+        Console.WriteLine($"DirectX12Device Clear with color: {clearColor}");
 
-        // Dla renderowania 2D używaj macierzy ortogonalnej
-        RenderContext.ViewMatrix = Matrix4x4.Identity;
-        RenderContext.ProjectionMatrix = Matrix4x4.CreateOrthographicOffCenter(
-            0, // left
-            _config.Window.Width, // right
-            _config.Window.Height, // bottom
-            0, // top
-            -1, // near
-            1 // far
-        );
+
+        if (!CanRender) return;
+
+        try
+        {
+            _renderer.Clear(clearColor);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during clear");
+        }
+    }
+
+    public void Present()
+    {
+        Console.WriteLine("DirectX12Device Present called");
+
+
+        if (!CanRender) return;
+
+        try
+        {
+            _renderer.Present();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during present");
+        }
+    }
+
+    public IRenderContext? GetRenderContext()
+    {
+        if (IsInitialized && !_disposed) return _renderContext;
+
+        _logger.LogWarning("RenderManager not initialized or disposed - returning null RenderContext");
+        return null;
+    }
+
+    public void Dispose()
+    {
+        if (_disposed) return;
+
+        _logger.LogInformation("Disposing RenderManager");
+
+        _renderContext = null;
+        _renderer?.Dispose();
+        IsInitialized = false;
+        _disposed = true;
     }
 }

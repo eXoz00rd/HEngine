@@ -32,25 +32,16 @@ public class RenderingSystem : IRenderingSystem
             return;
     }
 
-    public void Render()
+    public void Render(IRenderContext context)
     {
-        if (_disposed || _renderContext == null) return;
+        if (_disposed) throw new ObjectDisposedException(nameof(RenderingSystem));
+        if (!_isInitialized)
+            throw new InvalidOperationException("RenderingSystem must be initialized before calling Render.");
+        ArgumentNullException.ThrowIfNull(context);
 
-        try
-        {
-            _renderContext.Renderer.SetViewMatrix(_renderContext.ViewMatrix);
-            _renderContext.Renderer.SetProjectionMatrix(_renderContext.ProjectionMatrix);
-
-            _spriteSystem.Render(_renderContext);
-            _meshSystem.Render(_renderContext);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error in RenderingSystem.Render: {ex.Message}");
-            throw;
-        }
+        _spriteSystem.Render(context);
+        _meshSystem.Render(context);
     }
-
 
     public void Dispose()
     {
@@ -61,12 +52,33 @@ public class RenderingSystem : IRenderingSystem
         _meshSystem.Dispose();
         _disposed = true;
     }
-    
+
     public void Initialize(WorldManager worldManager)
     {
+        if (_disposed) throw new ObjectDisposedException(nameof(RenderingSystem));
+        ArgumentNullException.ThrowIfNull(worldManager);
+        if (_isInitialized) return;
+
         _spriteSystem.Initialize(worldManager);
         _meshSystem.Initialize(worldManager);
         _isInitialized = true;
+    }
+
+    [Obsolete("Use Render(IRenderContext) instead. This parameterless method is deprecated and will be removed.")]
+    internal void Render()
+    {
+        if (_disposed || _renderContext == null) return;
+
+        try
+        {
+            // Delegate to the context-based path to keep a single authoritative render flow.
+            Render(_renderContext);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error in RenderingSystem.Render: {ex.Message}");
+            throw;
+        }
     }
 
     public void Initialize()
@@ -82,6 +94,8 @@ public class RenderingSystem : IRenderingSystem
 
     public void SetRenderContext(IRenderContext renderContext)
     {
+        if (_disposed) throw new ObjectDisposedException(nameof(RenderingSystem));
+        ArgumentNullException.ThrowIfNull(renderContext);
         _renderContext = renderContext;
         Console.WriteLine("RenderContext set successfully");
     }

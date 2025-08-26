@@ -10,39 +10,46 @@ namespace HEngine.Rendering.Systems.Implementations;
 public class SpriteRenderingSystem : ISpriteRenderingSystem
 {
     private bool _disposed;
+    private bool _isInitialized;
     private QueryBuilder _queryBuilder = null!;
+
+    public bool IsInitialized => _isInitialized && !_disposed;
 
     public void Initialize(WorldManager worldManager)
     {
+        // Use QueryBuilder so queries reflect entities created after initialization as well
         _queryBuilder = new QueryBuilder(worldManager.ComponentManager, worldManager.EntityManager);
+        _isInitialized = true;
     }
 
-    public void Render(IRenderContext context)
+    public void Render(IRenderContext renderContext)
     {
-        if (_disposed)
+        if (_disposed || !_isInitialized)
             return;
 
-        var spriteQuery = _queryBuilder.With<Transform2D, Sprite>();
-
-        foreach (var (entity, transform, sprite) in spriteQuery)
+        var query = _queryBuilder.With<Transform2D, Sprite>();
+        if (query.IsEmpty)
         {
-            var position = transform.Position - sprite.Origin * sprite.Size;
-            Console.WriteLine(
-                $"Drawing sprite at ({position.X}, {position.Y}) with size ({sprite.Size.X}, {sprite.Size.Y})");
-            context.Renderer.DrawSprite(position, sprite.Size, sprite.Color);
+            Console.WriteLine("SpriteRenderingSystem: Query is empty, skipping render.");
+            return;
         }
+
+        Console.WriteLine($"SpriteRenderingSystem: Rendering {query.Count} sprites.");
+
+        foreach (var (entity, transform, sprite) in query)
+        {
+            Console.WriteLine($"Drawing sprite at {transform.Position}");
+            renderContext.Renderer.DrawSprite(transform.Position, sprite.Size, sprite.Color);
+        }
+
+        renderContext.Renderer.FlushBatch();
     }
 
     public void Dispose()
     {
         if (_disposed)
             return;
-        _queryBuilder = null!;
-        _disposed = true;
-    }
 
-    public void Update(float deltaTime)
-    {
-        throw new NotImplementedException();
+        _disposed = true;
     }
 }

@@ -1,16 +1,16 @@
-﻿// RenderPipeline.cs
-using HEngine.Core.Rendering.Contracts;
+﻿using HEngine.Core.Rendering.Contracts;
 using Microsoft.Extensions.Logging;
 
 namespace HEngine.Rendering;
 
 public class RenderPipeline : IRenderPipeline
 {
-    private readonly IRenderManager _renderManager;
-    private readonly IRenderingSystem _renderingSystem;
     private readonly ILogger<RenderPipeline> _logger;
+    private readonly IRenderingSystem _renderingSystem;
+    private readonly IRenderManager _renderManager;
 
-    public RenderPipeline(IRenderManager renderManager, IRenderingSystem renderingSystem, ILogger<RenderPipeline> logger)
+    public RenderPipeline(IRenderManager renderManager, IRenderingSystem renderingSystem,
+        ILogger<RenderPipeline> logger)
     {
         _renderManager = renderManager;
         _renderingSystem = renderingSystem;
@@ -19,24 +19,35 @@ public class RenderPipeline : IRenderPipeline
 
     public void RenderFrame()
     {
-        if (!_renderManager.CanRender)
+        if (!_renderManager.CanRender) return;
+
+        var context = _renderManager.GetRenderContext();
+        if (context == null)
         {
+            _logger.LogWarning("RenderContext is null, skipping frame.");
             return;
         }
 
         try
         {
-            // Tutaj w przyszłości można dodać logikę synchronizacji z GPU,
-            // np. oczekiwanie na zakończenie poprzedniej klatki.
-            
+            // Krok 1: Rozpocznij klatkę (czyści tło itp.)
             _renderManager.BeginRender();
-            _renderingSystem.Render();
+
+            // Krok 2: Ustaw stan renderera na podstawie kontekstu (macierze)
+            // To jest kluczowy, jawny krok, którego brakowało.
+            context.Renderer.SetViewMatrix(context.ViewMatrix);
+            context.Renderer.SetProjectionMatrix(context.ProjectionMatrix);
+
+            // Krok 3: Wykonaj wszystkie operacje rysowania, przekazując kontekst.
+            // Będzie to wymagało małej zmiany w interfejsie IRenderingSystem.
+            _renderingSystem.Render(context);
+
+            // Krok 4: Zakończ klatkę i zaprezentuj wynik.
             _renderManager.EndRender();
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "A critical error occurred in the render pipeline.");
-            // Można tu dodać logikę próbującą odzyskać urządzenie graficzne.
             throw;
         }
     }

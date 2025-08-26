@@ -2,5 +2,5 @@
 
 using HEngine;
 
-using var gameEngine = new GameEngine();
+using var gameEngine = GameEngine.Create();
 gameEngine.Run();

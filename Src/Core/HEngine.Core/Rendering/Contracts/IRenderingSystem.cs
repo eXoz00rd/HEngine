@@ -1,9 +1,9 @@
-﻿namespace HEngine.Core.Rendering.Contracts;
+﻿using HEngine.Core.Contracts;
 
-public interface IRenderingSystem : IDisposable
+namespace HEngine.Core.Rendering.Contracts;
+
+public interface IRenderingSystem : ISystem
 {
     bool IsInitialized { get; }
-    void Initialize();
-    void Update(float deltaTime);
     void Render(IRenderContext context);
 }

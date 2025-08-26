@@ -1,8 +1,9 @@
 ﻿using System.Numerics;
-using HEngine.Rendering.Contracts;
+using HEngine.Core.Rendering.Contracts;
 using HEngine.Rendering.Data;
 using HEngine.Rendering.Devices;
 using HEngine.Rendering.Managers;
+using Microsoft.Extensions.Logging;
 using Silk.NET.Core.Native;
 using Silk.NET.Direct3D12;
 
@@ -10,21 +11,32 @@ namespace HEngine.Rendering.Renderers;
 
 public class DirectX12SpriteRenderer : ISpriteRenderer
 {
-    private readonly List<SpriteVertex> _currentBatch = new();
-    private DirectX12BufferManager _bufferManager;
-    private IRenderDevice _device;
+    private readonly List<SpriteVertex> _currentBatch;
+    private readonly ILogger<DirectX12SpriteRenderer> _logger;
+    private readonly SpriteVertex[] _quadVertices = new SpriteVertex[6];
+
+    private DirectX12BufferManager _bufferManager = null!;
+    private IGraphicsDevice _device = null!; // Zmień na IGraphicsDevice
     private bool _disposed;
-    private DirectX12PipelineStateManager _pipelineManager;
-    private DirectX12ShaderManager _shaderManager;
+    private DirectX12PipelineStateManager _pipelineManager = null!;
+    private DirectX12ShaderManager _shaderManager = null!;
+
+    public DirectX12SpriteRenderer(ILogger<DirectX12SpriteRenderer> logger)
+    {
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _currentBatch = new List<SpriteVertex>(4096);
+    }
 
     public bool IsInitialized { get; private set; }
 
-    public void Initialize(IRenderDevice device)
+    public void Initialize(IGraphicsDevice device) // Zmień na IGraphicsDevice
     {
         try
         {
-            _device = device;
-            var d3dDevice = ((DirectX12Device)device).GetDevice();
+            _device = device ?? throw new ArgumentNullException(nameof(device));
+
+            var dx12Device = (DirectX12Device)device;
+            var d3dDevice = dx12Device.GetDevice();
 
             _shaderManager = new DirectX12ShaderManager();
             _shaderManager.Initialize();
@@ -33,14 +45,14 @@ public class DirectX12SpriteRenderer : ISpriteRenderer
             _pipelineManager.Initialize(d3dDevice, _shaderManager);
 
             _bufferManager = new DirectX12BufferManager();
-            _bufferManager.Initialize(d3dDevice, new Vector2(800, 600));
+            _bufferManager.Initialize(d3dDevice, dx12Device.GetWindowSize());
 
             IsInitialized = true;
-            Console.WriteLine("DirectX12SpriteRenderer initialized successfully");
+            _logger.LogInformation("DirectX12SpriteRenderer initialized successfully");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Failed to initialize DirectX12SpriteRenderer: {ex.Message}");
+            _logger.LogError(ex, "Failed to initialize DirectX12SpriteRenderer");
             throw;
         }
     }
@@ -50,20 +62,8 @@ public class DirectX12SpriteRenderer : ISpriteRenderer
         if (!IsInitialized || _disposed)
             return;
 
-        Console.WriteLine($"DirectX12SpriteRenderer: Adding sprite at ({position.X}, {position.Y})");
-
-        var vertices = CreateQuadVertices(position, size, color);
-        _currentBatch.AddRange(vertices);
-    }
-
-    public void Dispose()
-    {
-        if (_disposed) return;
-
-        _bufferManager?.Dispose();
-        _pipelineManager?.Dispose();
-        _shaderManager?.Dispose();
-        _disposed = true;
+        CreateQuadVerticesInPlace(position, size, color);
+        _currentBatch.AddRange(_quadVertices);
     }
 
     public void FlushBatch()
@@ -73,71 +73,79 @@ public class DirectX12SpriteRenderer : ISpriteRenderer
 
         try
         {
-            Console.WriteLine($"DirectX12SpriteRenderer: Flushing {_currentBatch.Count} vertices");
+            if (_logger.IsEnabled(LogLevel.Debug))
+                _logger.LogDebug("Flushing {Count} vertices", _currentBatch.Count);
 
-            var commandList = ((DirectX12Device)_device).GetCommandQueue().CommandList;
+            var dx12Device = (DirectX12Device)_device;
+            var commandList = dx12Device.GetDirectX12CommandQueue().CommandList;
 
-            // Sprawdź czy command list jest prawidłowy
             unsafe
             {
                 if (commandList.Handle == (void*)IntPtr.Zero)
                 {
-                    Console.WriteLine("ERROR: Command list is null!");
+                    _logger.LogError("Command list is null!");
                     return;
                 }
             }
 
-            _bufferManager.UpdateVertexBuffer(_currentBatch.ToArray());
+            var vertexArray = _currentBatch.ToArray();
+            _bufferManager.UpdateVertexBuffer(vertexArray);
 
-            // Sprawdź czy pipeline state jest prawidłowy
+#if DEBUG
             unsafe
             {
                 if (_pipelineManager.PipelineState.Handle == (void*)IntPtr.Zero)
                 {
-                    Console.WriteLine("ERROR: Pipeline state is null!");
+                    _logger.LogError("Pipeline state is null!");
                     return;
                 }
             }
+#endif
 
             commandList.SetGraphicsRootSignature(_pipelineManager.RootSignature);
             commandList.SetPipelineState(_pipelineManager.PipelineState);
             commandList.SetGraphicsRootConstantBufferView(0, _bufferManager.ConstantBuffer.GetGPUVirtualAddress());
-
             commandList.IASetPrimitiveTopology(D3DPrimitiveTopology.D3DPrimitiveTopologyTrianglelist);
 
             var vertexBufferView = _bufferManager.VertexBufferView;
             commandList.IASetVertexBuffers(0, 1, in vertexBufferView);
-
             commandList.DrawInstanced((uint)_currentBatch.Count, 1, 0, 0);
 
-            Console.WriteLine($"DirectX12SpriteRenderer: Successfully flushed {_currentBatch.Count} vertices");
             _currentBatch.Clear();
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"ERROR in FlushBatch: {ex.Message}");
-            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            _logger.LogError(ex, "Error in FlushBatch");
             _currentBatch.Clear();
+            throw;
         }
     }
 
+    public void Dispose()
+    {
+        if (_disposed)
+            return;
 
-    private SpriteVertex[] CreateQuadVertices(Vector2 position, Vector2 size, Vector4 color)
+        _logger.LogInformation("Disposing DirectX12SpriteRenderer");
+
+        _bufferManager?.Dispose();
+        _pipelineManager?.Dispose();
+        _shaderManager?.Dispose();
+        _disposed = true;
+    }
+
+    private void CreateQuadVerticesInPlace(Vector2 position, Vector2 size, Vector4 color)
     {
         var left = position.X;
         var right = position.X + size.X;
         var top = position.Y;
         var bottom = position.Y + size.Y;
 
-        return
-        [
-            new SpriteVertex(new Vector3(left, top, 0), color),
-            new SpriteVertex(new Vector3(right, top, 0), color),
-            new SpriteVertex(new Vector3(left, bottom, 0), color),
-
-            new SpriteVertex(new Vector3(right, top, 0), color),
-            new SpriteVertex(new Vector3(right, bottom, 0), color),
-            new SpriteVertex(new Vector3(left, bottom, 0), color)
-        ];
+        _quadVertices[0] = new SpriteVertex(new Vector3(left, top, 0), color);
+        _quadVertices[1] = new SpriteVertex(new Vector3(right, top, 0), color);
+        _quadVertices[2] = new SpriteVertex(new Vector3(left, bottom, 0), color);
+        _quadVertices[3] = new SpriteVertex(new Vector3(right, top, 0), color);
+        _quadVertices[4] = new SpriteVertex(new Vector3(right, bottom, 0), color);
+        _quadVertices[5] = new SpriteVertex(new Vector3(left, bottom, 0), color);
     }
 }

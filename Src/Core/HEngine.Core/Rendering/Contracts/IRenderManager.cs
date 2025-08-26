@@ -14,4 +14,5 @@ public interface IRenderManager : IDisposable
     void EndRender();
     void Clear(Vector4 clearColor);
     void Present();
+    IRenderContext GetRenderContext();
 }
