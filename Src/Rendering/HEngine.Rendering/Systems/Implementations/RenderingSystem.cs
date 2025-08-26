@@ -1,13 +1,15 @@
-﻿using HEngine.Core.Contracts;
-using HEngine.Core.Managers;
-using HEngine.Rendering.Contracts;
+﻿using HEngine.Core.Managers;
+using HEngine.Core.Rendering.Contracts;
+using HEngine.Rendering.Systems.Contracts;
 
-namespace HEngine.Rendering.Systems;
+namespace HEngine.Rendering.Systems.Implementations;
 
-public class RenderingSystem : ISystem {
+public class RenderingSystem : IRenderingSystem
+{
     private readonly IMeshRenderingSystem _meshSystem;
     private readonly ISpriteRenderingSystem _spriteSystem;
     private bool _disposed;
+    private bool _isInitialized;
     private IRenderContext _renderContext = null!;
 
     public RenderingSystem(ISpriteRenderingSystem spriteSystem, IMeshRenderingSystem meshSystem)
@@ -22,27 +24,20 @@ public class RenderingSystem : ISystem {
         _meshSystem = new MeshRenderingSystem();
     }
 
-    public void Initialize(WorldManager worldManager)
-    {
-        _spriteSystem.Initialize(worldManager);
-        _meshSystem.Initialize(worldManager);
-    }
+    public bool IsInitialized => _isInitialized && !_disposed;
 
     public void Update(float deltaTime)
     {
         if (_disposed)
             return;
+    }
 
-        // Sprawdź czy render context jest ustawiony
-        if (_renderContext == null)
-        {
-            Console.WriteLine("RenderContext is null - skipping render");
-            return;
-        }
+    public void Render()
+    {
+        if (_disposed || _renderContext == null) return;
 
         try
         {
-            // Nie wywołuj BeginFrame/EndFrame tutaj - to jest w RenderManager
             _renderContext.Renderer.SetViewMatrix(_renderContext.ViewMatrix);
             _renderContext.Renderer.SetProjectionMatrix(_renderContext.ProjectionMatrix);
 
@@ -51,10 +46,11 @@ public class RenderingSystem : ISystem {
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error in RenderingSystem.Update: {ex.Message}");
+            Console.WriteLine($"Error in RenderingSystem.Render: {ex.Message}");
             throw;
         }
     }
+
 
     public void Dispose()
     {
@@ -64,6 +60,24 @@ public class RenderingSystem : ISystem {
         _spriteSystem.Dispose();
         _meshSystem.Dispose();
         _disposed = true;
+    }
+    
+    public void Initialize(WorldManager worldManager)
+    {
+        _spriteSystem.Initialize(worldManager);
+        _meshSystem.Initialize(worldManager);
+        _isInitialized = true;
+    }
+
+    public void Initialize()
+    {
+        if (_disposed)
+            throw new ObjectDisposedException(nameof(RenderingSystem));
+
+        if (_isInitialized)
+            return;
+
+        _isInitialized = true;
     }
 
     public void SetRenderContext(IRenderContext renderContext)
