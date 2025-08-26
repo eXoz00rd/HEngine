@@ -1,65 +1,119 @@
-# Build results
-[Dd]ebug/
-[Rr]elease/
-x64/
-x86/
-[Aa][Rr][Mm]/
-[Aa][Rr][Mm]64/
-bld/
+﻿# HEngine .gitignore
+# Generated for a .NET 9 multi-project solution targeting Windows with JetBrains Rider/Visual Studio
+# Date: 2025-08-26
+
+############################
+# OS-specific junk
+############################
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+Desktop.ini
+$RECYCLE.BIN/
+*.stackdump
+# macOS (in case of cross-platform devs)
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+.Spotlight-V100
+.Trashes
+
+############################
+# IDEs and editors
+############################
+# JetBrains Rider / IntelliJ
+.idea/
+*.iml
+# Rider/Resharper caches
+_ReSharper*/
+*.DotSettings.user
+*.sln.DotSettings.user
+
+# Visual Studio
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.rsuser
+
+# VS Code (project-specific files may be shared, but generally ignore workspace-local settings)
+.vscode/
+
+# Other editors
+*.userprefs
+
+############################
+# .NET build outputs
+############################
 [Bb]in/
 [Oo]bj/
 [Ll]og/
 [Ll]ogs/
+out/
+artifacts/
+# dotnet publish output is under bin/**/publish which is covered by bin/, but keep explicit rule
+publish/
 
-# Visual Studio files
-.vs/
-*.user
-*.userosscache
-*.suo
-*.userprefs
-*.pidb
-*.booproj
-*.svd
-*.pdb
-*.mdb
-*.opendb
-*.VC.db
-
-# Rider
-.idea/
-*.sln.iml
-*.iml
-riderModule.iml
-/_ReSharper.Caches/
-.idea/**/workspace.xml
-.idea/**/tasks.xml
-.idea/dictionaries
-.idea/**/.idea.*/**/.idea/*
-.idea/.idea.*/.idea/
-.idea/.idea.*/
-
-# NuGet
+############################
+# NuGet & packages
+############################
+# Global packages not stored in repo
+.nuget/packages/
+# Local packages folder (legacy)
 packages/
+# Package artifacts
 *.nupkg
 *.snupkg
-**/[Pp]ackages/*
+# NuGet v3 cache
+~/.nuget/
 
-# Game Engine specific
-[Tt]emp/
-[Aa]ssets/AssetStoreTools*
-[Bb]uild/
-[Ll]ibrary/
-[Uu]serSettings/
-*.pidb.meta
-*.pdb.meta
-*.mdb.meta
+############################
+# Testing & Coverage
+############################
+TestResults/
+*.trx
+*.coverage
+*.coveragexml
+coverage/
+.coverage/
+.opencover/
+*.opencover.xml
+BenchmarkDotNet.Artifacts/
 
-# OS specific
-.DS_Store*
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-[Tt]humbs.db
-Desktop.ini
-/.idea/
+############################
+# Logs and diagnostics
+############################
+*.log
+*.etl
+*.dmp
+*.diag
+
+############################
+# Temporary files
+############################
+*.tmp
+*.temp
+*.bak
+*.old
+*.orig
+*.swp
+*.swo
+
+############################
+# Rider local caches for solution-wide analysis
+############################
+.idea/.idea.*/
+.idea/**/workspace.xml
+.idea/**/tasks.xml
+.idea/**/dictionaries/
+.idea/**/shelf/
+
+# End of .gitignore
+
+
+############################
+# Local tooling (not part of the repo)
+############################
+.junie/
