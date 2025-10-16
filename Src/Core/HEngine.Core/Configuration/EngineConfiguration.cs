@@ -2,6 +2,12 @@
 
 namespace HEngine.Core.Configuration;
 
+public enum ProjectionMode
+{
+    Orthographic,
+    Perspective
+}
+
 public class EngineConfiguration {
     public WindowSettings Window { get; set; } = new();
     public RenderingSettings Rendering { get; set; } = new();
@@ -18,6 +24,7 @@ public class WindowSettings {
 
 public class RenderingSettings {
     public Vector4 ClearColor { get; set; } = new(0.2f, 0.3f, 0.8f, 1.0f);
+    public ProjectionMode ProjectionMode { get; set; } = ProjectionMode.Orthographic;
     public float FieldOfView { get; set; } = MathF.PI / 4;
     public float NearPlane { get; set; } = 0.1f;
     public float FarPlane { get; set; } = 100.0f;

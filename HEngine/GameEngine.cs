@@ -94,8 +94,8 @@ public class GameEngine : IDisposable
             // ✅ 2. Zainicjalizuj RenderingSystem (teraz z WorldManager)
             _renderingSystem.Initialize(_worldManager);
             
-            var renderContext = _renderManager.GetRenderContext(); // Musisz dodać tę metodę
-            if (renderContext != null && _renderingSystem is RenderingSystem rs) rs.SetRenderContext(renderContext);
+            if (_renderManager.TryGetRenderContext(out var renderContext) && _renderingSystem is RenderingSystem rs)
+                rs.SetRenderContext(renderContext);
 
             // ✅ 4. Dodaj RenderingSystem bezpośrednio do SystemManager
             _systemManager.AddSystem(_renderingSystem);

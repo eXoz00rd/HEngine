@@ -2,6 +2,7 @@
 using HEngine.Core.Rendering.Contracts;
 using HEngine.Rendering.Batches;
 using HEngine.Rendering.Devices;
+using HEngine.Rendering.Factories;
 using HEngine.Rendering.Managers;
 using HEngine.Rendering.Renderers;
 using HEngine.Rendering.Systems;
@@ -22,6 +23,9 @@ public static class ServiceCollectionExtensions
         // Other services
         services.AddSingleton<IRenderer, SilkDirectX12Renderer>();
         services.AddSingleton<IRenderManager, RenderManager>();
+
+        // Context factory (per device/window creation via factory, not a singleton context)
+        services.AddSingleton<IRenderContextFactory, SilkRenderContextFactory>();
 
         services.AddSingleton<IRenderBatch<SpriteData>, SpriteBatch>();
         services.AddSingleton<IShaderManager, DirectX12ShaderManager>();

@@ -30,15 +30,11 @@ public class SpriteRenderingSystem : ISpriteRenderingSystem
         var query = _queryBuilder.With<Transform2D, Sprite>();
         if (query.IsEmpty)
         {
-            Console.WriteLine("SpriteRenderingSystem: Query is empty, skipping render.");
             return;
         }
 
-        Console.WriteLine($"SpriteRenderingSystem: Rendering {query.Count} sprites.");
-
         foreach (var (entity, transform, sprite) in query)
         {
-            Console.WriteLine($"Drawing sprite at {transform.Position}");
             renderContext.Renderer.DrawSprite(transform.Position, sprite.Size, sprite.Color);
         }
 

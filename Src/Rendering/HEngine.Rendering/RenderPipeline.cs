@@ -22,29 +22,33 @@ public class RenderPipeline : IRenderPipeline
     {
         if (!_renderManager.CanRender) return;
 
-        var context = _renderManager.GetRenderContext();
-        if (context == null)
+        if (!_renderManager.TryGetRenderContext(out var context))
         {
-            _logger.LogWarning(RenderLogEvents.PipelineContextNullWarn, "RenderContext is null, skipping frame.");
+            _logger.LogWarning(RenderLogEvents.PipelineContextNullWarn, "RenderContext is not available, skipping frame.");
             return;
         }
 
         try
         {
             _logger.LogDebug(RenderLogEvents.PipelineStart, "RenderFrame start");
-            // Krok 1: Rozpocznij klatkę (czyści tło itp.)
+            // Step 1: Begin frame (clears, etc.)
             _renderManager.BeginRender();
 
-            // Krok 2: Ustaw stan renderera na podstawie kontekstu (macierze)
-            // To jest kluczowy, jawny krok, którego brakowało.
+            // Step 2: If an active camera is available, push its matrices to the context
+            if (_renderManager.TryGetActiveCamera(out var camera))
+            {
+                context.ViewMatrix = camera.ViewMatrix;
+                context.ProjectionMatrix = camera.ProjectionMatrix;
+            }
+
+            // Step 3: Apply context matrices to renderer
             context.Renderer.SetViewMatrix(context.ViewMatrix);
             context.Renderer.SetProjectionMatrix(context.ProjectionMatrix);
 
-            // Krok 3: Wykonaj wszystkie operacje rysowania, przekazując kontekst.
-            // Będzie to wymagało małej zmiany w interfejsie IRenderingSystem.
+            // Step 4: Perform all drawing operations via the rendering system
             _renderingSystem.Render(context);
 
-            // Krok 4: Zakończ klatkę i zaprezentuj wynik.
+            // Step 5: End frame and present
             _renderManager.EndRender();
             _logger.LogDebug(RenderLogEvents.PipelineEnd, "RenderFrame end");
         }

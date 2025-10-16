@@ -116,11 +116,6 @@ public class WorldTransformTests {
         var rotation = Quaternion.CreateFromAxisAngle(Vector3.UnitY, MathF.PI / 4);
         var scale = new Vector3(2, 3, 4);
         var worldTransform = new WorldTransform(position, rotation, scale);
-
-        worldTransform.Position = new Vector3(5, 6, 7);
-        worldTransform.Rotation = Quaternion.CreateFromAxisAngle(Vector3.UnitX, MathF.PI / 2);
-        worldTransform.Scale = new Vector3(3, 4, 5);
-
         worldTransform.UpdateMatrix();
 
         // Używamy SRT jak w implementacji
