@@ -43,7 +43,6 @@ public class RenderingSystem : IRenderingSystem
         if (_disposed) throw new ObjectDisposedException(nameof(RenderingSystem));
         if (!_isInitialized)
             throw new InvalidOperationException("RenderingSystem must be initialized before calling Update.");
-        // No per-frame logic yet.
     }
 
     public void Render(IRenderContext context)
@@ -85,7 +84,6 @@ public class RenderingSystem : IRenderingSystem
 
         try
         {
-            // Delegate to the context-based path to keep a single authoritative render flow.
             Render(_renderContext);
         }
         catch (Exception ex)
@@ -111,6 +109,5 @@ public class RenderingSystem : IRenderingSystem
         if (_disposed) throw new ObjectDisposedException(nameof(RenderingSystem));
         ArgumentNullException.ThrowIfNull(renderContext);
         _renderContext = renderContext;
-        // Info logs in hot path removed per task #6 to avoid runtime Console output.
     }
 }

@@ -137,7 +137,7 @@ public class ChildrenTests {
         }
 
 
-        var result = children.Remove(entities[4]); // Remove 5th child (in additional list)
+        var result = children.Remove(entities[4]);
 
 
         Assert.True(result);

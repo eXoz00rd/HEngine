@@ -1,4 +1,4 @@
-﻿using Timer = HEngine.Core.Components.Core.Timer; // Alias dla naszego Timer
+﻿using Timer = HEngine.Core.Components.Core.Timer;
 
 namespace HEngine.Core.Tests.Components.Core;
 
@@ -54,7 +54,7 @@ public class TimerTests {
     [InlineData(5.0f, 0.0f, 0.0f)]
     [InlineData(5.0f, 2.5f, 0.5f)]
     [InlineData(5.0f, 5.0f, 1.0f)]
-    [InlineData(5.0f, 7.5f, 1.0f)] // Clamped to 1.0
+    [InlineData(5.0f, 7.5f, 1.0f)]
     public void Progress_ShouldReturnCorrectValue(float duration, float elapsed, float expected)
     {
         
@@ -158,7 +158,7 @@ public class TimerTests {
         timer.Update(deltaTime);
 
         
-        Assert.Equal(0.0f, timer.Elapsed); // Obecne zachowanie - reset do 0
+        Assert.Equal(0.0f, timer.Elapsed);
     }
 
     [Fact]
@@ -167,13 +167,13 @@ public class TimerTests {
         
         var timer = new Timer(5.0f, true);
         timer.Elapsed = 4.0f;
-        const float deltaTime = 1.5f; // Przekracza duration (4.0 + 1.5 = 5.5 > 5.0)
+        const float deltaTime = 1.5f;
 
         
         timer.Update(deltaTime);
 
         
-        Assert.Equal(0.0f, timer.Elapsed); // Timer resetuje do 0, nie zachowuje remainder
+        Assert.Equal(0.0f, timer.Elapsed);
     }
 
     [Fact]
@@ -188,6 +188,6 @@ public class TimerTests {
         timer.Update(deltaTime);
 
         
-        Assert.Equal(6.0f, timer.Elapsed); // Should not reset
+        Assert.Equal(6.0f, timer.Elapsed);
     }
 }

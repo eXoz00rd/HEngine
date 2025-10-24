@@ -6,7 +6,7 @@ namespace HEngine.Core.Components.Physics;
 public struct Velocity : IComponent
 {
     public Vector3 Linear;
-    public Vector3 Angular; // w radianach/sek
+    public Vector3 Angular;
     
     public Velocity(Vector3 linear = default, Vector3 angular = default)
     {

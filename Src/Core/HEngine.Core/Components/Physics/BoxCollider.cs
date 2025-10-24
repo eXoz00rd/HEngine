@@ -3,9 +3,6 @@ using System.Numerics;
 
 namespace HEngine.Core.Components.Physics;
 
-/// <summary>
-/// Collider box/sześcian
-/// </summary>
 public struct BoxCollider : IComponent
 {
     public Vector3 Size;

@@ -15,13 +15,10 @@ public interface IRenderManager : IDisposable
     void Clear(Vector4 clearColor);
     void Present();
 
-    // Returns the current render context; may throw or be null depending on initialization state.
-    IRenderContext GetRenderContext();
+   IRenderContext GetRenderContext();
 
-    // Try-pattern to avoid double null checks; returns true when a valid context is available.
-    bool TryGetRenderContext(out IRenderContext context);
+   bool TryGetRenderContext(out IRenderContext context);
 
-    // Camera management: allows pipeline to pull matrices from the active camera when available.
-    void SetActiveCamera(ICamera camera);
+   void SetActiveCamera(ICamera camera);
     bool TryGetActiveCamera(out ICamera camera);
 }

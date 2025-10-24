@@ -1,4 +1,6 @@
-﻿using HEngine.Core.Rendering.Contracts;
+﻿using HEngine.Core.Components.Rendering;
+using HEngine.Core.Managers;
+using HEngine.Core.Rendering.Contracts;
 using Microsoft.Extensions.Logging;
 using HEngine.Rendering.Logging;
 
@@ -9,12 +11,14 @@ public class RenderPipeline : IRenderPipeline
     private readonly ILogger<RenderPipeline> _logger;
     private readonly IRenderingSystem _renderingSystem;
     private readonly IRenderManager _renderManager;
+    private readonly WorldManager _world;
 
     public RenderPipeline(IRenderManager renderManager, IRenderingSystem renderingSystem,
-        ILogger<RenderPipeline> logger)
+        WorldManager world, ILogger<RenderPipeline> logger)
     {
         _renderManager = renderManager;
         _renderingSystem = renderingSystem;
+        _world = world;
         _logger = logger;
     }
 
@@ -31,24 +35,25 @@ public class RenderPipeline : IRenderPipeline
         try
         {
             _logger.LogDebug(RenderLogEvents.PipelineStart, "RenderFrame start");
-            // Step 1: Begin frame (clears, etc.)
             _renderManager.BeginRender();
-
-            // Step 2: If an active camera is available, push its matrices to the context
-            if (_renderManager.TryGetActiveCamera(out var camera))
+            
+            var qb = _world.QueryBuilder.With<Camera>();
+            if (qb.TryGetFirst(out var _, out var cam))
+            {
+                context.ViewMatrix = cam.GetViewMatrix();
+                context.ProjectionMatrix = cam.GetProjectionMatrix();
+            }
+            else if (_renderManager.TryGetActiveCamera(out var camera))
             {
                 context.ViewMatrix = camera.ViewMatrix;
                 context.ProjectionMatrix = camera.ProjectionMatrix;
             }
-
-            // Step 3: Apply context matrices to renderer
+            
             context.Renderer.SetViewMatrix(context.ViewMatrix);
             context.Renderer.SetProjectionMatrix(context.ProjectionMatrix);
-
-            // Step 4: Perform all drawing operations via the rendering system
+            
             _renderingSystem.Render(context);
 
-            // Step 5: End frame and present
             _renderManager.EndRender();
             _logger.LogDebug(RenderLogEvents.PipelineEnd, "RenderFrame end");
         }

@@ -8,32 +8,41 @@ public class WorldTransform
     public Vector3 Position { get; private set; }
     public Quaternion Rotation { get; private set; }
     public Vector3 Scale { get; private set; }
-
-    // Precomputed matrix (used only if object is static)
     public Matrix4x4 PrecomputedMatrix { get; private set; }
 
     public WorldTransform(Matrix4x4 matrix)
     {
         Matrix = matrix;
         DecomposeMatrix();
-        PrecomputedMatrix = Matrix; // Cache for static use
+        PrecomputedMatrix = Matrix;
     }
 
     public WorldTransform(Vector3 position, Quaternion rotation, Vector3 scale)
     {
+        if (scale.X == 0 || scale.Y == 0 || scale.Z == 0)
+            throw new ArgumentException("Scale nie może zawierać wartości zero");
+
         Position = position;
         Rotation = rotation;
         Scale = scale;
         UpdateMatrix();
-        PrecomputedMatrix = Matrix; // Cache for static use
+        PrecomputedMatrix = Matrix;
     }
 
-    // Only update if components change
     private void DecomposeMatrix()
     {
-        Position = Vector3.Zero;
-        Rotation = Quaternion.Identity;
-        Scale = Vector3.One;
+        if (Matrix4x4.Decompose(Matrix, out var scale, out var rotation, out var translation))
+        {
+            Position = translation;
+            Rotation = rotation;
+            Scale = scale;
+        }
+        else
+        {
+            Position = Vector3.Zero;
+            Rotation = Quaternion.Identity;
+            Scale = Vector3.One;
+        }
     }
 
     public void UpdateMatrix()

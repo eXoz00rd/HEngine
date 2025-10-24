@@ -9,15 +9,16 @@ namespace HEngine.Rendering.Managers;
 
 public class RenderManager : IRenderManager
 {
+    private readonly EngineConfiguration _config;
     private readonly IRenderContextFactory _contextFactory;
     private readonly ILogger<RenderManager> _logger;
     private readonly IRenderer _renderer;
-    private readonly EngineConfiguration _config;
+    private ICamera? _activeCamera;
     private bool _disposed;
     private IRenderContext? _renderContext;
-    private ICamera? _activeCamera;
 
-    public RenderManager(IRenderer renderer, IRenderContextFactory contextFactory, EngineConfiguration config, ILogger<RenderManager> logger)
+    public RenderManager(IRenderer renderer, IRenderContextFactory contextFactory, EngineConfiguration config,
+        ILogger<RenderManager> logger)
     {
         _renderer = renderer ?? throw new ArgumentNullException(nameof(renderer));
         _contextFactory = contextFactory ?? throw new ArgumentNullException(nameof(contextFactory));
@@ -26,7 +27,7 @@ public class RenderManager : IRenderManager
     }
 
     public bool ShouldClose => _renderer?.ShouldClose ?? false;
-    public bool CanRender => IsInitialized && !_disposed && _renderer != null;
+    public bool CanRender => IsInitialized && !_disposed;
     public bool IsInitialized { get; private set; }
 
     public void Initialize(int width, int height, string title)
@@ -41,14 +42,14 @@ public class RenderManager : IRenderManager
 
         try
         {
-            _logger.LogInformation(RenderLogEvents.InitializeStart,
-                "Initializing RenderManager with {Width}x{Height} '{Title}'", width, height, title);
+            if (_logger.IsEnabled(LogLevel.Information))
+                _logger.LogInformation(RenderLogEvents.InitializeStart,
+                    "Initializing RenderManager with {Width}x{Height} '{Title}'", width, height, title);
 
             _renderer.Initialize(width, height, title);
 
             _renderContext = _contextFactory.Create();
 
-            // Configure initial render context state based on configuration
             var w = width <= 0 ? 1 : width;
             var h = height <= 0 ? 1 : height;
             var aspect = h == 0 ? 1.0f : (float)w / h;
@@ -60,7 +61,6 @@ public class RenderManager : IRenderManager
             Matrix4x4 projection;
             if (renderCfg.ProjectionMode == ProjectionMode.Orthographic)
             {
-                // Screen-space orthographic with top-left origin and Y down
                 projection = Matrix4x4.CreateOrthographicOffCenter(0, w, h, 0, renderCfg.NearPlane, renderCfg.FarPlane);
             }
             else
@@ -74,7 +74,9 @@ public class RenderManager : IRenderManager
             _renderContext.ProjectionMatrix = projection;
 
             IsInitialized = true;
-            _logger.LogInformation(RenderLogEvents.InitializeSuccess, "RenderManager initialized successfully with Aspect={Aspect} Mode={Mode}", aspect, renderCfg.ProjectionMode);
+            _logger.LogInformation(RenderLogEvents.InitializeSuccess,
+                "RenderManager initialized successfully with Aspect={Aspect} Mode={Mode}", aspect,
+                renderCfg.ProjectionMode);
         }
         catch (Exception ex)
         {
@@ -105,17 +107,27 @@ public class RenderManager : IRenderManager
 
         try
         {
-            _logger.LogDebug(RenderLogEvents.BeginRender, "BeginRender");
-
-            _logger.LogDebug(RenderLogEvents.BeginFrame, "BeginFrame");
+            if (_logger.IsEnabled(LogLevel.Debug))
+                _logger.LogDebug(RenderLogEvents.BeginRender, "BeginRender");
+            if (_logger.IsEnabled(LogLevel.Debug))
+                _logger.LogDebug(RenderLogEvents.BeginFrame, "BeginFrame");
+            
             _renderer.BeginFrame();
 
-            if (_renderContext != null)
+            if (_renderContext == null) return;
+
+            if (_activeCamera != null)
             {
-                var color = _renderContext.ClearColor;
-                _logger.LogDebug(RenderLogEvents.Clear, "Clear with color {Color}", color);
-                _renderer.Clear(color);
+                _renderContext.ViewMatrix = _activeCamera.ViewMatrix;
+                _renderContext.ProjectionMatrix = _activeCamera.ProjectionMatrix;
             }
+
+            var color = _renderContext.ClearColor;
+
+            if (_logger.IsEnabled(LogLevel.Debug))
+                _logger.LogDebug(RenderLogEvents.Clear, "Clear with color {Color}", color);
+
+            _renderer.Clear(color);
         }
         catch (Exception ex)
         {
@@ -178,7 +190,8 @@ public class RenderManager : IRenderManager
         if (IsInitialized && !_disposed && _renderContext != null) return _renderContext;
 
         _logger.LogWarning("RenderManager not initialized or disposed - GetRenderContext is unavailable");
-        throw new InvalidOperationException("RenderContext is not available. Ensure RenderManager is initialized and not disposed.");
+        throw new InvalidOperationException(
+            "RenderContext is not available. Ensure RenderManager is initialized and not disposed.");
     }
 
     public bool TryGetRenderContext(out IRenderContext context)

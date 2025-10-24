@@ -11,7 +11,7 @@ public class Transform2DTests {
 
         Assert.Equal(Vector2.Zero, transform.Position);
         Assert.Equal(0f, transform.Rotation);
-        Assert.Equal(Vector2.One, transform.Scale); // Scale powinno być (1,1), nie (0,0)
+        Assert.Equal(Vector2.One, transform.Scale);
     }
     
     [Fact]
@@ -159,8 +159,7 @@ public class Transform2DTests {
         var matrix = transform.ToMatrix();
         var point = new Vector2(1, 1);
         var transformedPoint = Vector2.Transform(point, matrix);
-
-        // Punkt (1,1) skalowany (2,3) + translacja (5,10) = (7,13)
+        
         var expected = new Vector2(7, 13);
 
         Assert.Equal(expected, transformedPoint);

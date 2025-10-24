@@ -1,10 +1,12 @@
 ﻿using System.Numerics;
 using HEngine.Builders;
+using HEngine.Core.Components.Rendering;
 using HEngine.Core.Components.Transform;
 using HEngine.Core.Configuration;
 using HEngine.Core.Contracts;
 using HEngine.Core.Managers;
 using HEngine.Core.Rendering.Contracts;
+using HEngine.Core.Systems;
 using HEngine.Rendering.Components;
 using HEngine.Rendering.Systems;
 using HEngine.Rendering.Systems.Implementations;
@@ -21,6 +23,7 @@ public class GameEngine : IDisposable
     private readonly IRenderManager _renderManager;
     private readonly SystemManager _systemManager;
     private readonly WorldManager _worldManager;
+    private readonly ICameraInputProvider _cameraInput;
     private bool _disposed;
 
     public GameEngine(
@@ -30,6 +33,7 @@ public class GameEngine : IDisposable
         IRenderManager renderManager,
         IRenderingSystem renderingSystem,
         EngineConfiguration config,
+        ICameraInputProvider cameraInput,
         ILogger<GameEngine> logger)
     {
         _gameLoop = gameLoop ?? throw new ArgumentNullException(nameof(gameLoop));
@@ -38,6 +42,7 @@ public class GameEngine : IDisposable
         _renderManager = renderManager ?? throw new ArgumentNullException(nameof(renderManager));
         _renderingSystem = renderingSystem ?? throw new ArgumentNullException(nameof(renderingSystem));
         _config = config ?? throw new ArgumentNullException(nameof(config));
+        _cameraInput = cameraInput ?? throw new ArgumentNullException(nameof(cameraInput));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
         Initialize();
@@ -51,7 +56,6 @@ public class GameEngine : IDisposable
         _disposed = true;
     }
 
-    // Factory method dla łatwiejszego użycia
     public static GameEngine Create(EngineConfiguration? config = null)
     {
         var builder = new EngineBuilder(config);
@@ -84,23 +88,32 @@ public class GameEngine : IDisposable
         try
         {
             _logger.LogInformation("Initializing game engine...");
-
-            // ✅ 1. Zainicjalizuj RenderManager z parametrami z konfiguracji
+            
             _renderManager.Initialize(
                 _config.Window.Width,
                 _config.Window.Height,
                 _config.Window.Title);
-
-            // ✅ 2. Zainicjalizuj RenderingSystem (teraz z WorldManager)
+            
             _renderingSystem.Initialize(_worldManager);
             
             if (_renderManager.TryGetRenderContext(out var renderContext) && _renderingSystem is RenderingSystem rs)
                 rs.SetRenderContext(renderContext);
+            
+            var aspect = _config.Window.Height <= 0 ? 1.0f : (float)_config.Window.Width / _config.Window.Height;
+            var camEntity = _worldManager.CreateEntity();
+            _worldManager.AddComponent(camEntity, new Camera(aspect: aspect));
+            
+            var freeCameraSystem = new FreeCameraSystem(_cameraInput)
+            {
+                Enabled = true,
+                MoveSpeed = 5f,
+                LookSpeed = 0.0025f
+            };
+            freeCameraSystem.Initialize(_worldManager);
+            _systemManager.AddSystem(freeCameraSystem, priority: 10);
 
-            // ✅ 4. Dodaj RenderingSystem bezpośrednio do SystemManager
             _systemManager.AddSystem(_renderingSystem);
-
-            // ✅ 5. Stwórz przykładowe entity
+            
             CreateExampleEntities();
 
 
@@ -116,15 +129,13 @@ public class GameEngine : IDisposable
     private void CreateExampleEntities()
     {
         _logger.LogInformation("Creating example entities...");
-
-        // Compute centered position for a 64x64 square in screen space (top-left origin)
+        
         var size = new Vector2(64, 64);
         var centerPos = new Vector2(
             _config.Window.Width * 0.5f - size.X * 0.5f,
             _config.Window.Height * 0.5f - size.Y * 0.5f
         );
-
-        // First square: centered, nice blue-ish color
+        
         var eCenter = _worldManager.CreateEntity();
         _worldManager.AddComponent(
             eCenter,
@@ -135,12 +146,11 @@ public class GameEngine : IDisposable
             new Sprite
             {
                 Size = size,
-                Color = new Vector4(0.25f, 0.5f, 1f, 1f), // Cornflower-like blue
+                Color = new Vector4(0.25f, 0.5f, 1f, 1f),
                 Origin = new Vector2(0.5f, 0.5f)
             }
         );
-
-        // Second square: placed to the right of the first one with a small gap
+        
         var gap = 12f;
         var rightPos = new Vector2(centerPos.X + size.X + gap, centerPos.Y);
         var eRight = _worldManager.CreateEntity();
@@ -153,7 +163,7 @@ public class GameEngine : IDisposable
             new Sprite
             {
                 Size = size,
-                Color = new Vector4(1f, 0.5f, 0.1f, 1f), // Warm orange
+                Color = new Vector4(1f, 0.5f, 0.1f, 1f),
                 Origin = new Vector2(0.5f, 0.5f)
             }
         );

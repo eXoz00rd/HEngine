@@ -14,6 +14,13 @@ public class DirectX12BufferManager : IDisposable
     private ComPtr<ID3D12Resource> _constantBuffer;
     private bool _disposed;
     private ComPtr<ID3D12Resource> _vertexBuffer;
+    
+    [StructLayout(LayoutKind.Sequential)]
+    private struct CameraConstants
+    {
+        public Matrix4x4 View;
+        public Matrix4x4 Projection;
+    }
 
     public VertexBufferView VertexBufferView { get; private set; }
     public ComPtr<ID3D12Resource> ConstantBuffer => _constantBuffer;
@@ -30,7 +37,8 @@ public class DirectX12BufferManager : IDisposable
     public void Initialize(ComPtr<ID3D12Device> device, Vector2 screenSize)
     {
         CreateVertexBuffer(device);
-        CreateConstantBuffer(device, screenSize);
+        CreateConstantBuffer(device);
+        UpdateCameraConstants(Matrix4x4.Identity, Matrix4x4.Identity);
     }
 
     private void CreateVertexBuffer(ComPtr<ID3D12Device> device)
@@ -80,9 +88,10 @@ public class DirectX12BufferManager : IDisposable
         };
     }
 
-    private void CreateConstantBuffer(ComPtr<ID3D12Device> device, Vector2 screenSize)
+    private void CreateConstantBuffer(ComPtr<ID3D12Device> device)
     {
-        var constantBufferSize = (uint)((Marshal.SizeOf<Vector2>() + 255) & ~255);
+        var size = Marshal.SizeOf<CameraConstants>();
+        var constantBufferSize = (uint)((size + 255) & ~255);
 
         var heapProps = new HeapProperties
         {
@@ -118,21 +127,21 @@ public class DirectX12BufferManager : IDisposable
             if (result < 0)
                 throw new Exception($"Failed to create constant buffer. HRESULT: {result:X8}");
         }
-
-        UpdateConstantBuffer(screenSize);
     }
 
-    private void UpdateConstantBuffer(Vector2 screenSize)
+    public void UpdateCameraConstants(Matrix4x4 view, Matrix4x4 projection)
     {
         unsafe
         {
             void* mappedData;
-            // Użyj uint zamiast int i Silk.NET.Direct3D12.Range
             var result = _constantBuffer.Map(0u, (Range*)null, &mappedData);
             if (result < 0)
                 throw new Exception($"Failed to map constant buffer. HRESULT: {result:X8}");
+            
+            var data = new CameraConstants { View = view, Projection = projection };
+            var span = new Span<byte>(mappedData, Marshal.SizeOf<CameraConstants>());
+            MemoryMarshal.Write(span, ref data);
 
-            *(Vector2*)mappedData = screenSize;
             _constantBuffer.Unmap(0u, (Range*)null);
         }
     }
@@ -145,7 +154,6 @@ public class DirectX12BufferManager : IDisposable
         unsafe
         {
             void* mappedData;
-            // Użyj uint zamiast int i Silk.NET.Direct3D12.Range
             var result = _vertexBuffer.Map(0u, (Range*)null, &mappedData);
             if (result < 0)
                 throw new Exception($"Failed to map vertex buffer. HRESULT: {result:X8}");

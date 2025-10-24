@@ -10,6 +10,10 @@ public struct Camera : IComponent {
     public float AspectRatio;
     public bool IsOrthographic;
     public float OrthographicSize;
+
+    public Vector3 Position;
+    public Vector3 Target;
+    public Vector3 Up; 
     
     public CameraClearFlags ClearFlags;
     public Color BackgroundColor;
@@ -24,11 +28,19 @@ public struct Camera : IComponent {
         AspectRatio = aspect;
         IsOrthographic = false;
         OrthographicSize = 5f;
+        
+        Position = new Vector3(0, 0, 5);
+        Target = Vector3.Zero;
+        Up = Vector3.UnitY;
+        
         ClearFlags = CameraClearFlags.SolidColor;
         BackgroundColor = Color.Black;
         CullingMask = -1;
         Depth = 0f;
     }
+
+    public Matrix4x4 GetViewMatrix()
+        => Matrix4x4.CreateLookAt(Position, Target, Up);
 
     public Matrix4x4 GetProjectionMatrix()
         => IsOrthographic ?

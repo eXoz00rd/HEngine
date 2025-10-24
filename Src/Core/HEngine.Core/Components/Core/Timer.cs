@@ -2,8 +2,8 @@
 
 namespace HEngine.Core.Components.Core;
 
-
-public struct Timer : IComponent {
+public struct Timer : IComponent
+{
     public float Duration;
     public float Elapsed;
     public bool IsRepeating;
@@ -20,22 +20,26 @@ public struct Timer : IComponent {
     }
 
     public static Timer CreateLifetime(float duration)
-        => new(duration, false, true);
+    {
+        return new Timer(duration, false, true);
+    }
 
-    public float Progress => Duration > 0 ?
-        Math.Clamp(Elapsed / Duration, 0f, 1f) :
-        1f;
+    public float Progress => Duration > 0 ? Math.Clamp(Elapsed / Duration, 0f, 1f) : 1f;
 
     public bool IsCompleted => Elapsed >= Duration;
     public bool ShouldDestroy => AutoDestroy && IsCompleted;
 
     public void Update(float deltaTime)
     {
-        if (IsActive)
+        if (!IsActive)
         {
-            Elapsed += deltaTime;
-            if (IsCompleted && IsRepeating)
-                Elapsed = 0f;
+            return;
+        }
+
+        Elapsed += deltaTime;
+        if (IsCompleted && IsRepeating)
+        {
+            Elapsed = 0f;
         }
     }
 }

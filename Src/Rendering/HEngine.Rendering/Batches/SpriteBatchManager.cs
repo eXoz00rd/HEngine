@@ -29,7 +29,6 @@ public class SpriteBatch : IRenderBatch<SpriteData>
 
     public void Add(SpriteData sprite)
     {
-        // Hot path - minimize checks for performance
         if (_disposed || !_isInitialized)
             return;
 
@@ -42,7 +41,6 @@ public class SpriteBatch : IRenderBatch<SpriteData>
             return;
 
         _sprites.Clear();
-        // Don't trim capacity - keep it for next frame
     }
 
     public void Render(IRenderCommandList commandList)
@@ -52,18 +50,15 @@ public class SpriteBatch : IRenderBatch<SpriteData>
 
         try
         {
-            // Hot path - minimize logging in release builds
             if (_logger.IsEnabled(LogLevel.Debug))
                 _logger.LogDebug("Rendering {Count} sprites", _sprites.Count);
-
-            // Use for loop instead of foreach - slightly more efficient
+            
             for (var i = 0; i < _sprites.Count; i++)
             {
                 var sprite = _sprites[i];
                 _spriteRenderer.DrawSprite(sprite.Position, sprite.Size, sprite.Color);
             }
-
-            // Ensure the underlying renderer actually submits the batch this frame
+            
             _spriteRenderer.FlushBatch();
         }
         catch (Exception ex)

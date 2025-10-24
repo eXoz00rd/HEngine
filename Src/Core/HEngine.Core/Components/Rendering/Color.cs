@@ -58,7 +58,6 @@ public struct Color : IComponent, IEquatable<Color> {
 
     public float Luminance => 0.299f * R + 0.587f * G + 0.114f * B;
 
-    // Dodaj operatory równości
     public bool Equals(Color other)
         => Value.Equals(other.Value);
 

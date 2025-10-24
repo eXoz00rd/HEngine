@@ -20,8 +20,7 @@ internal sealed class ComponentStorage<T> : IComponentStorage<T>, IDisposable wh
         _entityToIndex = new uint[_capacity];
         _indexToEntity = new Entity[_capacity];
         _freeIndices = new Queue<uint>();
-
-        // Inicjalizacja z wartościami sentinel
+        
         Array.Fill(_entityToIndex, uint.MaxValue);
         Array.Fill(_indexToEntity, Entity.Null);
     }
@@ -43,8 +42,6 @@ internal sealed class ComponentStorage<T> : IComponentStorage<T>, IDisposable wh
     }
 
     public Type ComponentType => typeof(T);
-
-    // === CORE OPERATIONS - ZOPTYMALIZOWANE ===
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool HasComponent(Entity entity)
@@ -112,11 +109,9 @@ internal sealed class ComponentStorage<T> : IComponentStorage<T>, IDisposable wh
         _lock.EnterWriteLock();
         try
         {
-            // Sprawdź czy już istnieje
             if (entity.Id < _capacity && HasComponentUnsafe(entity))
                 ThrowComponentExists(entity);
 
-            // Rozszerz tablice jeśli potrzeba
             EnsureCapacity(entity.Id);
 
             var index = GetNextIndexUnsafe();
@@ -150,7 +145,6 @@ internal sealed class ComponentStorage<T> : IComponentStorage<T>, IDisposable wh
             _freeIndices.Enqueue(index);
             _count--;
 
-            // Wyczyść komponent dla GC (jeśli ma referencje)
             _components[index] = default;
 
             return true;
@@ -169,7 +163,6 @@ internal sealed class ComponentStorage<T> : IComponentStorage<T>, IDisposable wh
             if (_count == 0)
                 return Span<T>.Empty;
 
-            // Alokacja tylko gdy potrzebna
             var result = new T[_count];
             CopyActiveComponentsUnsafe(result);
             return result.AsSpan();
@@ -203,12 +196,6 @@ internal sealed class ComponentStorage<T> : IComponentStorage<T>, IDisposable wh
         }
     }
 
-    // === ITERATION OPTIMIZED ===
-    // Usunięte metody ForEach - C# nie wspiera Action<ref T>
-    // Zamiast tego używaj GetAllComponentsReadOnly() lub GetAllComponents()
-
-    // === MAINTENANCE OPERATIONS ===
-
     public void Clear()
     {
         _lock.EnterWriteLock();
@@ -216,7 +203,7 @@ internal sealed class ComponentStorage<T> : IComponentStorage<T>, IDisposable wh
         {
             Array.Fill(_entityToIndex, uint.MaxValue);
             Array.Fill(_indexToEntity, Entity.Null);
-            Array.Clear(_components); // Wyczyść dla GC
+            Array.Clear(_components);
             _freeIndices.Clear();
             _count = 0;
         }
@@ -237,8 +224,7 @@ internal sealed class ComponentStorage<T> : IComponentStorage<T>, IDisposable wh
             var newComponents = new T[_count];
             var newIndexToEntity = new Entity[_count];
             uint writeIndex = 0;
-
-            // Przepisz aktywne komponenty do gęstej tablicy
+            
             for (uint i = 0; i < _capacity && writeIndex < _count; i++)
             {
                 if (_indexToEntity[i].IsValid)
@@ -260,9 +246,7 @@ internal sealed class ComponentStorage<T> : IComponentStorage<T>, IDisposable wh
             _lock.ExitWriteLock();
         }
     }
-
-    // === DIAGNOSTICS ===
-
+    
     public long GetMemoryUsage()
     {
         _lock.EnterReadLock();
@@ -276,8 +260,6 @@ internal sealed class ComponentStorage<T> : IComponentStorage<T>, IDisposable wh
         }
     }
 
-    // === IComponentStorage IMPLEMENTATION ===
-
     public bool RemoveEntity(Entity entity)
         => RemoveComponent(entity);
 
@@ -287,19 +269,14 @@ internal sealed class ComponentStorage<T> : IComponentStorage<T>, IDisposable wh
     public void GetAllEntities(List<Entity> entities)
         => GetEntitiesWithComponent(entities);
 
-    // === DISPOSE ===
-
     public void Dispose()
         => _lock.Dispose();
-
-    // === BULK OPERATIONS - ZERO ALLOCATION ===
 
     public ReadOnlySpan<T> GetAllComponentsReadOnly()
     {
         _lock.EnterReadLock();
         try
         {
-            // Zwróć view na gęste dane bez alokacji
             return GetDenseComponentsUnsafe();
         }
         finally
@@ -345,8 +322,6 @@ internal sealed class ComponentStorage<T> : IComponentStorage<T>, IDisposable wh
         }
     }
 
-    // === PRIVATE HELPERS ===
-
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private long GetMemoryUsageUnsafe()
     {
@@ -380,8 +355,7 @@ internal sealed class ComponentStorage<T> : IComponentStorage<T>, IDisposable wh
         Array.Resize(ref _components, (int)newCapacity);
         Array.Resize(ref _entityToIndex, (int)newCapacity);
         Array.Resize(ref _indexToEntity, (int)newCapacity);
-
-        // Inicjalizuj nowe sloty
+        
         for (var i = _capacity; i < newCapacity; i++)
         {
             _entityToIndex[i] = uint.MaxValue;
@@ -395,12 +369,10 @@ internal sealed class ComponentStorage<T> : IComponentStorage<T>, IDisposable wh
     {
         if (_count == 0)
             return ReadOnlySpan<T>.Empty;
-
-        // Jeśli storage jest gęsty, zwróć bezpośredni view
+        
         if (_freeIndices.Count == 0)
             return new ReadOnlySpan<T>(_components, 0, (int)_count);
 
-        // W przeciwnym razie zwróć fragment z pierwszymi aktywymi
         var endIndex = 0;
         for (var i = 0; i < _capacity && endIndex < _count; i++)
         {
@@ -430,7 +402,6 @@ internal sealed class ComponentStorage<T> : IComponentStorage<T>, IDisposable wh
         => throw new InvalidOperationException($"Entity {entity} already has component {typeof(T).Name}");
 }
 
-// === STATS STRUCTURE ===
 public struct ComponentStorageStats {
     public Type ComponentType;
     public uint Count;

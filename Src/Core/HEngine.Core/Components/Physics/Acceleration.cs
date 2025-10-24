@@ -3,9 +3,6 @@ using System.Numerics;
 
 namespace HEngine.Core.Components.Physics;
 
-/// <summary>
-/// Komponent przyspieszenia/sił
-/// </summary>
 public struct Acceleration : IComponent
 {
     public Vector3 Linear;

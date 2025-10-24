@@ -56,7 +56,6 @@ public class SilkDirectX12Renderer : IRenderer
 
             var commandQueue = _device.GetCommandQueue();
 
-            // Bezpośrednie tworzenie DirectX12CommandList
             var commandListLogger = _loggerFactory.CreateLogger<DirectX12CommandList>();
             _commandList = new DirectX12CommandList(commandQueue, commandListLogger);
 
@@ -76,8 +75,7 @@ public class SilkDirectX12Renderer : IRenderer
 
     public void Run()
     {
-        // Ta metoda nie jest używana w tym przypadku
-        // Pętla renderowania jest zarządzana przez GameEngine
+        
     }
 
     public void Present()
@@ -100,8 +98,7 @@ public class SilkDirectX12Renderer : IRenderer
     {
         if (_disposed || !IsInitialized)
             return;
-
-        // Events są obsługiwane w _device.BeginFrame()
+        
     }
 
     public void BeginFrame()
@@ -132,8 +129,7 @@ public class SilkDirectX12Renderer : IRenderer
             _commandList.Reset();
             _spriteBatch.Clear();
             _frameInProgress = true;
-
-            // Zmieniono z LogDebug na Console.WriteLine dla spójności
+            
             Console.WriteLine("Renderer: BeginFrame completed successfully");
         }
         catch (Exception ex)
@@ -163,8 +159,7 @@ public class SilkDirectX12Renderer : IRenderer
             _commandList.Close();
             _device.EndFrame();
             _frameInProgress = false;
-
-            // Zmieniono z LogDebug na Console.WriteLine dla spójności
+            
             Console.WriteLine("Renderer: EndFrame completed successfully");
         }
         catch (Exception ex)
@@ -221,6 +216,8 @@ public class SilkDirectX12Renderer : IRenderer
             Console.WriteLine("Renderer FlushBatch SKIPPED: Frame not in progress.");
             return;
         }
+        
+        _spriteRenderer.UpdateCameraMatrices(_commandList.CurrentViewMatrix, _commandList.CurrentProjectionMatrix);
 
         Console.WriteLine("Renderer: Flushing batch...");
         _spriteBatch.Render(_commandList);
@@ -229,7 +226,6 @@ public class SilkDirectX12Renderer : IRenderer
 
     public void DrawMesh(Matrix4x4 transform, ReadOnlySpan<float> vertices, ReadOnlySpan<uint> indices)
     {
-        // TODO: Implement mesh rendering through composition
         _logger.LogWarning("Mesh rendering not yet implemented");
     }
 

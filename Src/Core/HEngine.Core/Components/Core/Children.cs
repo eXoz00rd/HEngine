@@ -53,7 +53,6 @@ public struct Children : IComponent {
         if (child == Entity.Null)
             return false;
 
-        // Sprawdź pierwsze 4 sloty
         if (_child1 == child)
         {
             RemoveAtIndex(0);
@@ -111,7 +110,6 @@ public struct Children : IComponent {
 
     private void RemoveAtIndex(int index)
     {
-        // Przesuń elementy w lewo
         switch (index)
         {
             case 0:

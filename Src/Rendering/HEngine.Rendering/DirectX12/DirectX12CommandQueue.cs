@@ -11,8 +11,7 @@ public class DirectX12CommandQueue : ICommandQueue
     private ComPtr<ID3D12GraphicsCommandList> _commandList;
     private ComPtr<ID3D12CommandQueue> _commandQueue;
     private bool _disposed;
-
-    // DirectX12-specific properties for internal use
+    
     public ComPtr<ID3D12CommandQueue> Queue => _commandQueue;
     public ComPtr<ID3D12GraphicsCommandList> CommandList => _commandList;
 
@@ -25,8 +24,7 @@ public class DirectX12CommandQueue : ICommandQueue
             throw new InvalidOperationException("Frame already in progress");
 
         _commandAllocator.Reset();
-
-        // Explicitly specify the pipeline state parameter as null pointer
+        
         unsafe
         {
             _commandList.Reset(_commandAllocator, (ID3D12PipelineState*)null);
@@ -47,7 +45,6 @@ public class DirectX12CommandQueue : ICommandQueue
             IsCommandListOpen = false;
         }
 
-        // Execute command list
         unsafe
         {
             var commandLists = stackalloc ID3D12CommandList*[1];

@@ -104,7 +104,7 @@ public sealed class SystemManager : IDisposable {
     {
         _systems.Sort((a, b) =>
             {
-                var priorityComparison = b.Priority.CompareTo(a.Priority); // Zamienione miejscami a i b
+                var priorityComparison = b.Priority.CompareTo(a.Priority);
                 return priorityComparison != 0 ?
                     priorityComparison :
                     string.Compare(a.SystemType.Name, b.SystemType.Name, StringComparison.Ordinal);

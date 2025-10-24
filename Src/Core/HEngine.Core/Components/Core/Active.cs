@@ -10,7 +10,7 @@ public struct Active : IComponent {
         IsActive = isActive;
     }
 
-    public bool IsValid => true; // Active jest zawsze ważny
+    public bool IsValid => true;
 
     public static implicit operator bool(Active active)
         => active.IsActive;

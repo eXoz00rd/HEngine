@@ -11,14 +11,12 @@ using System.Collections.Concurrent;
 
 namespace HEngine.Core.Benchmarks.Storages;
 
-// Test Component
 public struct Transform : IComponent {
     public float X, Y, Z;
     public float RotX, RotY, RotZ, RotW;
     public float ScaleX, ScaleY, ScaleZ;
 }
 
-// Porównawcza implementacja z ConcurrentDictionary
 public class ConcurrentDictionaryStorage<T> where T : struct, IComponent {
     public readonly ConcurrentDictionary<uint, T> Components = new();
 
@@ -71,7 +69,6 @@ public class ComponentStorageBenchmark {
             _random = new Random(42);
 
             Console.WriteLine("   🎲 Generowanie encji i komponentów...");
-            // Przygotuj encje i komponenty
             for (var i = 0; i < EntityCount; i++)
             {
                 _entities[i] = new Entity((uint)(i + 1));
@@ -88,20 +85,17 @@ public class ComponentStorageBenchmark {
                     ScaleY = 1.0f,
                     ScaleZ = 1.0f
                 };
-
-                // Postęp co 1000 elementów
+                
                 if (i > 0 && i % 1000 == 0)
                     Console.WriteLine($"   ⏳ Wygenerowano {i}/{EntityCount} elementów...");
             }
 
             Console.WriteLine("   💾 Dodawanie komponentów do storage'ów...");
-            // Dodaj komponenty do storage'ów
             for (var i = 0; i < EntityCount; i++)
             {
                 _componentStorage.AddComponent(_entities[i], _transforms[i]);
                 _dictStorage.AddComponent(_entities[i], _transforms[i]);
-
-                // Postęp co 1000 elementów
+                
                 if (i > 0 && i % 1000 == 0)
                     Console.WriteLine($"   ⏳ Dodano {i}/{EntityCount} komponentów...");
             }
@@ -132,7 +126,6 @@ public class ComponentStorageBenchmark {
         }
     }
 
-    // === CORE OPERATIONS ===
 
     [Benchmark]
     public Transform GetComponent_ComponentStorage()
@@ -176,7 +169,6 @@ public class ComponentStorageBenchmark {
         return _dictStorage.TryGetComponent(entity, out var component);
     }
 
-    // === BULK OPERATIONS ===
 
     [Benchmark]
     public int GetAllComponents_ComponentStorage()
@@ -192,7 +184,6 @@ public class ComponentStorageBenchmark {
         return components.Length;
     }
 
-    // === ITERATION PERFORMANCE ===
 
     [Benchmark]
     public float IterateAllComponents_ComponentStorage()
@@ -218,18 +209,15 @@ public class ComponentStorageBenchmark {
         return sum;
     }
 
-    // === ADD/REMOVE OPERATIONS ===
 
     [Benchmark]
     public void AddRemove_ComponentStorage()
     {
         using var storage = new ComponentStorage<Transform>();
 
-        // Add wszystkie
         for (var i = 0; i < EntityCount / 10; i++)
             storage.AddComponent(_entities[i], _transforms[i]);
 
-        // Remove wszystkie
         for (var i = 0; i < EntityCount / 10; i++)
             storage.RemoveComponent(_entities[i]);
     }
@@ -239,17 +227,13 @@ public class ComponentStorageBenchmark {
     {
         var storage = new ConcurrentDictionaryStorage<Transform>();
 
-        // Add wszystkie
         for (var i = 0; i < EntityCount / 10; i++)
             storage.AddComponent(_entities[i], _transforms[i]);
 
-        // Remove wszystkie
         for (var i = 0; i < EntityCount / 10; i++)
             storage.RemoveComponent(_entities[i]);
     }
-
-    // === MIXED WORKLOAD ===
-
+    
     [Benchmark]
     public int MixedWorkload_ComponentStorage()
     {
@@ -262,26 +246,22 @@ public class ComponentStorageBenchmark {
         {
             var entity = _entities[i];
             var transform = _transforms[i];
-
-            // Add
+            
             storage.AddComponent(entity, transform);
             operations++;
 
-            // Multiple Gets
             for (var j = 0; j < 3; j++)
             {
                 _ = storage.GetComponent(entity);
                 operations++;
             }
 
-            // Has Component + TryGet
             if (storage.HasComponent(entity))
             {
                 _ = storage.TryGetComponent(entity, out _);
                 operations += 2;
             }
 
-            // Remove
             storage.RemoveComponent(entity);
             operations++;
         }
@@ -302,33 +282,27 @@ public class ComponentStorageBenchmark {
             var entity = _entities[i];
             var transform = _transforms[i];
 
-            // Add
             storage.AddComponent(entity, transform);
             operations++;
 
-            // Multiple Gets
             for (var j = 0; j < 3; j++)
             {
                 _ = storage.GetComponent(entity);
                 operations++;
             }
 
-            // Has Component + TryGet
             if (storage.HasComponent(entity))
             {
                 _ = storage.TryGetComponent(entity, out _);
                 operations += 2;
             }
 
-            // Remove
             storage.RemoveComponent(entity);
             operations++;
         }
 
         return operations;
     }
-
-    // === MEMORY BENCHMARKS ===
 
     [Benchmark]
     public long GetMemoryUsage_ComponentStorage()
@@ -338,8 +312,6 @@ public class ComponentStorageBenchmark {
     public ComponentStorageStats GetStats_ComponentStorage()
         => _componentStorage.GetStats();
 }
-
-// === MEMORY ALLOCATION BENCHMARK ===
 
 [MemoryDiagnoser]
 [SimpleJob(RuntimeMoniker.Net90)]
@@ -375,14 +347,10 @@ public class ComponentStorageMemoryBenchmark {
     }
 }
 
-// === BENCHMARK CONFIGURATION Z LOGOWANIEM ===
-
 public class BenchmarkConfig : ManualConfig {
     public BenchmarkConfig()
     {
         Console.WriteLine("🔧 Konfiguracja BenchmarkConfig...");
-
-        // Dodaj konsolowy logger
         AddLogger(ConsoleLogger.Default);
 
         AddJob(
@@ -398,8 +366,6 @@ public class BenchmarkConfig : ManualConfig {
         Console.WriteLine("✅ Konfiguracja BenchmarkConfig ukończona");
     }
 }
-
-// === PROGRAM ENTRY POINT Z SZCZEGÓŁOWYM LOGOWANIEM ===
 
 public class Program {
     public static void Main(string[] args)

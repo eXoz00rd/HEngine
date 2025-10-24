@@ -4,14 +4,16 @@ using HEngine.Core.Rendering.Contracts;
 using HEngine.Rendering.DirectX12;
 using Silk.NET.Core.Native;
 using Silk.NET.Direct3D12;
+using Silk.NET.Input;
 using Silk.NET.Maths;
 using Silk.NET.Windowing;
+using HEngine.Rendering.Input;
 
 namespace HEngine.Rendering.Devices;
 
 public class DirectX12Device : IGraphicsDevice
 {
-    private const int FrameCount = 2; // Musi być spójne z DirectX12SwapChain
+    private const int FrameCount = 2;
     private readonly DirectX12CommandQueue _commandQueue = new();
     private readonly DirectX12Core _core = new();
     private readonly ulong[] _frameFenceValues = new ulong[FrameCount];
@@ -19,7 +21,14 @@ public class DirectX12Device : IGraphicsDevice
 
     private bool _disposed;
 
-    // --- Zasoby do synchronizacji ---
+    private IInputContext _inputContext = null!;
+    private readonly InputState _inputState;
+
+    public DirectX12Device(InputState inputState)
+    {
+        _inputState = inputState ?? throw new ArgumentNullException(nameof(inputState));
+    }
+
     private ComPtr<ID3D12Fence> _fence;
     private IntPtr _fenceEvent;
     private ulong _fenceValue;
@@ -38,18 +47,28 @@ public class DirectX12Device : IGraphicsDevice
             _window = CreateWindow(width, height, title);
             _window.Initialize();
 
+            _inputContext = _window.CreateInput();
+            foreach (var kb in _inputContext.Keyboards)
+            {
+                kb.KeyDown += OnKeyDown;
+                kb.KeyUp += OnKeyUp;
+            }
+            foreach (var mouse in _inputContext.Mice)
+            {
+                mouse.MouseMove += _inputState.OnMouseMove;
+            }
+
             Console.WriteLine("Window created, initializing DirectX...");
 
             _core.Initialize();
             _commandQueue.Initialize(_core.Device);
             _swapChain.Initialize(_core.Device, _commandQueue, _window);
 
-            // Inicjalizacja zasobów synchronizacji (Fence)
             var hresult = _core.Device.CreateFence(0, FenceFlags.None, out _fence);
             if (hresult < 0)
                 throw new Exception($"Failed to create fence. HRESULT: {hresult:X8}");
 
-            _fenceValue = 1; // Wartości Fence zaczynają się od 1
+            _fenceValue = 1;
 
             _fenceEvent = Kernel32.CreateEvent(IntPtr.Zero, false, false, null);
             if (_fenceEvent == IntPtr.Zero)
@@ -125,7 +144,7 @@ public class DirectX12Device : IGraphicsDevice
         try
         {
             _swapChain.Present();
-            MoveToNextFrame(); // Synchronizacja CPU-GPU
+            MoveToNextFrame();
         }
         catch (Exception ex)
         {
@@ -141,6 +160,12 @@ public class DirectX12Device : IGraphicsDevice
         return new Vector2(_window.Size.X, _window.Size.Y);
     }
 
+    private void OnKeyDown(IKeyboard keyboard, Key key, int code)
+        => _inputState.OnKeyDown(key);
+
+    private void OnKeyUp(IKeyboard keyboard, Key key, int code)
+        => _inputState.OnKeyUp(key);
+
     public void Dispose()
     {
         if (_disposed)
@@ -149,7 +174,7 @@ public class DirectX12Device : IGraphicsDevice
         Console.WriteLine("Disposing DirectX12Device");
         _initialized = false;
 
-        WaitForGpuIdle(); // Czekaj, aż GPU zakończy całą pracę
+        WaitForGpuIdle();
 
         _swapChain?.Dispose();
         _commandQueue?.Dispose();
@@ -171,35 +196,25 @@ public class DirectX12Device : IGraphicsDevice
 
     private unsafe void MoveToNextFrame()
     {
-        // Zaplanuj sygnał na CommandQueue, który zostanie wykonany, gdy GPU dojdzie do tego punktu.
         var currentFenceValue = _fenceValue;
         _commandQueue.Queue.Signal(_fence, currentFenceValue);
 
-        // Zapisz wartość Fence dla bieżącej klatki, która właśnie została wysłana do GPU.
         _frameFenceValues[_frameIndex] = currentFenceValue;
+_frameIndex = (int)_swapChain.GetCurrentBackBufferIndex();
 
-        // Przejdź do następnego indeksu klatki.
-        _frameIndex = (int)_swapChain.GetCurrentBackBufferIndex();
-
-        // Sprawdź, czy praca nad klatką, którą zamierzamy teraz renderować, została już ukończona przez GPU.
         if (_fence.GetCompletedValue() < _frameFenceValues[_frameIndex])
         {
-            // Jeśli nie, to powiedz GPU, aby zasygnalizowało nasz event, gdy osiągnie wymaganą wartość Fence.
             _fence.SetEventOnCompletion(_frameFenceValues[_frameIndex], (void*)_fenceEvent);
-            // Czekaj na ten event. To uśpi wątek CPU do czasu, aż GPU będzie gotowe.
-            Kernel32.WaitForSingleObject(_fenceEvent, uint.MaxValue); // Czekaj w nieskończoność
+           Kernel32.WaitForSingleObject(_fenceEvent, uint.MaxValue);
         }
 
-        // Zwiększ wartość Fence na następną klatkę.
         _fenceValue++;
     }
 
     private unsafe void WaitForGpuIdle()
     {
-        // Wyślij sygnał na sam koniec kolejki poleceń.
         _commandQueue.Queue.Signal(_fence, _fenceValue);
 
-        // Czekaj, aż GPU osiągnie ten punkt.
         if (_fence.GetCompletedValue() < _fenceValue)
         {
             _fence.SetEventOnCompletion(_fenceValue, (void*)_fenceEvent);
@@ -230,7 +245,7 @@ public class DirectX12Device : IGraphicsDevice
         options.Title = title;
         options.API = GraphicsAPI.None;
         options.VSync =
-            false; // VSync jest obsługiwany przez SwapChain.Present. Wyłączenie go tutaj zapobiega podwójnemu ograniczaniu.
+            false;
 
         var window = Window.Create(options);
 
@@ -251,7 +266,6 @@ public class DirectX12Device : IGraphicsDevice
     }
 }
 
-// Klasa pomocnicza do obsługi eventów systemowych (umieszczona tutaj dla wygody).
 internal static class Kernel32
 {
     [DllImport("kernel32.dll")]

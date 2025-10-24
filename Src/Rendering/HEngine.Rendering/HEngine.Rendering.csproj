@@ -10,7 +10,6 @@
     <ItemGroup>
       <Folder Include="Batches\" />
       <Folder Include="Components\" />
-      <Folder Include="Data\" />
       <Folder Include="Devices\" />
       <Folder Include="Enums\" />
       <Folder Include="Managers\" />

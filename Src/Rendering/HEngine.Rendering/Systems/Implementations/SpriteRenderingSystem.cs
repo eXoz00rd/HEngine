@@ -17,7 +17,6 @@ public class SpriteRenderingSystem : ISpriteRenderingSystem
 
     public void Initialize(WorldManager worldManager)
     {
-        // Use QueryBuilder so queries reflect entities created after initialization as well
         _queryBuilder = new QueryBuilder(worldManager.ComponentManager, worldManager.EntityManager);
         _isInitialized = true;
     }

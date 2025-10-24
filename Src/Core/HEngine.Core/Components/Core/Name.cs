@@ -2,20 +2,17 @@
 
 namespace HEngine.Core.Components.Core;
 
-/// <summary>
-///     Podstawowy tag identyfikujący nazwę encji
-/// </summary>
 public struct Name : IComponent {
     public string Value;
 
     public Name(string name)
     {
-        Value = string.IsNullOrWhiteSpace(name) ? // Zmiana: IsNullOrWhiteSpace zamiast IsNullOrEmpty
+        Value = string.IsNullOrWhiteSpace(name) ?
             string.Empty :
             name;
     }
 
-    public bool IsValid => !string.IsNullOrWhiteSpace(Value); // Zmiana: IsNullOrWhiteSpace
+    public bool IsValid => !string.IsNullOrWhiteSpace(Value);
 
     public static implicit operator string(Name name)
         => name.Value;

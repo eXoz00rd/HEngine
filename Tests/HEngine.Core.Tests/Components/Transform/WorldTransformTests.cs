@@ -10,7 +10,6 @@ public class WorldTransformTests {
         var position = new Vector3(1, 2, 3);
         var rotation = Quaternion.CreateFromAxisAngle(Vector3.UnitY, MathF.PI / 4);
         var scale = new Vector3(2, 3, 4);
-        // Używamy SRT jak w implementacji
         var matrix = Matrix4x4.CreateScale(scale) *
             Matrix4x4.CreateFromQuaternion(rotation) *
             Matrix4x4.CreateTranslation(position);
@@ -45,7 +44,6 @@ public class WorldTransformTests {
         var scale = new Vector3(2, 3, 4);
 
         var worldTransform = new WorldTransform(position, rotation, scale);
-        // Używamy SRT jak w implementacji
         var expected = Matrix4x4.CreateScale(scale) *
             Matrix4x4.CreateFromQuaternion(rotation) *
             Matrix4x4.CreateTranslation(position);
@@ -118,7 +116,6 @@ public class WorldTransformTests {
         var worldTransform = new WorldTransform(position, rotation, scale);
         worldTransform.UpdateMatrix();
 
-        // Używamy SRT jak w implementacji
         var expected = Matrix4x4.CreateScale(worldTransform.Scale) *
             Matrix4x4.CreateFromQuaternion(worldTransform.Rotation) *
             Matrix4x4.CreateTranslation(worldTransform.Position);
@@ -158,8 +155,7 @@ public class WorldTransformTests {
         var point = new Vector3(1, 0, 0);
         var transformedPoint = Vector3.Transform(point, worldTransform.Matrix);
 
-        // Prawidłowa kolejność SRT: najpierw scale, potem rotation, na końcu translation
-        var scaledPoint = Vector3.Transform(point, Matrix4x4.CreateScale(scale));
+       var scaledPoint = Vector3.Transform(point, Matrix4x4.CreateScale(scale));
         var rotatedPoint = Vector3.Transform(scaledPoint, Matrix4x4.CreateFromQuaternion(rotation));
         var finalPoint = Vector3.Transform(rotatedPoint, Matrix4x4.CreateTranslation(position));
 

@@ -82,4 +82,19 @@ public class CameraTests {
         var camera = new Camera();
         Assert.IsType<IComponent>(camera, false);
     }
+
+    [Fact]
+    public void GetViewMatrix_ReturnsCorrectLookAt()
+    {
+        var camera = new Camera(aspect: 1f)
+        {
+            Position = new Vector3(1, 2, 3),
+            Target = new Vector3(4, 5, 6),
+            Up = Vector3.UnitY
+        };
+
+        var expected = Matrix4x4.CreateLookAt(new Vector3(1, 2, 3), new Vector3(4, 5, 6), Vector3.UnitY);
+        var actual = camera.GetViewMatrix();
+        Assert.Equal(expected, actual);
+    }
 }

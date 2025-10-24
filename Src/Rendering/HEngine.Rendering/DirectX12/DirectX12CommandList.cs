@@ -11,6 +11,9 @@ public class DirectX12CommandList : IRenderCommandList
     private bool _disposed;
     private bool _isReady;
 
+    public Matrix4x4 CurrentViewMatrix { get; private set; } = Matrix4x4.Identity;
+    public Matrix4x4 CurrentProjectionMatrix { get; private set; } = Matrix4x4.Identity;
+
     public DirectX12CommandList(
         ICommandQueue commandQueue,
         ILogger<DirectX12CommandList> logger)
@@ -27,8 +30,7 @@ public class DirectX12CommandList : IRenderCommandList
             return;
         }
 
-        // TODO: Implement view matrix setting
-        // This would typically involve updating constant buffers
+        CurrentViewMatrix = viewMatrix;
         _logger.LogDebug("View matrix updated");
     }
 
@@ -40,8 +42,7 @@ public class DirectX12CommandList : IRenderCommandList
             return;
         }
 
-        // TODO: Implement projection matrix setting
-        // This would typically involve updating constant buffers
+        CurrentProjectionMatrix = projectionMatrix;
         _logger.LogDebug("Projection matrix updated");
     }
 

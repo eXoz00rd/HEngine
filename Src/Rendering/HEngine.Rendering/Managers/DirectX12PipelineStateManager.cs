@@ -36,7 +36,7 @@ public class DirectX12PipelineStateManager : IDisposable
         {
             var rootParameter = new RootParameter
             {
-                ParameterType = RootParameterType.TypeCbv, // Poprawiona nazwa
+                ParameterType = RootParameterType.TypeCbv,
                 ShaderVisibility = ShaderVisibility.Vertex,
                 Descriptor = new RootDescriptor
                 {
@@ -127,7 +127,7 @@ public class DirectX12PipelineStateManager : IDisposable
             {
                 var psoDesc = new GraphicsPipelineStateDesc
                 {
-                    InputLayout = new InputLayoutDesc // Poprawiona nazwa
+                    InputLayout = new InputLayoutDesc
                     {
                         PInputElementDescs = inputElementsPtr,
                         NumElements = (uint)inputElements.Length
@@ -185,7 +185,6 @@ public class DirectX12PipelineStateManager : IDisposable
                     throw new Exception($"Failed to create pipeline state. HRESULT: {result:X8}");
             }
 
-            // Cleanup
             foreach (var element in inputElements)
                 Marshal.FreeHGlobal((nint)element.SemanticName);
         }

@@ -16,7 +16,7 @@ public class DirectX12SpriteRenderer : ISpriteRenderer
     private readonly SpriteVertex[] _quadVertices = new SpriteVertex[6];
 
     private DirectX12BufferManager _bufferManager = null!;
-    private IGraphicsDevice _device = null!; // Zmień na IGraphicsDevice
+    private IGraphicsDevice _device = null!;
     private bool _disposed;
     private DirectX12PipelineStateManager _pipelineManager = null!;
     private DirectX12ShaderManager _shaderManager = null!;
@@ -29,8 +29,13 @@ public class DirectX12SpriteRenderer : ISpriteRenderer
 
     public bool IsInitialized { get; private set; }
 
-    public void Initialize(IGraphicsDevice device) // Zmień na IGraphicsDevice
+    public void Initialize(IGraphicsDevice device)
     {
+        if (_disposed)
+            throw new ObjectDisposedException(nameof(DirectX12SpriteRenderer));
+        if (IsInitialized)
+            throw new InvalidOperationException("DirectX12SpriteRenderer is already initialized.");
+
         try
         {
             _device = device ?? throw new ArgumentNullException(nameof(device));
@@ -64,6 +69,13 @@ public class DirectX12SpriteRenderer : ISpriteRenderer
 
         CreateQuadVerticesInPlace(position, size, color);
         _currentBatch.AddRange(_quadVertices);
+    }
+
+    public void UpdateCameraMatrices(Matrix4x4 view, Matrix4x4 projection)
+    {
+        if (!IsInitialized || _disposed)
+            return;
+        _bufferManager.UpdateCameraConstants(view, projection);
     }
 
     public void FlushBatch()

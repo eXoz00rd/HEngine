@@ -2,9 +2,6 @@
 
 namespace HEngine.Core.Components.Core;
 
-/// <summary>
-///     Tag oznaczający encję jako "dirty" - wymagającą aktualizacji
-/// </summary>
 public struct DirtyFlag : IComponent {
     public uint Flags;
 
@@ -13,7 +10,7 @@ public struct DirtyFlag : IComponent {
         Flags = flags;
     }
 
-    public bool IsValid => true; // DirtyFlag jest zawsze ważny
+    public bool IsValid => true;
     public bool HasAnyFlags => Flags != 0;
 
     public bool HasFlag(uint flag)
@@ -28,15 +25,9 @@ public struct DirtyFlag : IComponent {
     public void Clear()
         => Flags = 0;
 
-    /// <summary>
-    ///     Sprawdza czy ma wszystkie podane flagi
-    /// </summary>
     public bool HasAllFlags(uint flags)
         => (Flags & flags) == flags;
 
-    /// <summary>
-    ///     Sprawdza czy ma którąkolwiek z podanych flag
-    /// </summary>
     public bool HasAnyFlag(uint flags)
         => (Flags & flags) != 0;
 }

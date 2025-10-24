@@ -33,9 +33,6 @@ public class DirectX12Resources : IDisposable
 
     public void Initialize(IRenderDevice device)
     {
-        // TODO: Pobierz ComPtr<ID3D12Device> z IRenderDevice
-        // Może być konieczne rzutowanie lub dodanie metody GetNativeDevice()
-
         InitializeRootSignature();
         InitializePipelineState();
         InitializeBuffers();
@@ -45,30 +42,21 @@ public class DirectX12Resources : IDisposable
 
     private void InitializeRootSignature()
     {
-        // TODO: Implementuj tworzenie root signature dla sprite rendering
-        // Typowo zawiera constant buffer dla matrices i sampler dla textur
+       
     }
 
     private void InitializePipelineState()
     {
-        // TODO: Implementuj tworzenie pipeline state
-        // Zawiera vertex shader, pixel shader, input layout, blend state itp.
+     
     }
 
     private void InitializeBuffers()
     {
-        // TODO: Implementuj tworzenie vertex buffer, index buffer i constant buffer
-        // Vertex buffer dla quad (2 trójkąty), index buffer dla indices, constant buffer dla transforms
+      
     }
 
     public void RenderQuad(Vector2 position, Vector2 size, Vector4 color)
     {
         if (!IsInitialized || _disposed) return;
-
-        // TODO: Implementuj renderowanie quad z podanymi parametrami
-        // 1. Zaktualizuj constant buffer z position, size, color
-        // 2. Ustaw root signature i pipeline state
-        // 3. Ustaw vertex i index buffers
-        // 4. Wywołaj DrawIndexed
     }
 }

@@ -16,8 +16,7 @@ public class DirectX12ShaderManager : IShaderManager, IDisposable
 
     public ComPtr<ID3D10Blob> VertexShader => _vertexShader;
     public ComPtr<ID3D10Blob> PixelShader => _pixelShader;
-
-    // ✅ Implementacja właściwości z interfejsu IShaderManager
+    
     public bool IsInitialized => _isInitialized && !_disposed;
 
     public void Dispose()
@@ -37,7 +36,7 @@ public class DirectX12ShaderManager : IShaderManager, IDisposable
             throw new ObjectDisposedException(nameof(DirectX12ShaderManager));
 
         if (_isInitialized)
-            return; // Już zainicjalizowane
+            return;
 
         try
         {
@@ -48,7 +47,6 @@ public class DirectX12ShaderManager : IShaderManager, IDisposable
         }
         catch
         {
-            // Cleanup w przypadku błędu
             _vertexShader.Dispose();
             _pixelShader.Dispose();
             _isInitialized = false;
@@ -69,17 +67,18 @@ public class DirectX12ShaderManager : IShaderManager, IDisposable
             float4 color : COLOR;
         };
         
-        cbuffer ScreenData : register(b0) {
-            float2 screenSize;
+        cbuffer CameraData : register(b0) {
+            row_major float4x4 View;
+            row_major float4x4 Projection;
         };
         
         VS_OUTPUT main(VS_INPUT input) {
             VS_OUTPUT output;
             
-            float2 normalizedPos = (input.pos.xy / screenSize) * 2.0f - 1.0f;
-            normalizedPos.y = -normalizedPos.y;
-            
-            output.pos = float4(normalizedPos, input.pos.z, 1.0f);
+            float4 worldPos = float4(input.pos, 1.0f);
+            float4 viewPos = mul(worldPos, View);
+            float4 clipPos = mul(viewPos, Projection);
+            output.pos = clipPos;
             output.color = input.color;
             return output;
         }";
@@ -112,18 +111,17 @@ public class DirectX12ShaderManager : IShaderManager, IDisposable
             {
                 ID3D10Blob* shaderBlob = null;
                 ID3D10Blob* errorBlob = null;
-
-                // Wyraźnie określ typy parametrów, żeby uniknąć niejednoznaczności
+                
                 var result = _compiler.Compile(
                     shaderPtr,
                     (nuint)shaderBytes.Length,
-                    (byte*)null, // source name jako byte*
-                    null, // defines
-                    null, // include
+                    (byte*)null,
+                    null,
+                    null,
                     entryPointPtr,
                     targetPtr,
-                    0u, // flags1 jako uint
-                    0u, // flags2 jako uint
+                    0u,
+                    0u,
                     ref shaderBlob,
                     ref errorBlob);
 
