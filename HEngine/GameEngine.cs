@@ -8,7 +8,6 @@ using HEngine.Core.Managers;
 using HEngine.Core.Rendering.Contracts;
 using HEngine.Core.Systems;
 using HEngine.Rendering.Components;
-using HEngine.Rendering.Systems;
 using HEngine.Rendering.Systems.Implementations;
 using Microsoft.Extensions.Logging;
 
@@ -16,6 +15,7 @@ namespace HEngine;
 
 public class GameEngine : IDisposable
 {
+    private readonly ICameraInputProvider _cameraInput;
     private readonly EngineConfiguration _config;
     private readonly IGameLoop _gameLoop;
     private readonly ILogger<GameEngine> _logger;
@@ -23,7 +23,6 @@ public class GameEngine : IDisposable
     private readonly IRenderManager _renderManager;
     private readonly SystemManager _systemManager;
     private readonly WorldManager _worldManager;
-    private readonly ICameraInputProvider _cameraInput;
     private bool _disposed;
 
     public GameEngine(
@@ -50,7 +49,10 @@ public class GameEngine : IDisposable
 
     public void Dispose()
     {
-        if (_disposed) return;
+        if (_disposed)
+        {
+            return;
+        }
 
         _logger.LogInformation("Disposing game engine");
         _disposed = true;
@@ -88,21 +90,23 @@ public class GameEngine : IDisposable
         try
         {
             _logger.LogInformation("Initializing game engine...");
-            
+
             _renderManager.Initialize(
                 _config.Window.Width,
                 _config.Window.Height,
                 _config.Window.Title);
-            
+
             _renderingSystem.Initialize(_worldManager);
-            
+
             if (_renderManager.TryGetRenderContext(out var renderContext) && _renderingSystem is RenderingSystem rs)
+            {
                 rs.SetRenderContext(renderContext);
-            
+            }
+
             var aspect = _config.Window.Height <= 0 ? 1.0f : (float)_config.Window.Width / _config.Window.Height;
             var camEntity = _worldManager.CreateEntity();
             _worldManager.AddComponent(camEntity, new Camera(aspect: aspect));
-            
+
             var freeCameraSystem = new FreeCameraSystem(_cameraInput)
             {
                 Enabled = true,
@@ -110,10 +114,10 @@ public class GameEngine : IDisposable
                 LookSpeed = 0.0025f
             };
             freeCameraSystem.Initialize(_worldManager);
-            _systemManager.AddSystem(freeCameraSystem, priority: 10);
+            _systemManager.AddSystem(freeCameraSystem, 10);
 
             _systemManager.AddSystem(_renderingSystem);
-            
+
             CreateExampleEntities();
 
 
@@ -129,13 +133,13 @@ public class GameEngine : IDisposable
     private void CreateExampleEntities()
     {
         _logger.LogInformation("Creating example entities...");
-        
+
         var size = new Vector2(64, 64);
         var centerPos = new Vector2(
             _config.Window.Width * 0.5f - size.X * 0.5f,
             _config.Window.Height * 0.5f - size.Y * 0.5f
         );
-        
+
         var eCenter = _worldManager.CreateEntity();
         _worldManager.AddComponent(
             eCenter,
@@ -150,7 +154,7 @@ public class GameEngine : IDisposable
                 Origin = new Vector2(0.5f, 0.5f)
             }
         );
-        
+
         var gap = 12f;
         var rightPos = new Vector2(centerPos.X + size.X + gap, centerPos.Y);
         var eRight = _worldManager.CreateEntity();
@@ -168,6 +172,24 @@ public class GameEngine : IDisposable
             }
         );
 
-        _logger.LogInformation("Created sprite entities: center={Center}, right={Right}", eCenter, eRight);
+        var triangleEntity = _worldManager.CreateEntity();
+        _worldManager.AddComponent(triangleEntity, new Transform
+        {
+            Position = new Vector3(0, 0, -5),
+            Rotation = Quaternion.Identity,
+            Scale = Vector3.One
+        });
+
+        _worldManager.AddComponent(triangleEntity, new Mesh
+        {
+            VertexArrayId = 1,
+            IndexCount = 3,
+            MaterialPath = ""
+        });
+
+        if (_logger.IsEnabled(LogLevel.Information))
+        {
+            _logger.LogInformation("Created sprite entities: center={Center}, right={Right}", eCenter, eRight);
+        }
     }
 }

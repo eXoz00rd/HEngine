@@ -1,8 +1,12 @@
 ﻿using System.Numerics;
 using HEngine.Core.Rendering.Contracts;
 using HEngine.Rendering.Batches;
+using HEngine.Rendering.Data;
+using HEngine.Rendering.Devices;
 using HEngine.Rendering.DirectX12;
+using HEngine.Rendering.Managers;
 using Microsoft.Extensions.Logging;
+using Silk.NET.Direct3D12;
 
 namespace HEngine.Rendering.Systems;
 
@@ -19,6 +23,9 @@ public class SilkDirectX12Renderer : IRenderer
     private bool _disposed;
     private bool _frameInProgress;
     private bool _initialized;
+
+    private DirectX12BufferManager _meshBufferManager = null!;
+    private DirectX12PipelineStateManager _meshPipelineManager = null!;
 
     public SilkDirectX12Renderer(IGraphicsDevice device, IRenderBatch<SpriteData> spriteBatch,
         ISpriteRenderer spriteRenderer, IShaderManager shaderManager, ILogger<SilkDirectX12Renderer> logger,
@@ -62,6 +69,14 @@ public class SilkDirectX12Renderer : IRenderer
             _spriteRenderer.Initialize(_device);
             _spriteBatch.Initialize(_spriteRenderer);
 
+            var dx12Device = (DirectX12Device)_device;
+            var d3dDevice = dx12Device.GetDevice();
+            _meshBufferManager = new DirectX12BufferManager();
+            _meshBufferManager.Initialize(d3dDevice, dx12Device.GetWindowSize());
+            var dx12ShaderManager = (DirectX12ShaderManager)_shaderManager;
+            _meshPipelineManager = new DirectX12PipelineStateManager();
+            _meshPipelineManager.Initialize(d3dDevice, dx12ShaderManager);
+
             _initialized = true;
             _logger.LogInformation("SilkDirectX12Renderer initialized successfully");
         }
@@ -75,13 +90,14 @@ public class SilkDirectX12Renderer : IRenderer
 
     public void Run()
     {
-        
     }
 
     public void Present()
     {
         if (_disposed || !IsInitialized)
+        {
             return;
+        }
 
         try
         {
@@ -96,15 +112,14 @@ public class SilkDirectX12Renderer : IRenderer
 
     public void PollEvents()
     {
-        if (_disposed || !IsInitialized)
-            return;
-        
     }
 
     public void BeginFrame()
     {
         if (_disposed || !IsInitialized)
+        {
             return;
+        }
 
         try
         {
@@ -117,7 +132,9 @@ public class SilkDirectX12Renderer : IRenderer
             _device.BeginFrame();
 
             if (_device.ShouldClose)
+            {
                 return;
+            }
 
             var commandQueue = _device.GetCommandQueue();
             if (!commandQueue.IsFrameInProgress)
@@ -129,7 +146,7 @@ public class SilkDirectX12Renderer : IRenderer
             _commandList.Reset();
             _spriteBatch.Clear();
             _frameInProgress = true;
-            
+
             Console.WriteLine("Renderer: BeginFrame completed successfully");
         }
         catch (Exception ex)
@@ -143,12 +160,16 @@ public class SilkDirectX12Renderer : IRenderer
     public void EndFrame()
     {
         if (_disposed || !IsInitialized)
+        {
             return;
+        }
 
         try
         {
             if (_device.ShouldClose)
+            {
                 return;
+            }
 
             if (!_frameInProgress)
             {
@@ -159,7 +180,7 @@ public class SilkDirectX12Renderer : IRenderer
             _commandList.Close();
             _device.EndFrame();
             _frameInProgress = false;
-            
+
             Console.WriteLine("Renderer: EndFrame completed successfully");
         }
         catch (Exception ex)
@@ -173,14 +194,20 @@ public class SilkDirectX12Renderer : IRenderer
     public void Clear(Vector4 clearColor)
     {
         if (_disposed || !IsInitialized)
+        {
             return;
+        }
+
         _device.Clear(clearColor);
     }
 
     public void SetViewMatrix(Matrix4x4 viewMatrix)
     {
         if (_disposed || !IsInitialized)
+        {
             return;
+        }
+
         Console.WriteLine($"Renderer SetViewMatrix: {viewMatrix}");
         _commandList.SetViewMatrix(viewMatrix);
     }
@@ -188,7 +215,10 @@ public class SilkDirectX12Renderer : IRenderer
     public void SetProjectionMatrix(Matrix4x4 projectionMatrix)
     {
         if (_disposed || !IsInitialized)
+        {
             return;
+        }
+
         Console.WriteLine($"Renderer SetProjectionMatrix: {projectionMatrix}");
         _commandList.SetProjectionMatrix(projectionMatrix);
     }
@@ -196,7 +226,9 @@ public class SilkDirectX12Renderer : IRenderer
     public void DrawSprite(Vector2 position, Vector2 size, Vector4 color)
     {
         if (_disposed || !IsInitialized)
+        {
             return;
+        }
 
         Console.WriteLine($"Renderer DrawSprite: Pos={position}, Size={size}, Color={color}");
         _spriteBatch.Add(new SpriteData
@@ -209,14 +241,17 @@ public class SilkDirectX12Renderer : IRenderer
 
     public void FlushBatch()
     {
-        if (_disposed || !IsInitialized) return;
+        if (_disposed || !IsInitialized)
+        {
+            return;
+        }
 
         if (!_frameInProgress)
         {
             Console.WriteLine("Renderer FlushBatch SKIPPED: Frame not in progress.");
             return;
         }
-        
+
         _spriteRenderer.UpdateCameraMatrices(_commandList.CurrentViewMatrix, _commandList.CurrentProjectionMatrix);
 
         Console.WriteLine("Renderer: Flushing batch...");
@@ -226,22 +261,100 @@ public class SilkDirectX12Renderer : IRenderer
 
     public void DrawMesh(Matrix4x4 transform, ReadOnlySpan<float> vertices, ReadOnlySpan<uint> indices)
     {
-        _logger.LogWarning("Mesh rendering not yet implemented");
+        if (_disposed || !IsInitialized)
+        {
+            return;
+        }
+
+        if (!_frameInProgress)
+        {
+            return;
+        }
+
+        if (vertices.Length == 0 || indices.Length == 0)
+        {
+            return;
+        }
+
+        try
+        {
+            var dx12Device = (DirectX12Device)_device;
+            var commandList = dx12Device.GetDirectX12CommandQueue().CommandList;
+
+            _meshBufferManager.UpdateCameraConstants(_commandList.CurrentViewMatrix,
+                _commandList.CurrentProjectionMatrix);
+
+            var triangleVertexCount = indices.Length;
+            var temp = new SpriteVertex[triangleVertexCount];
+
+            var o = 0;
+            for (var i = 0; i < indices.Length; i++)
+            {
+                var idx = (int)indices[i];
+                var baseFloat = idx * 12;
+                if (baseFloat + 11 >= vertices.Length)
+                {
+                    break;
+                }
+
+                var pos = new Vector3(
+                    vertices[baseFloat + 0],
+                    vertices[baseFloat + 1],
+                    vertices[baseFloat + 2]);
+
+                var col = new Vector4(
+                    vertices[baseFloat + 8],
+                    vertices[baseFloat + 9],
+                    vertices[baseFloat + 10],
+                    vertices[baseFloat + 11]);
+
+                var worldPos = Vector3.Transform(pos, transform);
+                temp[o++] = new SpriteVertex(worldPos, col);
+            }
+
+            if (o == 0)
+            {
+                return;
+            }
+
+            if (o != temp.Length)
+            {
+                Array.Resize(ref temp, o);
+            }
+
+            _meshBufferManager.UpdateVertexBuffer(temp);
+
+            commandList.SetGraphicsRootSignature(_meshPipelineManager.RootSignature);
+            commandList.SetPipelineState(_meshPipelineManager.PipelineState);
+            commandList.SetGraphicsRootConstantBufferView(0, _meshBufferManager.ConstantBuffer.GetGPUVirtualAddress());
+            var vbv = _meshBufferManager.VertexBufferView;
+            commandList.IASetVertexBuffers(0, 1, in vbv);
+            commandList.DrawInstanced((uint)temp.Length, 1, 0, 0);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to draw mesh");
+            throw;
+        }
     }
 
     public void Dispose()
     {
         if (_disposed)
+        {
             return;
+        }
 
         _logger.LogInformation("Disposing SilkDirectX12Renderer");
         _initialized = false;
 
-        _spriteBatch?.Dispose();
-        _spriteRenderer?.Dispose();
-        _commandList?.Dispose();
-        _shaderManager?.Dispose();
-        _device?.Dispose();
+        _meshBufferManager.Dispose();
+        _meshPipelineManager.Dispose();
+        _spriteBatch.Dispose();
+        _spriteRenderer.Dispose();
+        _commandList.Dispose();
+        _shaderManager.Dispose();
+        _device.Dispose();
         _disposed = true;
     }
 }
