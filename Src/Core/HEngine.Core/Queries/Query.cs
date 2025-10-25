@@ -7,7 +7,8 @@ namespace HEngine.Core.Queries;
 public class Query<T1, T2, T3> : IQuery<T1, T2, T3>
     where T1 : struct, IComponent
     where T2 : struct, IComponent
-    where T3 : struct, IComponent {
+    where T3 : struct, IComponent
+{
     private readonly List<Entity> _cachedEntities = [];
     private readonly ComponentManager _componentManager;
     private readonly EntityManager _entityManager;
@@ -84,7 +85,8 @@ public class Query<T1, T2, T3> : IQuery<T1, T2, T3>
 
 public class Query<T1, T2> : IQuery<T1, T2>
     where T1 : struct, IComponent
-    where T2 : struct, IComponent {
+    where T2 : struct, IComponent
+{
     private readonly List<Entity> _cachedEntities = [];
     private readonly ComponentManager _componentManager;
     private readonly EntityManager _entityManager;
@@ -157,7 +159,8 @@ public class Query<T1, T2> : IQuery<T1, T2>
 }
 
 public class Query<T1> : IQuery<T1>
-    where T1 : struct, IComponent {
+    where T1 : struct, IComponent
+{
     private readonly List<Entity> _cachedEntities = [];
     private readonly ComponentManager _componentManager;
     private readonly EntityManager _entityManager;

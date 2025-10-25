@@ -9,7 +9,7 @@ namespace HEngine.Rendering.DirectX12;
 
 public class DirectX12SwapChain : IDisposable
 {
-    private const int FrameCount = 2;
+    private const int FrameCount = 3;
     private readonly ComPtr<ID3D12Resource>[] _renderTargets = new ComPtr<ID3D12Resource>[FrameCount];
     private bool _disposed;
     private uint _rtvDescriptorSize;

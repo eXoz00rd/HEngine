@@ -14,6 +14,9 @@ public class DirectX12SpriteRenderer : ISpriteRenderer
     private readonly List<SpriteVertex> _currentBatch;
     private readonly ILogger<DirectX12SpriteRenderer> _logger;
     private readonly SpriteVertex[] _quadVertices = new SpriteVertex[6];
+    
+    private const int MAX_BATCH_SIZE = 10000;
+    private const int VERTICES_PER_SPRITE = 6;
 
     private DirectX12BufferManager _bufferManager = null!;
     private IGraphicsDevice _device = null!;
@@ -64,6 +67,12 @@ public class DirectX12SpriteRenderer : ISpriteRenderer
 
     public void DrawSprite(Vector2 position, Vector2 size, Vector4 color)
     {
+
+        if (_currentBatch.Count + VERTICES_PER_SPRITE >= MAX_BATCH_SIZE)
+        {
+            FlushBatch();
+        }
+        
         if (!IsInitialized || _disposed)
             return;
 

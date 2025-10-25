@@ -13,7 +13,7 @@ namespace HEngine.Rendering.Devices;
 
 public class DirectX12Device : IGraphicsDevice
 {
-    private const int FrameCount = 2;
+    private const int FrameCount = 3;
     private readonly DirectX12CommandQueue _commandQueue = new();
     private readonly DirectX12Core _core = new();
     private readonly ulong[] _frameFenceValues = new ulong[FrameCount];
