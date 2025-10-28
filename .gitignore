@@ -118,3 +118,4 @@ BenchmarkDotNet.Artifacts/
 ############################
 .junie/
 .agents/
+docs/
