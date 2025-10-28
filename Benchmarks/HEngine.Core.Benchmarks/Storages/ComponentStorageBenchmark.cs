@@ -370,9 +370,9 @@ public class BenchmarkConfig : ManualConfig {
 public class Program {
     public static void Main(string[] args)
     {
-        Console.WriteLine("🚀 HEngine ComponentStorage Benchmark Suite");
-        Console.WriteLine("============================================");
-        Console.WriteLine($"📅 Uruchomiono: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+        Console.WriteLine("🚀 HEngine Benchmark Suite");
+        Console.WriteLine("==========================");
+        Console.WriteLine($"📅 Started: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
         Console.WriteLine($"🖥️  Platform: {Environment.OSVersion}");
         Console.WriteLine($"🔧 .NET Version: {Environment.Version}");
         Console.WriteLine($"⚙️  Processor Count: {Environment.ProcessorCount}");
@@ -380,26 +380,34 @@ public class Program {
 
         try
         {
-            Console.WriteLine("🔧 Tworzenie konfiguracji benchmarku...");
+            Console.WriteLine("🔧 Creating benchmark configuration...");
             var config = new BenchmarkConfig();
 
-            Console.WriteLine("🎯 Uruchamianie głównych benchmarków ComponentStorageBenchmark...");
+            Console.WriteLine("🎯 Running ComponentStorageBenchmark...");
             var summary1 = BenchmarkRunner.Run<ComponentStorageBenchmark>(config);
-            Console.WriteLine($"✅ Główne benchmarki zakończone. Status: {summary1?.Reports.Length ?? 0} raportów");
+            Console.WriteLine($"✅ Storage benchmarks completed. Reports: {summary1?.Reports.Length ?? 0}");
 
-            Console.WriteLine("🎯 Uruchamianie benchmarków pamięci ComponentStorageMemoryBenchmark...");
+            Console.WriteLine("🎯 Running ComponentStorageMemoryBenchmark...");
             var summary2 = BenchmarkRunner.Run<ComponentStorageMemoryBenchmark>(config);
-            Console.WriteLine($"✅ Benchmarki pamięci zakończone. Status: {summary2?.Reports.Length ?? 0} raportów");
+            Console.WriteLine($"✅ Memory benchmarks completed. Reports: {summary2?.Reports.Length ?? 0}");
 
-            Console.WriteLine("\n🎉 Wszystkie benchmarki zakończone pomyślnie!");
+            Console.WriteLine("🎯 Running ComponentQueryBenchmarks...");
+            var summary3 = BenchmarkRunner.Run<HEngine.Core.Benchmarks.Queries.ComponentQueryBenchmarks>(config);
+            Console.WriteLine($"✅ Query benchmarks completed. Reports: {summary3?.Reports.Length ?? 0}");
+
+            Console.WriteLine("🎯 Running TransformHierarchyBenchmarks...");
+            var summary4 = BenchmarkRunner.Run<HEngine.Core.Benchmarks.Systems.TransformHierarchyBenchmarks>(config);
+            Console.WriteLine($"✅ Hierarchy benchmarks completed. Reports: {summary4?.Reports.Length ?? 0}");
+
+            Console.WriteLine("\n🎉 All benchmarks completed successfully!");
             if (summary1?.ResultsDirectoryPath != null)
-                Console.WriteLine($"📁 Wyniki zapisane w: {summary1.ResultsDirectoryPath}");
+                Console.WriteLine($"📁 Results saved to: {summary1.ResultsDirectoryPath}");
         }
         catch (Exception ex)
         {
-            Console.WriteLine("\n❌ KRYTYCZNY BŁĄD podczas uruchamiania benchmarków:");
-            Console.WriteLine($"   Typ: {ex.GetType().Name}");
-            Console.WriteLine($"   Wiadomość: {ex.Message}");
+            Console.WriteLine("\n❌ CRITICAL ERROR during benchmark execution:");
+            Console.WriteLine($"   Type: {ex.GetType().Name}");
+            Console.WriteLine($"   Message: {ex.Message}");
             Console.WriteLine($"   Stack trace:\n{ex.StackTrace}");
 
             if (ex.InnerException != null)
@@ -408,11 +416,11 @@ public class Program {
                 Console.WriteLine($"   Inner Message: {ex.InnerException.Message}");
             }
 
-            Console.WriteLine("\n❌ Aplikacja zakończy się z kodem błędu.");
+            Console.WriteLine("\n❌ Application will exit with error code.");
             Environment.Exit(1);
         }
 
-        Console.WriteLine("\n⏳ Naciśnij dowolny klawisz aby zakończyć...");
+        Console.WriteLine("\n⏳ Press any key to exit...");
         Console.ReadKey();
     }
 }
