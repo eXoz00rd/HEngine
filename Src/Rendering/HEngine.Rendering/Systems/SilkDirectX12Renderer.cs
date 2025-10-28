@@ -5,6 +5,7 @@ using HEngine.Rendering.Data;
 using HEngine.Rendering.Devices;
 using HEngine.Rendering.DirectX12;
 using HEngine.Rendering.Managers;
+using HEngine.Rendering.Renderers;
 using Microsoft.Extensions.Logging;
 using Silk.NET.Direct3D12;
 
@@ -145,9 +146,13 @@ public class SilkDirectX12Renderer : IRenderer
 
             _commandList.Reset();
             _spriteBatch.Clear();
-            _frameInProgress = true;
 
-            Console.WriteLine("Renderer: BeginFrame completed successfully");
+            if (_spriteRenderer is DirectX12SpriteRenderer dx12SpriteRenderer)
+            {
+                dx12SpriteRenderer.InvalidateStateCache();
+            }
+
+            _frameInProgress = true;
         }
         catch (Exception ex)
         {
@@ -180,8 +185,6 @@ public class SilkDirectX12Renderer : IRenderer
             _commandList.Close();
             _device.EndFrame();
             _frameInProgress = false;
-
-            Console.WriteLine("Renderer: EndFrame completed successfully");
         }
         catch (Exception ex)
         {
@@ -208,7 +211,6 @@ public class SilkDirectX12Renderer : IRenderer
             return;
         }
 
-        Console.WriteLine($"Renderer SetViewMatrix: {viewMatrix}");
         _commandList.SetViewMatrix(viewMatrix);
     }
 
@@ -218,8 +220,7 @@ public class SilkDirectX12Renderer : IRenderer
         {
             return;
         }
-
-        Console.WriteLine($"Renderer SetProjectionMatrix: {projectionMatrix}");
+        
         _commandList.SetProjectionMatrix(projectionMatrix);
     }
 
@@ -229,8 +230,7 @@ public class SilkDirectX12Renderer : IRenderer
         {
             return;
         }
-
-        Console.WriteLine($"Renderer DrawSprite: Pos={position}, Size={size}, Color={color}");
+        
         _spriteBatch.Add(new SpriteData
         {
             Position = position,
@@ -248,15 +248,12 @@ public class SilkDirectX12Renderer : IRenderer
 
         if (!_frameInProgress)
         {
-            Console.WriteLine("Renderer FlushBatch SKIPPED: Frame not in progress.");
             return;
         }
 
         _spriteRenderer.UpdateCameraMatrices(_commandList.CurrentViewMatrix, _commandList.CurrentProjectionMatrix);
-
-        Console.WriteLine("Renderer: Flushing batch...");
+        
         _spriteBatch.Render(_commandList);
-        Console.WriteLine("Renderer: Batch flushed.");
     }
 
     public void DrawMesh(Matrix4x4 transform, ReadOnlySpan<float> vertices, ReadOnlySpan<uint> indices)
@@ -322,12 +319,16 @@ public class SilkDirectX12Renderer : IRenderer
                 Array.Resize(ref temp, o);
             }
 
-            _meshBufferManager.UpdateVertexBuffer(temp);
+            var frameIndex = dx12Device.GetCurrentFrameIndex();
+            _meshBufferManager.SetFrameIndex(frameIndex);
+
+            var vertexSpan = new ReadOnlySpan<SpriteVertex>(temp);
+            _meshBufferManager.UpdateVertexBuffer(vertexSpan);
 
             commandList.SetGraphicsRootSignature(_meshPipelineManager.RootSignature);
             commandList.SetPipelineState(_meshPipelineManager.PipelineState);
             commandList.SetGraphicsRootConstantBufferView(0, _meshBufferManager.ConstantBuffer.GetGPUVirtualAddress());
-            var vbv = _meshBufferManager.VertexBufferView;
+            var vbv = _meshBufferManager.GetCurrentVertexBufferView();
             commandList.IASetVertexBuffers(0, 1, in vbv);
             commandList.DrawInstanced((uint)temp.Length, 1, 0, 0);
         }

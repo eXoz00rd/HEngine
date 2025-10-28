@@ -12,5 +12,6 @@ public interface IDirectX12Device : IDisposable
     void EndFrame();
     void Clear(Vector4 clearColor);
     void Present();
+    int GetCurrentFrameIndex();
     DirectX12CommandQueue GetCommandQueue();
 }

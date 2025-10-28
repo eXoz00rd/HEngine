@@ -2,6 +2,7 @@
 using HEngine.Core.Rendering.Contracts;
 using HEngine.Rendering.Data;
 using HEngine.Rendering.Devices;
+using HEngine.Rendering.Diagnostics;
 using HEngine.Rendering.Managers;
 using Microsoft.Extensions.Logging;
 using Silk.NET.Core.Native;
@@ -11,12 +12,14 @@ namespace HEngine.Rendering.Renderers;
 
 public class DirectX12SpriteRenderer : ISpriteRenderer
 {
-    private readonly List<SpriteVertex> _currentBatch;
     private readonly ILogger<DirectX12SpriteRenderer> _logger;
-    private readonly SpriteVertex[] _quadVertices = new SpriteVertex[6];
-    
-    private const int MAX_BATCH_SIZE = 10000;
+    private readonly RenderingMetrics _metrics = new();
+
+    private const int MAX_SPRITES = 10000;
     private const int VERTICES_PER_SPRITE = 6;
+    private const int MAX_VERTICES = MAX_SPRITES * VERTICES_PER_SPRITE;
+    private readonly SpriteVertex[] _batchBuffer = new SpriteVertex[MAX_VERTICES];
+    private int _currentVertexCount;
 
     private DirectX12BufferManager _bufferManager = null!;
     private IGraphicsDevice _device = null!;
@@ -24,13 +27,19 @@ public class DirectX12SpriteRenderer : ISpriteRenderer
     private DirectX12PipelineStateManager _pipelineManager = null!;
     private DirectX12ShaderManager _shaderManager = null!;
 
+    private ComPtr<ID3D12PipelineState> _lastBoundPipeline;
+    private ComPtr<ID3D12RootSignature> _lastBoundRootSig;
+    private ulong _lastBoundConstantBufferAddress;
+    private bool _stateValid;
+
     public DirectX12SpriteRenderer(ILogger<DirectX12SpriteRenderer> logger)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _currentBatch = new List<SpriteVertex>(4096);
+        _currentVertexCount = 0;
     }
 
     public bool IsInitialized { get; private set; }
+    public RenderingMetrics Metrics => _metrics;
 
     public void Initialize(IGraphicsDevice device)
     {
@@ -54,6 +63,7 @@ public class DirectX12SpriteRenderer : ISpriteRenderer
 
             _bufferManager = new DirectX12BufferManager();
             _bufferManager.Initialize(d3dDevice, dx12Device.GetWindowSize());
+            _bufferManager.Metrics = _metrics;
 
             IsInitialized = true;
             _logger.LogInformation("DirectX12SpriteRenderer initialized successfully");
@@ -67,17 +77,28 @@ public class DirectX12SpriteRenderer : ISpriteRenderer
 
     public void DrawSprite(Vector2 position, Vector2 size, Vector4 color)
     {
-
-        if (_currentBatch.Count + VERTICES_PER_SPRITE >= MAX_BATCH_SIZE)
-        {
-            FlushBatch();
-        }
-        
         if (!IsInitialized || _disposed)
             return;
 
-        CreateQuadVerticesInPlace(position, size, color);
-        _currentBatch.AddRange(_quadVertices);
+        if (_currentVertexCount + VERTICES_PER_SPRITE > MAX_VERTICES)
+        {
+            FlushBatch();
+        }
+
+        var left = position.X;
+        var right = position.X + size.X;
+        var top = position.Y;
+        var bottom = position.Y + size.Y;
+
+        _batchBuffer[_currentVertexCount++] = new SpriteVertex(new Vector3(left, top, 0), color);
+        _batchBuffer[_currentVertexCount++] = new SpriteVertex(new Vector3(right, top, 0), color);
+        _batchBuffer[_currentVertexCount++] = new SpriteVertex(new Vector3(left, bottom, 0), color);
+        _batchBuffer[_currentVertexCount++] = new SpriteVertex(new Vector3(right, top, 0), color);
+        _batchBuffer[_currentVertexCount++] = new SpriteVertex(new Vector3(right, bottom, 0), color);
+        _batchBuffer[_currentVertexCount++] = new SpriteVertex(new Vector3(left, bottom, 0), color);
+
+        _metrics.IncrementSprites(1);
+        _metrics.IncrementVertices(VERTICES_PER_SPRITE);
     }
 
     public void UpdateCameraMatrices(Matrix4x4 view, Matrix4x4 projection)
@@ -87,15 +108,26 @@ public class DirectX12SpriteRenderer : ISpriteRenderer
         _bufferManager.UpdateCameraConstants(view, projection);
     }
 
+    public void InvalidateStateCache()
+    {
+        unsafe
+        {
+            _lastBoundPipeline = new ComPtr<ID3D12PipelineState>((ID3D12PipelineState*)null);
+            _lastBoundRootSig = new ComPtr<ID3D12RootSignature>((ID3D12RootSignature*)null);
+        }
+        _lastBoundConstantBufferAddress = 0;
+        _stateValid = false;
+    }
+
     public void FlushBatch()
     {
-        if (!IsInitialized || _disposed || _currentBatch.Count == 0)
+        if (!IsInitialized || _disposed || _currentVertexCount == 0)
             return;
 
         try
         {
             if (_logger.IsEnabled(LogLevel.Debug))
-                _logger.LogDebug("Flushing {Count} vertices", _currentBatch.Count);
+                _logger.LogDebug("Flushing {Count} vertices", _currentVertexCount);
 
             var dx12Device = (DirectX12Device)_device;
             var commandList = dx12Device.GetDirectX12CommandQueue().CommandList;
@@ -109,8 +141,11 @@ public class DirectX12SpriteRenderer : ISpriteRenderer
                 }
             }
 
-            var vertexArray = _currentBatch.ToArray();
-            _bufferManager.UpdateVertexBuffer(vertexArray);
+            var frameIndex = dx12Device.GetCurrentFrameIndex();
+            _bufferManager.SetFrameIndex(frameIndex);
+
+            var vertexSpan = new ReadOnlySpan<SpriteVertex>(_batchBuffer, 0, _currentVertexCount);
+            _bufferManager.UpdateVertexBuffer(vertexSpan);
 
 #if DEBUG
             unsafe
@@ -123,21 +158,47 @@ public class DirectX12SpriteRenderer : ISpriteRenderer
             }
 #endif
 
-            commandList.SetGraphicsRootSignature(_pipelineManager.RootSignature);
-            commandList.SetPipelineState(_pipelineManager.PipelineState);
-            commandList.SetGraphicsRootConstantBufferView(0, _bufferManager.ConstantBuffer.GetGPUVirtualAddress());
+            unsafe
+            {
+                var currentRootSig = _pipelineManager.RootSignature;
+                if (!_stateValid || _lastBoundRootSig.Handle != currentRootSig.Handle)
+                {
+                    commandList.SetGraphicsRootSignature(currentRootSig);
+                    _lastBoundRootSig = currentRootSig;
+                }
+
+                var currentPipeline = _pipelineManager.PipelineState;
+                if (!_stateValid || _lastBoundPipeline.Handle != currentPipeline.Handle)
+                {
+                    commandList.SetPipelineState(currentPipeline);
+                    _lastBoundPipeline = currentPipeline;
+                }
+
+                var currentConstantBufferAddress = _bufferManager.ConstantBuffer.GetGPUVirtualAddress();
+                if (!_stateValid || _lastBoundConstantBufferAddress != currentConstantBufferAddress)
+                {
+                    commandList.SetGraphicsRootConstantBufferView(0, currentConstantBufferAddress);
+                    _lastBoundConstantBufferAddress = currentConstantBufferAddress;
+                }
+
+                _stateValid = true;
+            }
+
             commandList.IASetPrimitiveTopology(D3DPrimitiveTopology.D3DPrimitiveTopologyTrianglelist);
 
-            var vertexBufferView = _bufferManager.VertexBufferView;
+            var vertexBufferView = _bufferManager.GetCurrentVertexBufferView();
             commandList.IASetVertexBuffers(0, 1, in vertexBufferView);
-            commandList.DrawInstanced((uint)_currentBatch.Count, 1, 0, 0);
+            commandList.DrawInstanced((uint)_currentVertexCount, 1, 0, 0);
 
-            _currentBatch.Clear();
+            _metrics.IncrementBatchFlushes();
+            _metrics.IncrementDrawCalls();
+
+            _currentVertexCount = 0;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error in FlushBatch");
-            _currentBatch.Clear();
+            _currentVertexCount = 0;
             throw;
         }
     }
@@ -153,20 +214,5 @@ public class DirectX12SpriteRenderer : ISpriteRenderer
         _pipelineManager?.Dispose();
         _shaderManager?.Dispose();
         _disposed = true;
-    }
-
-    private void CreateQuadVerticesInPlace(Vector2 position, Vector2 size, Vector4 color)
-    {
-        var left = position.X;
-        var right = position.X + size.X;
-        var top = position.Y;
-        var bottom = position.Y + size.Y;
-
-        _quadVertices[0] = new SpriteVertex(new Vector3(left, top, 0), color);
-        _quadVertices[1] = new SpriteVertex(new Vector3(right, top, 0), color);
-        _quadVertices[2] = new SpriteVertex(new Vector3(left, bottom, 0), color);
-        _quadVertices[3] = new SpriteVertex(new Vector3(right, top, 0), color);
-        _quadVertices[4] = new SpriteVertex(new Vector3(right, bottom, 0), color);
-        _quadVertices[5] = new SpriteVertex(new Vector3(left, bottom, 0), color);
     }
 }

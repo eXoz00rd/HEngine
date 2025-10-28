@@ -25,10 +25,43 @@ public class DirectX12Core : IDisposable
     {
         _d3d12 = D3D12.GetApi();
 
+#if DEBUG
+        unsafe
+        {
+            ID3D12Debug* debugController = null;
+            var debugGuid = ID3D12Debug.Guid;
+            if (_d3d12.GetDebugInterface(ref debugGuid, (void**)&debugController) >= 0 && debugController != null)
+            {
+                debugController->EnableDebugLayer();
+                debugController->Release();
+            }
+        }
+#endif
+
         var result = _d3d12.CreateDevice<IUnknown, ID3D12Device>(default, D3DFeatureLevel.Level110, out _device);
         if (result < 0)
             throw new Exception($"Failed to create D3D12 device. HRESULT: {result:X8}");
 
-        Console.WriteLine("DirectX12Core initialized successfully");
+#if DEBUG
+        EnableDebugFeatures();
+#endif
+
     }
+
+#if DEBUG
+    private unsafe void EnableDebugFeatures()
+    {
+        ID3D12InfoQueue* infoQueue = null;
+        var deviceGuid = ID3D12InfoQueue.Guid;
+        if (((IUnknown*)_device.Handle)->QueryInterface(&deviceGuid, (void**)&infoQueue) < 0 || infoQueue == null)
+        {
+            return;
+        }
+
+        using var queue = new ComPtr<ID3D12InfoQueue>(infoQueue);
+
+        queue.SetBreakOnSeverity(MessageSeverity.Corruption, true);
+        queue.SetBreakOnSeverity(MessageSeverity.Error, true);
+    }
+#endif
 }

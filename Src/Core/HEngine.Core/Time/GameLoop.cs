@@ -34,6 +34,9 @@ public class GameLoop : IGameLoop
 
         _gameTime.Reset();
 
+        // Simple FPS counter: logs FPS to console once per second
+        float fpsLogTimer = 0.0f;
+
         while (IsRunning && !_renderManager.ShouldClose)
             try
             {
@@ -45,6 +48,15 @@ public class GameLoop : IGameLoop
                 _systemManager.Update(_gameTime.DeltaTime);
 
                 _renderPipeline.RenderFrame();
+
+                // Accumulate and print FPS once per second at Information level
+                fpsLogTimer += _gameTime.DeltaTime;
+                if (fpsLogTimer >= 1.0f)
+                {
+                    var fps = _gameTime.FPS > 0.0f ? _gameTime.FPS : 1.0f / Math.Max(1e-6f, _gameTime.DeltaTime);
+                    _logger.LogInformation("FPS: {FPS:F2}", fps);
+                    fpsLogTimer = 0.0f;
+                }
             }
             catch (Exception ex)
             {

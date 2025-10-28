@@ -1,4 +1,5 @@
 ﻿using System.Numerics;
+using System.Runtime.CompilerServices;
 using Silk.NET.Core.Native;
 using Silk.NET.Direct3D12;
 using Silk.NET.DXGI;
@@ -16,7 +17,11 @@ public class DirectX12SwapChain : IDisposable
     private ComPtr<ID3D12DescriptorHeap> _rtvHeap;
 
     private ComPtr<IDXGISwapChain3> _swapChain;
-    private IWindow _window;
+    private IWindow _window = null!;
+
+    public bool VSyncEnabled { get; set; } = true;
+    public bool TearingSupported { get; private set; }
+    public int TargetFrameRate { get; set; } = 0;
 
     public void Dispose()
     {
@@ -35,8 +40,20 @@ public class DirectX12SwapChain : IDisposable
     {
         _window = window;
 
-        using var dxgi = DXGI.GetApi();
+        using var dxgi = DXGI.GetApi(window);
         using var factory = dxgi.CreateDXGIFactory1<IDXGIFactory4>();
+
+        TearingSupported = false;
+        IDXGIFactory5* factory5Ptr = null;
+        var factoryGuid = IDXGIFactory5.Guid;
+        var qiResult = ((IUnknown*)factory.Handle)->QueryInterface(&factoryGuid, (void**)&factory5Ptr);
+        if (qiResult >= 0 && factory5Ptr != null)
+        {
+            using var factory5 = new ComPtr<IDXGIFactory5>(factory5Ptr);
+            int allowTearing = 0;
+            var result = factory5.CheckFeatureSupport(Silk.NET.DXGI.Feature.PresentAllowTearing, &allowTearing, (uint)sizeof(int));
+            TearingSupported = result >= 0 && allowTearing != 0;
+        }
 
         var swapChainDesc = new SwapChainDesc1
         {
@@ -46,7 +63,8 @@ public class DirectX12SwapChain : IDisposable
             Format = Format.FormatR8G8B8A8Unorm,
             BufferUsage = DXGI.UsageRenderTargetOutput,
             SwapEffect = SwapEffect.FlipDiscard,
-            SampleDesc = new SampleDesc(1, 0)
+            SampleDesc = new SampleDesc(1, 0),
+            Flags = TearingSupported ? (uint)SwapChainFlag.AllowTearing : 0u
         };
 
         IDXGISwapChain1* tempSwapChain;
@@ -145,7 +163,15 @@ public class DirectX12SwapChain : IDisposable
 
     public void Present()
     {
-        var result = _swapChain.Present(1, 0);
+        uint syncInterval = VSyncEnabled ? 1u : 0u;
+        uint presentFlags = 0u;
+
+        if (!VSyncEnabled && TearingSupported)
+        {
+            presentFlags = DXGI.PresentAllowTearing;
+        }
+
+        var result = _swapChain.Present(syncInterval, presentFlags);
         if (result < 0)
             throw new Exception($"Failed to present. HRESULT: {result:X8}");
     }

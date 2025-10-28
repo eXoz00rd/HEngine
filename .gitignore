@@ -1,4 +1,4 @@
-﻿# HEngine .gitignore
+# HEngine .gitignore
 # Generated for a .NET 9 multi-project solution targeting Windows with JetBrains Rider/Visual Studio
 # Date: 2025-08-26
 
@@ -117,3 +117,4 @@ BenchmarkDotNet.Artifacts/
 # Local tooling (not part of the repo)
 ############################
 .junie/
+.agents/
