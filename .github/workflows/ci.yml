@@ -1,0 +1,50 @@
+name: HEngine CI
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '10.0.x'
+        dotnet-quality: 'preview'
+
+    - name: Restore dependencies
+      run: dotnet restore HEngine.sln
+
+    - name: Build solution
+      run: dotnet build HEngine.sln --no-restore --configuration Release /p:ContinuousIntegrationBuild=true
+
+    - name: Run Core Tests
+      run: dotnet test Tests/HEngine.Core.Tests/HEngine.Core.Tests.csproj --no-build --configuration Release --logger "trx;LogFileName=core-tests.trx" --verbosity normal
+
+    - name: Run Rendering Tests
+      run: dotnet test Tests/HEngine.Rendering.Tests/HEngine.Rendering.Tests.csproj --no-build --configuration Release --logger "trx;LogFileName=rendering-tests.trx" --verbosity normal
+
+    - name: Upload Test Results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-results
+        path: '**/TestResults/*.trx'
+        retention-days: 30
+
+    - name: Publish Test Report
+      uses: dorny/test-reporter@v1
+      if: always()
+      with:
+        name: Test Results
+        path: '**/TestResults/*.trx'
+        reporter: dotnet-trx
+        fail-on-error: true
