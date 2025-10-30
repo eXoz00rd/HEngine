@@ -5,6 +5,7 @@ using HEngine.Core.Components.Transform;
 using HEngine.Core.Configuration;
 using HEngine.Core.Contracts;
 using HEngine.Core.Managers;
+using HEngine.Core.Primitives;
 using HEngine.Core.Rendering.Contracts;
 using HEngine.Core.Systems;
 using HEngine.Rendering.Components;
@@ -12,6 +13,44 @@ using HEngine.Rendering.Systems.Implementations;
 using Microsoft.Extensions.Logging;
 
 namespace HEngine;
+
+file sealed class CameraAdapter : ICamera
+{
+    private readonly WorldManager _world;
+    private readonly Entity _cameraEntity;
+
+    public CameraAdapter(WorldManager world, Entity cameraEntity)
+    {
+        _world = world;
+        _cameraEntity = cameraEntity;
+    }
+
+    public Matrix4x4 ViewMatrix
+    {
+        get
+        {
+            if (_world.HasComponent<Camera>(_cameraEntity))
+            {
+                var camera = _world.GetComponent<Camera>(_cameraEntity);
+                return camera.GetViewMatrix();
+            }
+            return Matrix4x4.Identity;
+        }
+    }
+
+    public Matrix4x4 ProjectionMatrix
+    {
+        get
+        {
+            if (_world.HasComponent<Camera>(_cameraEntity))
+            {
+                var camera = _world.GetComponent<Camera>(_cameraEntity);
+                return camera.GetProjectionMatrix();
+            }
+            return Matrix4x4.Identity;
+        }
+    }
+}
 
 public class GameEngine : IDisposable
 {
@@ -105,7 +144,18 @@ public class GameEngine : IDisposable
 
             var aspect = _config.Window.Height <= 0 ? 1.0f : (float)_config.Window.Width / _config.Window.Height;
             var camEntity = _worldManager.CreateEntity();
-            _worldManager.AddComponent(camEntity, new Camera(aspect: aspect));
+            var camera = new Camera(fov: MathF.PI / 4f, near: 0.1f, far: 1000f, aspect: aspect)
+            {
+                Position = new Vector3(0, 30, 120),
+                Target = new Vector3(0, 0, 0),
+                Up = Vector3.UnitY,
+                IsOrthographic = false
+            };
+            _worldManager.AddComponent(camEntity, camera);
+
+            var cameraAdapter = new CameraAdapter(_worldManager, camEntity);
+            _renderManager.SetActiveCamera(cameraAdapter);
+            _logger.LogInformation("Camera entity {Entity} registered with RenderManager", camEntity);
 
             var freeCameraSystem = new FreeCameraSystem(_cameraInput)
             {
@@ -172,24 +222,48 @@ public class GameEngine : IDisposable
             }
         );
 
-        var triangleEntity = _worldManager.CreateEntity();
-        _worldManager.AddComponent(triangleEntity, new Transform
-        {
-            Position = new Vector3(0, 0, -5),
-            Rotation = Quaternion.Identity,
-            Scale = Vector3.One
-        });
+        const int cubeCount = 100;
+        const float cubeSize = 1.0f;
+        const float cubeGap = 0.5f;
+        const float spacing = cubeSize + cubeGap;
+        const float totalWidth = cubeCount * spacing;
+        const float startX = -(totalWidth / 2f);
 
-        _worldManager.AddComponent(triangleEntity, new Mesh
+        for (int i = 0; i < cubeCount; i++)
         {
-            VertexArrayId = 1,
-            IndexCount = 3,
-            MaterialPath = ""
-        });
+            var cubeEntity = _worldManager.CreateEntity();
+
+            var posX = startX + (i * spacing) + (cubeSize / 2f);
+            var position = new Vector3(posX, 0, 0);
+
+            var t = i / (float)(cubeCount - 1);
+            var color = new Vector4(
+                t,
+                1.0f - t,
+                0.5f,
+                1.0f
+            );
+
+            _worldManager.AddComponent(cubeEntity, new Transform
+            {
+                Position = position,
+                Rotation = Quaternion.Identity,
+                Scale = Vector3.One
+            });
+
+            _worldManager.AddComponent(cubeEntity, new Mesh
+            {
+                VertexArrayId = 1,
+                IndexCount = 36,
+                MaterialPath = "",
+                Color = color
+            });
+        }
 
         if (_logger.IsEnabled(LogLevel.Information))
         {
             _logger.LogInformation("Created sprite entities: center={Center}, right={Right}", eCenter, eRight);
+            _logger.LogInformation("Successfully created {CubeCount} cube entities", cubeCount);
         }
     }
 }

@@ -21,8 +21,11 @@ public sealed class DirectX12MeshRenderer : IDisposable
     private ComPtr<ID3D12Resource> _vertexBuffer;
     private ComPtr<ID3D12Resource> _indexBuffer;
     private ComPtr<ID3D12Resource> _constantBuffer;
+    private unsafe void* _constantBufferMapped;
     private const int MaxVertices = 65536;
     private const int MaxIndices = 65536 * 3;
+    private const int MaxDrawCalls = 1024;
+    private int _currentDrawCallIndex;
     private bool _disposed;
     private bool _gpuResourcesCreated;
 
@@ -93,7 +96,7 @@ public sealed class DirectX12MeshRenderer : IDisposable
         if (!_gpuResourcesCreated || _commandQueue == null)
             return;
 
-        UpdateConstantBuffer(LastMvp);
+        var constantBufferAddress = UpdateConstantBuffer(LastMvp);
         UpdateVertexBuffer(vertices);
         UpdateIndexBuffer(indices);
 
@@ -101,7 +104,7 @@ public sealed class DirectX12MeshRenderer : IDisposable
 
         commandList.SetPipelineState(_pipelineManager!.PipelineState);
         commandList.SetGraphicsRootSignature(_pipelineManager.RootSignature);
-        commandList.SetGraphicsRootConstantBufferView(0, _constantBuffer.GetGPUVirtualAddress());
+        commandList.SetGraphicsRootConstantBufferView(0, constantBufferAddress);
 
         commandList.IASetPrimitiveTopology(D3DPrimitiveTopology.D3DPrimitiveTopologyTrianglelist);
 
@@ -124,6 +127,15 @@ public sealed class DirectX12MeshRenderer : IDisposable
         commandList.IASetIndexBuffer(ref indexBufferView);
 
         commandList.DrawIndexedInstanced((uint)indices.Length, 1, 0, 0, 0);
+
+        _currentDrawCallIndex++;
+        if (_currentDrawCallIndex >= MaxDrawCalls)
+            throw new InvalidOperationException($"Exceeded maximum draw calls per frame ({MaxDrawCalls})");
+    }
+
+    public void BeginFrame()
+    {
+        _currentDrawCallIndex = 0;
     }
 
     private void CreateVertexBuffer()
@@ -209,7 +221,8 @@ public sealed class DirectX12MeshRenderer : IDisposable
     private void CreateConstantBuffer()
     {
         var size = Marshal.SizeOf<MeshConstants>();
-        var constantBufferSize = (ulong)((size + 255) & ~255);
+        var alignedSize = (size + 255) & ~255;
+        var constantBufferSize = (ulong)(alignedSize * MaxDrawCalls);
 
         var heapProps = new HeapProperties
         {
@@ -244,18 +257,24 @@ public sealed class DirectX12MeshRenderer : IDisposable
 
             if (result < 0)
                 throw new Exception($"Failed to create mesh constant buffer. HRESULT: {result:X8}");
-        }
-    }
 
-    private void UpdateConstantBuffer(Matrix4x4 mvp)
-    {
-        unsafe
-        {
-            void* mappedData;
-            var result = _constantBuffer.Map(0u, (Range*)null, &mappedData);
+            void* mappedPtr;
+            result = _constantBuffer.Map(0u, (Range*)null, &mappedPtr);
             if (result < 0)
                 throw new Exception($"Failed to map mesh constant buffer. HRESULT: {result:X8}");
 
+            _constantBufferMapped = mappedPtr;
+        }
+    }
+
+    private ulong UpdateConstantBuffer(Matrix4x4 mvp)
+    {
+        var size = Marshal.SizeOf<MeshConstants>();
+        var alignedSize = (size + 255) & ~255;
+        var offset = _currentDrawCallIndex * alignedSize;
+
+        unsafe
+        {
             var constants = new MeshConstants
             {
                 MVP = mvp,
@@ -264,11 +283,12 @@ public sealed class DirectX12MeshRenderer : IDisposable
                 AmbientColor = new Vector4(0.2f, 0.2f, 0.2f, 1.0f)
             };
 
-            var span = new Span<byte>(mappedData, Marshal.SizeOf<MeshConstants>());
+            var destPtr = (byte*)_constantBufferMapped + offset;
+            var span = new Span<byte>(destPtr, size);
             MemoryMarshal.Write(span, in constants);
-
-            _constantBuffer.Unmap(0u, (Range*)null);
         }
+
+        return _constantBuffer.GetGPUVirtualAddress() + (ulong)offset;
     }
 
     private void UpdateVertexBuffer(ReadOnlySpan<Vertex3D> vertices)
@@ -311,6 +331,15 @@ public sealed class DirectX12MeshRenderer : IDisposable
     {
         if (_disposed)
             return;
+
+        unsafe
+        {
+            if (_constantBufferMapped != null)
+            {
+                _constantBuffer.Unmap(0u, (Range*)null);
+                _constantBufferMapped = null;
+            }
+        }
 
         _constantBuffer.Dispose();
         _indexBuffer.Dispose();

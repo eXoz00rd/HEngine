@@ -55,6 +55,8 @@ public class DirectX12Device : IGraphicsDevice
             foreach (var mouse in _inputContext.Mice)
             {
                 mouse.MouseMove += _inputState.OnMouseMove;
+                mouse.MouseDown += (m, btn) => _inputState.OnMouseDown(btn);
+                mouse.MouseUp += (m, btn) => _inputState.OnMouseUp(btn);
             }
 
             _core.Initialize();

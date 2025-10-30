@@ -6,6 +6,7 @@ using HEngine.Core.Rendering.Contracts;
 using HEngine.Core.Rendering.Data;
 using HEngine.Rendering.Components;
 using HEngine.Rendering.Systems.Contracts;
+using Microsoft.Extensions.Logging;
 
 namespace HEngine.Rendering.Systems;
 
@@ -14,6 +15,13 @@ public class MeshRenderingSystem : IMeshRenderingSystem
     private bool _disposed;
     private QueryBuilder _queryBuilder = null!;
     private WorldManager _world = null!;
+    private readonly ILogger<MeshRenderingSystem>? _logger;
+    private int _frameCount;
+
+    public MeshRenderingSystem(ILogger<MeshRenderingSystem>? logger = null)
+    {
+        _logger = logger;
+    }
 
     public void Initialize(WorldManager worldManager)
     {
@@ -27,11 +35,14 @@ public class MeshRenderingSystem : IMeshRenderingSystem
             return;
 
         var meshQuery = _queryBuilder.With<Transform, Mesh>();
+        int meshCount = 0;
 
         foreach (var (entity, transform, mesh) in meshQuery)
         {
             if (_world.HasComponent<Culled>(entity))
                 continue;
+
+            meshCount++;
 
             var transformMatrix = transform.GetWorldMatrix(_world);
 
@@ -40,18 +51,24 @@ public class MeshRenderingSystem : IMeshRenderingSystem
             switch (mesh.VertexArrayId)
             {
                 case 1:
-                    (vertices, indices) = MeshPrimitives.CreateCube();
+                    (vertices, indices) = MeshPrimitives.CreateCube(1.0f, mesh.Color);
                     break;
                 case 2:
-                    (vertices, indices) = MeshPrimitives.CreatePlane(1.0f, 1.0f);
+                    (vertices, indices) = MeshPrimitives.CreatePlane(1.0f, 1.0f, mesh.Color);
                     break;
                 default:
-                    (vertices, indices) = MeshPrimitives.CreateCube();
+                    (vertices, indices) = MeshPrimitives.CreateCube(1.0f, mesh.Color);
                     break;
             }
 
             var flat = Flatten(vertices);
             context.Renderer.DrawMesh(transformMatrix, flat, indices);
+        }
+
+        _frameCount++;
+        if (_frameCount % 60 == 0 && _logger != null && _logger.IsEnabled(LogLevel.Information))
+        {
+            _logger.LogInformation("Frame {Frame}: Rendered {Count} meshes", _frameCount, meshCount);
         }
     }
 

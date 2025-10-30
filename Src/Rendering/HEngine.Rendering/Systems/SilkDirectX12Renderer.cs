@@ -152,6 +152,10 @@ public class SilkDirectX12Renderer : IRenderer
                 dx12SpriteRenderer.InvalidateStateCache();
             }
 
+            var dx12Device = (DirectX12Device)_device;
+            var frameIndex = dx12Device.GetCurrentFrameIndex();
+            _meshBufferManager.SetFrameIndex(frameIndex);
+
             _frameInProgress = true;
         }
         catch (Exception ex)
@@ -319,18 +323,15 @@ public class SilkDirectX12Renderer : IRenderer
                 Array.Resize(ref temp, o);
             }
 
-            var frameIndex = dx12Device.GetCurrentFrameIndex();
-            _meshBufferManager.SetFrameIndex(frameIndex);
-
             var vertexSpan = new ReadOnlySpan<SpriteVertex>(temp);
-            _meshBufferManager.UpdateVertexBuffer(vertexSpan);
+            var vertexOffset = _meshBufferManager.UpdateVertexBuffer(vertexSpan);
 
             commandList.SetGraphicsRootSignature(_meshPipelineManager.RootSignature);
             commandList.SetPipelineState(_meshPipelineManager.PipelineState);
             commandList.SetGraphicsRootConstantBufferView(0, _meshBufferManager.ConstantBuffer.GetGPUVirtualAddress());
             var vbv = _meshBufferManager.GetCurrentVertexBufferView();
             commandList.IASetVertexBuffers(0, 1, in vbv);
-            commandList.DrawInstanced((uint)temp.Length, 1, 0, 0);
+            commandList.DrawInstanced((uint)temp.Length, 1, vertexOffset, 0);
         }
         catch (Exception ex)
         {

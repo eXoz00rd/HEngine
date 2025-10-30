@@ -8,6 +8,7 @@ public sealed class InputState
 {
     private readonly object _lock = new();
     private readonly HashSet<Key> _pressed = new();
+    private readonly HashSet<MouseButton> _mousePressed = new();
     private Vector2 _lastMousePos;
     private bool _hasLastMouse;
     private Vector2 _lookDeltaAccum;
@@ -28,12 +29,30 @@ public sealed class InputState
         }
     }
 
+    public void OnMouseDown(MouseButton button)
+    {
+        lock (_lock)
+        {
+            _mousePressed.Add(button);
+        }
+    }
+
+    public void OnMouseUp(MouseButton button)
+    {
+        lock (_lock)
+        {
+            _mousePressed.Remove(button);
+        }
+    }
+
     public void OnMouseMove(IMouse mouse, Vector2 position)
     {
         lock (_lock)
         {
-            if (_hasLastMouse)
+            if (_hasLastMouse && _mousePressed.Contains(MouseButton.Right))
+            {
                 _lookDeltaAccum += position - _lastMousePos;
+            }
             _lastMousePos = position;
             _hasLastMouse = true;
         }

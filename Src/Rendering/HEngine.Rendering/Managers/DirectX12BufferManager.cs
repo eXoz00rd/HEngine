@@ -22,6 +22,7 @@ public class DirectX12BufferManager : IDisposable
     private readonly ComPtr<ID3D12Resource>[] _vertexBuffers = new ComPtr<ID3D12Resource>[FrameCount];
     private readonly IntPtr[] _persistentVertexMappings = new IntPtr[FrameCount];
     private int _currentVertexBufferIndex;
+    private uint _currentVertexOffset;
 
     private Matrix4x4 _lastViewMatrix;
     private Matrix4x4 _lastProjectionMatrix;
@@ -206,6 +207,7 @@ public class DirectX12BufferManager : IDisposable
             throw new ArgumentOutOfRangeException(nameof(frameIndex));
 
         _currentVertexBufferIndex = frameIndex;
+        _currentVertexOffset = 0;
     }
 
     public VertexBufferView GetCurrentVertexBufferView()
@@ -219,18 +221,25 @@ public class DirectX12BufferManager : IDisposable
         };
     }
 
-    public void UpdateVertexBuffer(ReadOnlySpan<SpriteVertex> vertices)
+    public uint UpdateVertexBuffer(ReadOnlySpan<SpriteVertex> vertices)
     {
-        if (vertices.Length > MaxVertices)
-            throw new ArgumentException($"Too many vertices: {vertices.Length}, max: {MaxVertices}");
+        if (_currentVertexOffset + vertices.Length > MaxVertices)
+            throw new ArgumentException($"Too many vertices in frame: {_currentVertexOffset + vertices.Length}, max: {MaxVertices}");
+
+        var startOffset = _currentVertexOffset;
 
         unsafe
         {
             var vertexSize = (int)SpriteVertex.GetStride();
-            var dst = new Span<byte>((void*)_persistentVertexMappings[_currentVertexBufferIndex], vertexSize * vertices.Length);
+            var basePtr = (byte*)_persistentVertexMappings[_currentVertexBufferIndex];
+            var offsetPtr = basePtr + (startOffset * vertexSize);
+            var dst = new Span<byte>(offsetPtr, vertexSize * vertices.Length);
 
             MemoryMarshal.AsBytes(vertices).CopyTo(dst);
         }
+
+        _currentVertexOffset += (uint)vertices.Length;
+        return startOffset;
     }
 
     [StructLayout(LayoutKind.Sequential)]

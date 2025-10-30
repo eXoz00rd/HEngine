@@ -6,15 +6,45 @@ High-performance game engine built with C# and .NET 10, featuring an Entity Comp
 
 ## Features
 
-### Phase 1 (Current)
-- Entity-Component-System architecture
-- DirectX 12 rendering pipeline
-- 3D mesh rendering with lighting
-- Camera system with free camera controller
-- Scene hierarchy and transform system
-- Async asset loading system
-- Frustum culling optimization
-- Comprehensive unit test coverage (364+ tests)
+### Phase 1 (Completed)
+- **Entity-Component-System architecture**
+  - Generation-based entity IDs preventing use-after-free
+  - Sparse-set component storage for O(1) operations
+  - Cached query system with automatic invalidation
+  - Priority-based system execution
+- **DirectX 12 rendering pipeline**
+  - Triple-buffered command submission
+  - Persistent buffer mapping (zero-copy uploads)
+  - Pipeline state caching
+  - Depth testing and back-face culling
+- **3D mesh rendering with lighting**
+  - Directional and point light support
+  - Basic diffuse lighting in shaders
+  - Material system foundation
+  - Mesh primitives (cube, sphere, plane)
+- **Camera system**
+  - Perspective and orthographic projection
+  - Free camera controller (WASD + mouse look)
+  - Integrated with rendering pipeline
+- **Scene hierarchy and transform system**
+  - Parent-child relationships
+  - Cached world matrix calculation
+  - Dirty flag optimization
+  - Cycle prevention
+- **Async asset loading system**
+  - Thread-safe caching
+  - Reference counting for automatic unloading
+  - Simple binary mesh format
+  - Component-based asset tracking
+- **Frustum culling optimization**
+  - View-frustum plane extraction
+  - Bounding box intersection tests
+  - Automatic culling of off-screen entities
+- **Comprehensive test coverage**
+  - 324 core unit tests
+  - 40 rendering unit tests
+  - Headless rendering tests (no GPU required)
+  - Performance benchmarks with BenchmarkDotNet
 
 ### Rendering
 - DirectX 12 backend with triple buffering
@@ -101,11 +131,48 @@ HEngine/
 - **Persistent buffer mapping**: Eliminated Map/Unmap overhead
 - **Smart constant buffer updates**: Only updates when camera moves
 - **Batch rendering**: Minimizes draw calls
+- **Sparse-set component storage**: O(1) component operations with cache-friendly iteration
+- **Query caching**: Automatic invalidation reduces redundant work
 
-## License
+## Roadmap
 
-[Your License Here]
+### Phase 2 (Upcoming): Advanced Rendering & Physics
+- PBR (Physically Based Rendering) pipeline
+- Shadow mapping (directional and point lights)
+- Post-processing effects
+- Skeletal animation system
+- Physics integration (collision detection, rigidbody dynamics)
+- Particle system
+
+### Phase 3 (Future): Networking & Multiplayer
+- Client-server architecture
+- Lockstep determinism
+- Client-side prediction
+- Server reconciliation
+- Network component replication
+
+### Phase 4 (Future): Tooling & Scripting
+- Entity inspector and editor
+- C# hot-reload via Roslyn
+- Visual scripting system
+- Profiling and debugging tools
+
+For detailed task breakdown, see [.agents/roadmap-phase-1-plan.md](.agents/roadmap-phase-1-plan.md)
+
+## Documentation
+
+- **[Architecture Guide](docs/ARCHITECTURE.md)**: Detailed architecture overview, design patterns, and extension points
+- **[Contributing Guide](docs/CONTRIBUTING.md)**: Code style, testing requirements, and contribution process
+- **[CLAUDE.md](.agents/CLAUDE.md)**: Quick reference for Claude Code development
 
 ## Contributing
 
-[Your contribution guidelines here]
+We welcome contributions! Please read our [Contributing Guide](docs/CONTRIBUTING.md) for details on:
+- Code style and conventions
+- Testing requirements
+- Pull request process
+- Development setup
+
+## License
+
+MIT License - See LICENSE file for details
