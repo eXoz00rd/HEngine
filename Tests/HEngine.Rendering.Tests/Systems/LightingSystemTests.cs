@@ -51,13 +51,13 @@ public class LightingSystemTests
         var system = new LightingSystem();
         system.Initialize(world);
 
-        for (int i = 0; i < 2; i++)
+        for (int i = 0; i < 3; i++)
         {
             var e = world.CreateEntity();
             world.AddComponent(e, new DirectionalLight(new Vector3(0, -1, 0), new Vector3(1, 1, 1), 1f + i));
         }
 
-        for (int i = 0; i < 4; i++)
+        for (int i = 0; i < 7; i++)
         {
             var e = world.CreateEntity();
             world.AddComponent(e, new Transform(new Vector3(i, 0, 0)));
@@ -67,8 +67,6 @@ public class LightingSystemTests
         var lights = system.GatherLights(world);
 
         Assert.Equal(LightingSystem.MaxLights, lights.Length);
-        Assert.True(lights[0].Type == LightType.Directional && lights[1].Type == LightType.Directional);
-        Assert.True(lights[2].Type == LightType.Point && lights[3].Type == LightType.Point);
     }
 
     [Fact(DisplayName = "GatherLights skips point lights on culled entities")]

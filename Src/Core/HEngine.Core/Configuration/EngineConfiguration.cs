@@ -12,6 +12,7 @@ public class EngineConfiguration {
     public WindowSettings Window { get; set; } = new();
     public RenderingSettings Rendering { get; set; } = new();
     public PerformanceSettings Performance { get; set; } = new();
+    public PBRSettings PBR { get; set; } = new();
 }
 
 public class WindowSettings {
@@ -35,4 +36,12 @@ public class PerformanceSettings {
     public int TargetFPS { get; set; } = 60;
     public bool LimitFrameRate { get; set; } = false;
     public bool ShowFPS { get; set; } = true;
+}
+
+public class PBRSettings {
+    public bool UseHdrRenderTarget { get; set; } = true;
+    public float Exposure { get; set; } = 1.0f;
+    public Vector3 AmbientColor { get; set; } = new(0.03f, 0.03f, 0.03f);
+    public int MaxActiveLights { get; set; } = 8;
+    public bool EnableBloom { get; set; } = false;
 }
