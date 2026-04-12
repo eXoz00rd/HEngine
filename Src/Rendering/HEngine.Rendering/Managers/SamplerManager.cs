@@ -7,7 +7,8 @@ public enum TextureFilterMode
 {
     Point,
     Linear,
-    Anisotropic
+    Anisotropic,
+    Comparison
 }
 
 /// <summary>
@@ -36,6 +37,7 @@ public readonly record struct SamplerDescription(
     public static SamplerDescription PointClamp => new(TextureFilterMode.Point, TextureAddressMode.Clamp, TextureAddressMode.Clamp, TextureAddressMode.Clamp);
     public static SamplerDescription AnisotropicWrap(int maxAniso = 16) => new(TextureFilterMode.Anisotropic, TextureAddressMode.Wrap, TextureAddressMode.Wrap, TextureAddressMode.Wrap, maxAniso);
     public static SamplerDescription AnisotropicClamp(int maxAniso = 16) => new(TextureFilterMode.Anisotropic, TextureAddressMode.Clamp, TextureAddressMode.Clamp, TextureAddressMode.Clamp, maxAniso);
+    public static SamplerDescription ShadowComparison => new(TextureFilterMode.Comparison, TextureAddressMode.Clamp, TextureAddressMode.Clamp, TextureAddressMode.Clamp);
 }
 
 /// <summary>
@@ -110,6 +112,7 @@ public sealed class SamplerManager
         Register("AnisotropicClamp", SamplerDescription.AnisotropicClamp(_maxAnisotropy));
         Register("LinearMirror", new SamplerDescription(TextureFilterMode.Linear,
             TextureAddressMode.Mirror, TextureAddressMode.Mirror, TextureAddressMode.Mirror));
+        Register("ShadowComparison", SamplerDescription.ShadowComparison);
     }
 }
 

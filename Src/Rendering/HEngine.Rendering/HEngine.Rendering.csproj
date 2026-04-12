@@ -34,6 +34,7 @@
 
     <ItemGroup>
       <ClCompile Include="Shaders\PBR.hlsl" />
+      <ClCompile Include="Shaders\ShadowPass.hlsl" />
     </ItemGroup>
 
 </Project>

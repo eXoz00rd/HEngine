@@ -49,6 +49,69 @@ Texture2D MetallicRoughnessMap : register(t2);
 Texture2D EmissiveMap : register(t3);
 Texture2D AOMap : register(t4);
 
+#ifdef USE_SHADOWS
+Texture2DArray ShadowMap : register(t5);
+SamplerComparisonState ShadowSampler : register(s1);
+
+cbuffer ShadowConstants : register(b3)
+{
+    row_major float4x4 LightVP[4];
+    float4 CascadeSplits;
+    int CascadeCount;
+    float _shadowPad0;
+    float _shadowPad1;
+    float _shadowPad2;
+};
+
+float SampleShadowPCF(float3 worldPos, int cascade)
+{
+    float4 lightClip = mul(float4(worldPos, 1.0), LightVP[cascade]);
+    float3 projCoords = lightClip.xyz / lightClip.w;
+
+    float2 uv = projCoords.xy * float2(0.5, -0.5) + 0.5;
+
+    if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0)
+        return 1.0;
+
+    float depth = projCoords.z;
+    float shadowBias = 0.001;
+
+    float shadow = 0.0;
+    float texelSize = 1.0 / 2048.0;
+
+    [unroll]
+    for (int x = -1; x <= 1; x++)
+    {
+        [unroll]
+        for (int y = -1; y <= 1; y++)
+        {
+            float2 offset = float2(x, y) * texelSize;
+            shadow += ShadowMap.SampleCmpLevelZero(
+                ShadowSampler,
+                float3(uv + offset, (float)cascade),
+                depth - shadowBias);
+        }
+    }
+
+    return shadow / 9.0;
+}
+
+float ComputeShadowFactor(float3 worldPos, float viewDepth)
+{
+    int cascade = CascadeCount - 1;
+    [unroll]
+    for (int i = 0; i < 4; i++)
+    {
+        if (i < CascadeCount && viewDepth < CascadeSplits[i])
+        {
+            cascade = i;
+            break;
+        }
+    }
+    return SampleShadowPCF(worldPos, cascade);
+}
+#endif
+
 SamplerState LinearSampler : register(s0);
 
 struct VS_INPUT
@@ -74,6 +137,7 @@ struct PS_INPUT
     float3 Tangent : TEXCOORD2;
     float3 Bitangent : TEXCOORD3;
 #endif
+    float ViewDepth : TEXCOORD4;
 };
 
 PS_INPUT VSMain(VS_INPUT input)
@@ -84,6 +148,7 @@ PS_INPUT VSMain(VS_INPUT input)
     output.Normal = normalize(mul(float4(input.Normal, 0.0), NormalMatrix).xyz);
     output.TexCoord = input.TexCoord;
     output.Color = input.Color;
+    output.ViewDepth = output.ClipPosition.w;
 #ifdef USE_NORMAL_MAP
     output.Tangent = normalize(mul(float4(input.Tangent, 0.0), World).xyz);
     output.Bitangent = normalize(mul(float4(input.Bitangent, 0.0), World).xyz);
@@ -215,7 +280,17 @@ float4 PSMain(PS_INPUT input) : SV_TARGET
     float3 Lo = float3(0.0, 0.0, 0.0);
     for (int i = 0; i < ActiveLightCount && i < MAX_LIGHTS; i++)
     {
-        Lo += ComputeLightContribution(input.WorldPosition, N, V, albedo, metallic, roughness, ao, Lights[i]);
+        float3 contrib = ComputeLightContribution(input.WorldPosition, N, V, albedo, metallic, roughness, ao, Lights[i]);
+
+#ifdef USE_SHADOWS
+        if (Lights[i].Type == 0)
+        {
+            float shadowFactor = ComputeShadowFactor(input.WorldPosition, input.ViewDepth);
+            contrib *= shadowFactor;
+        }
+#endif
+
+        Lo += contrib;
     }
 
     float3 ambient = AmbientColor * albedo * ao;

@@ -12,7 +12,8 @@ public class EngineConfiguration {
     public WindowSettings Window { get; set; } = new();
     public RenderingSettings Rendering { get; set; } = new();
     public PerformanceSettings Performance { get; set; } = new();
-    public PBRSettings PBR { get; set; } = new();
+    public PbrSettings PBR { get; set; } = new();
+    public ShadowSettings Shadow { get; set; } = new();
 }
 
 public class WindowSettings {
@@ -33,15 +34,25 @@ public class RenderingSettings {
 }
 
 public class PerformanceSettings {
-    public int TargetFPS { get; set; } = 60;
+    public int TargetFps { get; set; } = 60;
     public bool LimitFrameRate { get; set; } = false;
-    public bool ShowFPS { get; set; } = true;
+    public bool ShowFps { get; set; } = true;
 }
 
-public class PBRSettings {
+public class PbrSettings {
     public bool UseHdrRenderTarget { get; set; } = true;
     public float Exposure { get; set; } = 1.0f;
     public Vector3 AmbientColor { get; set; } = new(0.03f, 0.03f, 0.03f);
     public int MaxActiveLights { get; set; } = 8;
     public bool EnableBloom { get; set; } = false;
 }
+
+public class ShadowSettings {
+    public bool Enabled { get; set; } = true;
+    public int Resolution { get; set; } = 2048;
+    public int CascadeCount { get; set; } = 4;
+    public float LambdaSplit { get; set; } = 0.75f;
+    public float DepthBias { get; set; } = 0.001f;
+    public float SlopeScaledDepthBias { get; set; } = 2.0f;
+}
+

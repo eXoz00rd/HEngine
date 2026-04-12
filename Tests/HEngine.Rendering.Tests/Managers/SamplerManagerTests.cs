@@ -22,7 +22,7 @@ public class SamplerManagerTests
     public void Constructor_DefaultSamplerCount()
     {
         var manager = new SamplerManager();
-        Assert.Equal(7, manager.SamplerCount);
+        Assert.Equal(8, manager.SamplerCount);
     }
 
     [Fact]
@@ -109,7 +109,7 @@ public class SamplerManagerTests
         manager.Register("PointMirror", custom);
 
         Assert.True(manager.HasSampler("PointMirror"));
-        Assert.Equal(8, manager.SamplerCount);
+        Assert.Equal(9, manager.SamplerCount);
         Assert.Equal(custom, manager.Get("PointMirror"));
     }
 
