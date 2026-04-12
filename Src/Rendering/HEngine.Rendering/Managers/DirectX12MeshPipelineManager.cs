@@ -50,21 +50,34 @@ public class DirectX12MeshPipelineManager : IDisposable
     {
         unsafe
         {
-            var rootParameter = new RootParameter
+            var rootParameters = new RootParameter[]
             {
-                ParameterType = RootParameterType.TypeCbv,
-                ShaderVisibility = ShaderVisibility.All,
-                Descriptor = new RootDescriptor
+                new()
                 {
-                    ShaderRegister = 0,
-                    RegisterSpace = 0
+                    ParameterType = RootParameterType.TypeCbv,
+                    ShaderVisibility = ShaderVisibility.All,
+                    Descriptor = new RootDescriptor { ShaderRegister = 0, RegisterSpace = 0 }
+                },
+                new()
+                {
+                    ParameterType = RootParameterType.TypeCbv,
+                    ShaderVisibility = ShaderVisibility.All,
+                    Descriptor = new RootDescriptor { ShaderRegister = 1, RegisterSpace = 0 }
+                },
+                new()
+                {
+                    ParameterType = RootParameterType.TypeCbv,
+                    ShaderVisibility = ShaderVisibility.All,
+                    Descriptor = new RootDescriptor { ShaderRegister = 2, RegisterSpace = 0 }
                 }
             };
 
+            fixed (RootParameter* rootParametersPtr = rootParameters)
+            {
             var rootSignatureDesc = new RootSignatureDesc
             {
-                NumParameters = 1,
-                PParameters = &rootParameter,
+                NumParameters = (uint)rootParameters.Length,
+                PParameters = rootParametersPtr,
                 NumStaticSamplers = 0,
                 PStaticSamplers = null,
                 Flags = RootSignatureFlags.AllowInputAssemblerInputLayout
@@ -108,6 +121,7 @@ public class DirectX12MeshPipelineManager : IDisposable
                 throw new Exception($"Failed to create root signature. HRESULT: {result:X8}");
 
             signature.Dispose();
+            }
         }
     }
 

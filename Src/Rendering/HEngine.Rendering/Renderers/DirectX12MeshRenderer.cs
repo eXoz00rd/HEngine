@@ -2,6 +2,7 @@ using System.Numerics;
 using System.Runtime.InteropServices;
 using HEngine.Core.Rendering.Contracts;
 using HEngine.Core.Rendering.Data;
+using HEngine.Rendering.Data;
 using HEngine.Rendering.DirectX12;
 using HEngine.Rendering.Managers;
 using Silk.NET.Core.Native;
@@ -21,8 +22,12 @@ public sealed class DirectX12MeshRenderer : IDisposable
     private ShaderFileLoader? _shaderFileLoader;
     private ComPtr<ID3D12Resource> _vertexBuffer;
     private ComPtr<ID3D12Resource> _indexBuffer;
-    private ComPtr<ID3D12Resource> _constantBuffer;
-    private unsafe void* _constantBufferMapped;
+    private ComPtr<ID3D12Resource> _sceneConstantBuffer;
+    private ComPtr<ID3D12Resource> _materialConstantBuffer;
+    private ComPtr<ID3D12Resource> _lightConstantBuffer;
+    private unsafe void* _sceneConstantBufferMapped;
+    private unsafe void* _materialConstantBufferMapped;
+    private unsafe void* _lightConstantBufferMapped;
     private const int MaxVertices = 65536;
     private const int MaxIndices = 65536 * 3;
     private const int MaxDrawCalls = 1024;
@@ -40,9 +45,6 @@ public sealed class DirectX12MeshRenderer : IDisposable
 
     public void Initialize(object? device = null)
     {
-        // Allow initialization without a GPU device (headless/test mode).
-        // When a valid D3D12 device is provided, create GPU resources; otherwise, skip GPU setup
-        // but still mark the renderer as initialized so that CPU-side math and metadata updates work in tests.
         if (device is ComPtr<ID3D12Device> d3dDevice)
         {
             _device = d3dDevice;
@@ -62,7 +64,9 @@ public sealed class DirectX12MeshRenderer : IDisposable
 
             CreateVertexBuffer();
             CreateIndexBuffer();
-            CreateConstantBuffer();
+            CreateSceneConstantBuffer();
+            CreateMaterialConstantBuffer();
+            CreateLightConstantBuffer();
 
             _gpuResourcesCreated = true;
         }
@@ -85,12 +89,15 @@ public sealed class DirectX12MeshRenderer : IDisposable
     public void DrawMesh(Matrix4x4 modelMatrix,
                          ReadOnlySpan<Vertex3D> vertices,
                          ReadOnlySpan<uint> indices,
-                         IRenderContext context)
+                         IRenderContext context,
+                         Material? material = null,
+                         LightData[]? lights = null)
     {
         ArgumentNullException.ThrowIfNull(context);
 
-        // Always compute CPU-side values so tests can assert on them even without a GPU device/queue
-        LastMvp = modelMatrix * context.ViewMatrix * context.ProjectionMatrix;
+        var view = context.ViewMatrix;
+        var proj = context.ProjectionMatrix;
+        LastMvp = modelMatrix * view * proj;
         LastDrawVertexCount = vertices.Length;
         LastDrawIndexCount = indices.Length;
 
@@ -104,7 +111,13 @@ public sealed class DirectX12MeshRenderer : IDisposable
         if (!_gpuResourcesCreated || _commandQueue == null)
             return;
 
-        var constantBufferAddress = UpdateConstantBuffer(LastMvp);
+        Matrix4x4.Invert(modelMatrix, out var invWorld);
+        var normalMatrix = Matrix4x4.Transpose(invWorld);
+
+        var sceneAddress = UpdateSceneConstantBuffer(modelMatrix, view, proj, normalMatrix, context);
+        var materialAddress = UpdateMaterialConstantBuffer(material);
+        var lightAddress = UpdateLightConstantBuffer(lights);
+
         UpdateVertexBuffer(vertices);
         UpdateIndexBuffer(indices);
 
@@ -112,7 +125,9 @@ public sealed class DirectX12MeshRenderer : IDisposable
 
         commandList.SetPipelineState(_pipelineManager!.PipelineState);
         commandList.SetGraphicsRootSignature(_pipelineManager.RootSignature);
-        commandList.SetGraphicsRootConstantBufferView(0, constantBufferAddress);
+        commandList.SetGraphicsRootConstantBufferView(0, sceneAddress);
+        commandList.SetGraphicsRootConstantBufferView(1, materialAddress);
+        commandList.SetGraphicsRootConstantBufferView(2, lightAddress);
 
         commandList.IASetPrimitiveTopology(D3DPrimitiveTopology.D3DPrimitiveTopologyTrianglelist);
 
@@ -226,11 +241,33 @@ public sealed class DirectX12MeshRenderer : IDisposable
         }
     }
 
-    private void CreateConstantBuffer()
+    private unsafe void CreateSceneConstantBuffer()
     {
-        var size = Marshal.SizeOf<MeshConstants>();
+        CreateMappedConstantBuffer<PBRSceneConstants>(MaxDrawCalls, out _sceneConstantBuffer, out _sceneConstantBufferMapped);
+    }
+
+    private unsafe void CreateMaterialConstantBuffer()
+    {
+        CreateMappedConstantBuffer<PBRMaterialConstants>(MaxDrawCalls, out _materialConstantBuffer, out _materialConstantBufferMapped);
+    }
+
+    private unsafe void CreateLightConstantBuffer()
+    {
+        var alignedSize = (PBRLightLayout.TotalSize + 255) & ~255;
+        var totalSize = (ulong)(alignedSize * MaxDrawCalls);
+        CreateMappedRawBuffer(totalSize, out _lightConstantBuffer, out _lightConstantBufferMapped);
+    }
+
+    private unsafe void CreateMappedConstantBuffer<T>(int slotCount, out ComPtr<ID3D12Resource> buffer, out void* mapped) where T : unmanaged
+    {
+        var size = sizeof(T);
         var alignedSize = (size + 255) & ~255;
-        var constantBufferSize = (ulong)(alignedSize * MaxDrawCalls);
+        var totalSize = (ulong)(alignedSize * slotCount);
+        CreateMappedRawBuffer(totalSize, out buffer, out mapped);
+    }
+
+    private unsafe void CreateMappedRawBuffer(ulong totalSize, out ComPtr<ID3D12Resource> buffer, out void* mapped)
+    {
 
         var heapProps = new HeapProperties
         {
@@ -243,7 +280,7 @@ public sealed class DirectX12MeshRenderer : IDisposable
         {
             Dimension = ResourceDimension.Buffer,
             Alignment = 0,
-            Width = constantBufferSize,
+            Width = totalSize,
             Height = 1,
             DepthOrArraySize = 1,
             MipLevels = 1,
@@ -253,50 +290,104 @@ public sealed class DirectX12MeshRenderer : IDisposable
             Flags = ResourceFlags.None
         };
 
-        unsafe
-        {
-            var result = _device.CreateCommittedResource(
-                in heapProps,
-                HeapFlags.None,
-                in resourceDesc,
-                ResourceStates.GenericRead,
-                null,
-                out _constantBuffer);
+        buffer = default;
+        var result = _device.CreateCommittedResource(
+            in heapProps,
+            HeapFlags.None,
+            in resourceDesc,
+            ResourceStates.GenericRead,
+            null,
+            out buffer);
 
-            if (result < 0)
-                throw new Exception($"Failed to create mesh constant buffer. HRESULT: {result:X8}");
+        if (result < 0)
+            throw new Exception($"Failed to create constant buffer. HRESULT: {result:X8}");
 
-            void* mappedPtr;
-            result = _constantBuffer.Map(0u, (Range*)null, &mappedPtr);
-            if (result < 0)
-                throw new Exception($"Failed to map mesh constant buffer. HRESULT: {result:X8}");
+        void* mappedPtr;
+        result = buffer.Map(0u, (Range*)null, &mappedPtr);
+        if (result < 0)
+            throw new Exception($"Failed to map constant buffer. HRESULT: {result:X8}");
 
-            _constantBufferMapped = mappedPtr;
-        }
+        mapped = mappedPtr;
     }
 
-    private ulong UpdateConstantBuffer(Matrix4x4 mvp)
+    private unsafe ulong UpdateSceneConstantBuffer(
+        Matrix4x4 world, Matrix4x4 view, Matrix4x4 proj, Matrix4x4 normalMatrix, IRenderContext context)
     {
-        var size = Marshal.SizeOf<MeshConstants>();
-        var alignedSize = (size + 255) & ~255;
+        var alignedSize = (sizeof(PBRSceneConstants) + 255) & ~255;
         var offset = _currentDrawCallIndex * alignedSize;
 
-        unsafe
-        {
-            var constants = new MeshConstants
-            {
-                MVP = mvp,
-                LightDirection = new Vector4(0.5f, -1.0f, 0.5f, 0.0f),
-                LightColor = new Vector4(1.0f, 1.0f, 1.0f, 1.0f),
-                AmbientColor = new Vector4(0.2f, 0.2f, 0.2f, 1.0f)
-            };
+        var cameraPos = Vector3.Zero;
+        if (Matrix4x4.Invert(view, out var invView))
+            cameraPos = new Vector3(invView.M41, invView.M42, invView.M43);
 
-            var destPtr = (byte*)_constantBufferMapped + offset;
-            var span = new Span<byte>(destPtr, size);
-            MemoryMarshal.Write(span, in constants);
+        var constants = new PBRSceneConstants
+        {
+            World = world,
+            View = view,
+            Projection = proj,
+            WorldViewProjection = world * view * proj,
+            NormalMatrix = normalMatrix,
+            CameraPosition = cameraPos,
+            Pad0 = 0f
+        };
+
+        var destPtr = (byte*)_sceneConstantBufferMapped + offset;
+        MemoryMarshal.Write(new Span<byte>(destPtr, sizeof(PBRSceneConstants)), in constants);
+
+        return _sceneConstantBuffer.GetGPUVirtualAddress() + (ulong)offset;
+    }
+
+    private unsafe ulong UpdateMaterialConstantBuffer(Material? material)
+    {
+        var alignedSize = (sizeof(PBRMaterialConstants) + 255) & ~255;
+        var offset = _currentDrawCallIndex * alignedSize;
+
+        var constants = material is not null
+            ? MaterialConstantsSerializer.ToGpu(material)
+            : MaterialConstantsSerializer.Default();
+
+        var destPtr = (byte*)_materialConstantBufferMapped + offset;
+        MemoryMarshal.Write(new Span<byte>(destPtr, sizeof(PBRMaterialConstants)), in constants);
+
+        return _materialConstantBuffer.GetGPUVirtualAddress() + (ulong)offset;
+    }
+
+    private unsafe ulong UpdateLightConstantBuffer(LightData[]? lights)
+    {
+        var alignedSize = (PBRLightLayout.TotalSize + 255) & ~255;
+        var offset = _currentDrawCallIndex * alignedSize;
+
+        var destPtr = (byte*)_lightConstantBufferMapped + offset;
+        new Span<byte>(destPtr, alignedSize).Clear();
+
+        var count = Math.Min(lights?.Length ?? 0, PBRLightLayout.MaxLights);
+
+        if (lights != null)
+        {
+            for (var i = 0; i < count; i++)
+            {
+                var l = lights[i];
+                var gpuLight = new PBRLightGpu
+                {
+                    Color = l.Color,
+                    Intensity = l.Intensity,
+                    Direction = l.Direction,
+                    Range = l.Range,
+                    Position = l.Position,
+                    Type = (int)l.Type,
+                    InnerConeAngle = l.InnerConeAngle,
+                    OuterConeAngle = l.OuterConeAngle,
+                    Pad = Vector2.Zero
+                };
+                MemoryMarshal.Write(new Span<byte>(destPtr + i * sizeof(PBRLightGpu), sizeof(PBRLightGpu)), in gpuLight);
+            }
         }
 
-        return _constantBuffer.GetGPUVirtualAddress() + (ulong)offset;
+        *(int*)(destPtr + PBRLightLayout.ActiveCountOffset) = count;
+        var ambient = new Vector3(0.03f, 0.03f, 0.03f);
+        MemoryMarshal.Write(new Span<byte>(destPtr + PBRLightLayout.AmbientColorOffset, sizeof(Vector3)), in ambient);
+
+        return _lightConstantBuffer.GetGPUVirtualAddress() + (ulong)offset;
     }
 
     private void UpdateVertexBuffer(ReadOnlySpan<Vertex3D> vertices)
@@ -342,14 +433,28 @@ public sealed class DirectX12MeshRenderer : IDisposable
 
         unsafe
         {
-            if (_constantBufferMapped != null)
+            if (_sceneConstantBufferMapped != null)
             {
-                _constantBuffer.Unmap(0u, (Range*)null);
-                _constantBufferMapped = null;
+                _sceneConstantBuffer.Unmap(0u, (Range*)null);
+                _sceneConstantBufferMapped = null;
+            }
+
+            if (_materialConstantBufferMapped != null)
+            {
+                _materialConstantBuffer.Unmap(0u, (Range*)null);
+                _materialConstantBufferMapped = null;
+            }
+
+            if (_lightConstantBufferMapped != null)
+            {
+                _lightConstantBuffer.Unmap(0u, (Range*)null);
+                _lightConstantBufferMapped = null;
             }
         }
 
-        _constantBuffer.Dispose();
+        _lightConstantBuffer.Dispose();
+        _materialConstantBuffer.Dispose();
+        _sceneConstantBuffer.Dispose();
         _indexBuffer.Dispose();
         _vertexBuffer.Dispose();
         _pipelineManager?.Dispose();
@@ -359,14 +464,5 @@ public sealed class DirectX12MeshRenderer : IDisposable
 
         IsInitialized = false;
         _disposed = true;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct MeshConstants
-    {
-        public Matrix4x4 MVP;
-        public Vector4 LightDirection;
-        public Vector4 LightColor;
-        public Vector4 AmbientColor;
     }
 }

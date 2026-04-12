@@ -14,7 +14,7 @@ namespace HEngine.Rendering.Systems;
 
 public class LightingSystem : ISystem
 {
-    public const int MaxLights = 4;
+    public const int MaxLights = 8;
 
     private bool _disposed;
     private WorldManager _world = null!;
@@ -70,6 +70,30 @@ public class LightingSystem : ISystem
                 Position = pos,
                 Range = p.Range,
                 Attenuation = p.Attenuation
+            };
+            result.Add(ld);
+            if (result.Count >= MaxLights) break;
+        }
+
+        var spotQuery = _queryBuilder.With<Transform, SpotLight>();
+        foreach (var (entity, t, s) in spotQuery)
+        {
+            if (world.HasComponent<Culled>(entity))
+                continue;
+
+            var wm = t.GetWorldMatrix(world);
+            var pos = new Vector3(wm.M41, wm.M42, wm.M43);
+
+            var ld = new LightData
+            {
+                Type = LightType.Spot,
+                Color = s.Color,
+                Intensity = s.Intensity,
+                Position = pos,
+                Direction = SafeNormalize(s.Direction),
+                Range = s.Range,
+                InnerConeAngle = s.InnerConeAngle,
+                OuterConeAngle = s.OuterConeAngle
             };
             result.Add(ld);
             if (result.Count >= MaxLights) break;

@@ -16,7 +16,7 @@ public class DirectX12MeshShaderManager : IDisposable
     private readonly ShaderVariantCache _variantCache = new();
     private readonly ShaderVariantCompiler _variantCompiler = new();
     private readonly object _reloadLock = new();
-    private readonly string _shaderFileName = "Mesh.hlsl";
+    private readonly string _shaderFileName = "PBR.hlsl";
 
     private bool _disposed;
     private bool _isInitialized;

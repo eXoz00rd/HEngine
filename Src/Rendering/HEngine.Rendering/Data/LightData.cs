@@ -6,6 +6,7 @@ public enum LightType
 {
     Directional = 0,
     Point = 1,
+    Spot = 2,
 }
 
 public readonly struct LightData
@@ -20,4 +21,7 @@ public readonly struct LightData
     public Vector3 Position { get; init; }
     public float Range { get; init; }
     public float Attenuation { get; init; }
+
+    public float InnerConeAngle { get; init; }
+    public float OuterConeAngle { get; init; }
 }

@@ -32,4 +32,8 @@
       <None Include="Shaders\*.hlsl" CopyToOutputDirectory="PreserveNewest" />
     </ItemGroup>
 
+    <ItemGroup>
+      <ClCompile Include="Shaders\PBR.hlsl" />
+    </ItemGroup>
+
 </Project>
