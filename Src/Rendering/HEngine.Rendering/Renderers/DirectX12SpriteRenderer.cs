@@ -13,6 +13,9 @@ namespace HEngine.Rendering.Renderers;
 public class DirectX12SpriteRenderer : ISpriteRenderer
 {
     private readonly ILogger<DirectX12SpriteRenderer> _logger;
+    private readonly ShaderFileLoader _shaderFileLoader;
+    private readonly ShaderDiskCache _shaderDiskCache;
+    private readonly ShaderFileWatcher _shaderFileWatcher;
     private readonly RenderingMetrics _metrics = new();
 
     private const int MAX_SPRITES = 10000;
@@ -32,9 +35,16 @@ public class DirectX12SpriteRenderer : ISpriteRenderer
     private ulong _lastBoundConstantBufferAddress;
     private bool _stateValid;
 
-    public DirectX12SpriteRenderer(ILogger<DirectX12SpriteRenderer> logger)
+    public DirectX12SpriteRenderer(
+        ILogger<DirectX12SpriteRenderer> logger,
+        ShaderFileLoader shaderFileLoader,
+        ShaderDiskCache shaderDiskCache,
+        ShaderFileWatcher shaderFileWatcher)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _shaderFileLoader = shaderFileLoader ?? throw new ArgumentNullException(nameof(shaderFileLoader));
+        _shaderDiskCache = shaderDiskCache ?? throw new ArgumentNullException(nameof(shaderDiskCache));
+        _shaderFileWatcher = shaderFileWatcher ?? throw new ArgumentNullException(nameof(shaderFileWatcher));
         _currentVertexCount = 0;
     }
 
@@ -55,7 +65,8 @@ public class DirectX12SpriteRenderer : ISpriteRenderer
             var dx12Device = (DirectX12Device)device;
             var d3dDevice = dx12Device.GetDevice();
 
-            _shaderManager = new DirectX12ShaderManager();
+            _shaderManager = new DirectX12ShaderManager(_shaderFileLoader, _shaderDiskCache, _shaderFileWatcher);
+            _shaderManager.ShaderReloaded += OnShaderReloaded;
             _shaderManager.Initialize();
 
             _pipelineManager = new DirectX12PipelineStateManager();
@@ -203,12 +214,32 @@ public class DirectX12SpriteRenderer : ISpriteRenderer
         }
     }
 
+    private void OnShaderReloaded()
+    {
+        try
+        {
+            _logger.LogInformation("Rebuilding sprite rendering pipeline due to shader reload");
+            _pipelineManager.Rebuild(_shaderManager);
+            InvalidateStateCache();
+            _logger.LogInformation("Sprite rendering pipeline rebuilt successfully");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to rebuild sprite rendering pipeline after shader reload");
+        }
+    }
+
     public void Dispose()
     {
         if (_disposed)
             return;
 
         _logger.LogInformation("Disposing DirectX12SpriteRenderer");
+
+        if (_shaderManager != null)
+        {
+            _shaderManager.ShaderReloaded -= OnShaderReloaded;
+        }
 
         _bufferManager?.Dispose();
         _pipelineManager?.Dispose();

@@ -20,17 +20,45 @@ public static class ServiceCollectionExtensions
     {
         services.AddSingleton<InputState>();
         services.AddSingleton<ICameraInputProvider, SilkCameraInputProvider>();
-        
+
         services.AddSingleton<IGraphicsDevice, DirectX12Device>();
         services.AddSingleton<ISpriteRenderer, DirectX12SpriteRenderer>();
-        
+
         services.AddSingleton<IRenderer, SilkDirectX12Renderer>();
         services.AddSingleton<IRenderManager, RenderManager>();
-        
+
         services.AddSingleton<IRenderContextFactory, SilkRenderContextFactory>();
 
         services.AddSingleton<IRenderBatch<SpriteData>, SpriteBatch>();
-        services.AddSingleton<IShaderManager, DirectX12ShaderManager>();
+
+        services.AddSingleton<ShaderFileLoader>(provider =>
+        {
+            var basePath = AppDomain.CurrentDomain.BaseDirectory;
+            var shaderPath = Path.Combine(basePath, "Shaders");
+            return new ShaderFileLoader(shaderPath);
+        });
+
+        services.AddSingleton<ShaderFileWatcher>(provider =>
+        {
+            var basePath = AppDomain.CurrentDomain.BaseDirectory;
+            var shaderPath = Path.Combine(basePath, "Shaders");
+            return new ShaderFileWatcher(shaderPath);
+        });
+
+        services.AddSingleton<ShaderDiskCache>(provider =>
+        {
+            var basePath = AppDomain.CurrentDomain.BaseDirectory;
+            var cachePath = Path.Combine(basePath, "ShaderCache");
+            return new ShaderDiskCache(cachePath);
+        });
+
+        services.AddSingleton<IShaderManager>(provider =>
+        {
+            var fileLoader = provider.GetRequiredService<ShaderFileLoader>();
+            var diskCache = provider.GetRequiredService<ShaderDiskCache>();
+            var fileWatcher = provider.GetRequiredService<ShaderFileWatcher>();
+            return new DirectX12ShaderManager(fileLoader, diskCache, fileWatcher);
+        });
 
         services.AddSingleton<ISpriteRenderingSystem, SpriteRenderingSystem>();
         services.AddSingleton<IMeshRenderingSystem, MeshRenderingSystem>();

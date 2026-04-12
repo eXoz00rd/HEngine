@@ -8,9 +8,11 @@ namespace HEngine.Rendering.Managers;
 public class DirectX12MeshPipelineManager : IDisposable
 {
     private readonly D3D12 _d3d12 = D3D12.GetApi();
+    private readonly object _rebuildLock = new();
     private bool _disposed;
     private ComPtr<ID3D12PipelineState> _pipelineState;
     private ComPtr<ID3D12RootSignature> _rootSignature;
+    private ComPtr<ID3D12Device> _device;
 
     public ComPtr<ID3D12RootSignature> RootSignature => _rootSignature;
     public ComPtr<ID3D12PipelineState> PipelineState => _pipelineState;
@@ -27,8 +29,21 @@ public class DirectX12MeshPipelineManager : IDisposable
 
     public void Initialize(ComPtr<ID3D12Device> device, DirectX12MeshShaderManager shaderManager)
     {
+        _device = device;
         CreateRootSignature(device);
         CreatePipelineState(device, shaderManager);
+    }
+
+    public void Rebuild(DirectX12MeshShaderManager shaderManager)
+    {
+        if (_disposed)
+            throw new ObjectDisposedException(nameof(DirectX12MeshPipelineManager));
+
+        lock (_rebuildLock)
+        {
+            _pipelineState.Dispose();
+            CreatePipelineState(_device, shaderManager);
+        }
     }
 
     private void CreateRootSignature(ComPtr<ID3D12Device> device)

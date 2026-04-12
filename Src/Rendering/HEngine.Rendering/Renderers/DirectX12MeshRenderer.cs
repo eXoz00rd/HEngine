@@ -18,6 +18,7 @@ public sealed class DirectX12MeshRenderer : IDisposable
     private DirectX12CommandQueue? _commandQueue;
     private DirectX12MeshShaderManager? _shaderManager;
     private DirectX12MeshPipelineManager? _pipelineManager;
+    private ShaderFileLoader? _shaderFileLoader;
     private ComPtr<ID3D12Resource> _vertexBuffer;
     private ComPtr<ID3D12Resource> _indexBuffer;
     private ComPtr<ID3D12Resource> _constantBuffer;
@@ -46,7 +47,14 @@ public sealed class DirectX12MeshRenderer : IDisposable
         {
             _device = d3dDevice;
 
-            _shaderManager = new DirectX12MeshShaderManager();
+            var basePath = AppDomain.CurrentDomain.BaseDirectory;
+            var shaderPath = Path.Combine(basePath, "Shaders");
+            _shaderFileLoader = new ShaderFileLoader(shaderPath);
+
+            var cachePath = Path.Combine(basePath, "ShaderCache");
+            var diskCache = new ShaderDiskCache(cachePath);
+
+            _shaderManager = new DirectX12MeshShaderManager(_shaderFileLoader, diskCache, null);
             _shaderManager.Initialize();
 
             _pipelineManager = new DirectX12MeshPipelineManager();
@@ -346,6 +354,7 @@ public sealed class DirectX12MeshRenderer : IDisposable
         _vertexBuffer.Dispose();
         _pipelineManager?.Dispose();
         _shaderManager?.Dispose();
+        _shaderFileLoader?.Dispose();
         _d3d12.Dispose();
 
         IsInitialized = false;

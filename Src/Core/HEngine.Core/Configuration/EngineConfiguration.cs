@@ -28,6 +28,7 @@ public class RenderingSettings {
     public float FieldOfView { get; set; } = MathF.PI / 4;
     public float NearPlane { get; set; } = 0.1f;
     public float FarPlane { get; set; } = 100.0f;
+    public int MaxAnisotropy { get; set; } = 16;
 }
 
 public class PerformanceSettings {
