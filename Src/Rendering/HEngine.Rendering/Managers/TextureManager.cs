@@ -60,17 +60,96 @@ public sealed class TextureManager : ITextureManager
 
     public int LoadTexture(string filePath)
     {
-        // ...existing code...
+        ThrowIfDisposed();
+
+        if (string.IsNullOrWhiteSpace(filePath))
+            throw new ArgumentException("File path cannot be null or empty.", nameof(filePath));
+
+        var normalizedPath = NormalizePath(filePath);
+
+        if (_pathToHandle.TryGetValue(normalizedPath, out var existingHandle))
+        {
+            if (_textures.TryGetValue(existingHandle, out var existingEntry))
+            {
+                existingEntry.IncrementRef();
+                return existingHandle;
+            }
+        }
+
+        TextureLoadResult loadResult;
+        try
+        {
+            loadResult = _textureLoader.Load(filePath);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Failed to load texture: {Path}. Returning default white.", filePath);
+            return DefaultWhiteTexture;
+        }
+
+        var handle = RegisterTexture(normalizedPath, loadResult);
+        _logger?.LogInformation("Texture loaded: {Path} ({W}x{H}, handle={Handle})",
+            normalizedPath, loadResult.Width, loadResult.Height, handle);
+        return handle;
     }
 
     public async Task<int> LoadTextureAsync(string filePath, CancellationToken cancellationToken = default)
     {
-        // ...existing code...
+        ThrowIfDisposed();
+
+        if (string.IsNullOrWhiteSpace(filePath))
+            throw new ArgumentException("File path cannot be null or empty.", nameof(filePath));
+
+        var normalizedPath = NormalizePath(filePath);
+
+        if (_pathToHandle.TryGetValue(normalizedPath, out var existingHandle))
+        {
+            if (_textures.TryGetValue(existingHandle, out var existingEntry))
+            {
+                existingEntry.IncrementRef();
+                return existingHandle;
+            }
+        }
+
+        TextureLoadResult loadResult;
+        try
+        {
+            loadResult = await _textureLoader.LoadAsync(filePath, cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Failed to load texture async: {Path}. Returning default white.", filePath);
+            return DefaultWhiteTexture;
+        }
+
+        return RegisterTexture(normalizedPath, loadResult);
     }
 
     public void ReleaseTexture(int textureHandle)
     {
-        // ...existing code...
+        ThrowIfDisposed();
+
+        if (!_textures.TryGetValue(textureHandle, out var entry))
+            return;
+
+        if (textureHandle == DefaultWhiteTexture ||
+            textureHandle == DefaultNormalTexture ||
+            textureHandle == DefaultBlackTexture)
+            return;
+
+        var remaining = entry.DecrementRef();
+
+        if (remaining <= 0)
+        {
+            _textures.TryRemove(textureHandle, out _);
+            if (!string.IsNullOrEmpty(entry.Path))
+                _pathToHandle.TryRemove(entry.Path, out _);
+            entry.Dispose();
+        }
     }
 
     public bool IsTextureLoaded(int textureHandle)
@@ -88,7 +167,7 @@ public sealed class TextureManager : ITextureManager
     /// </summary>
     public ComPtr<ID3D12Resource>? GetGpuResource(int textureHandle)
     {
-        if (_textures.TryGetValue(textureHandle, out var entry) && entry.GpuResource.Handle != nint.Zero)
+        if (_textures.TryGetValue(textureHandle, out var entry) && entry.HasGpuResource)
             return entry.GpuResource;
         return null;
     }
@@ -280,12 +359,26 @@ public sealed class TextureManager : ITextureManager
 
     private void CreateDefaultTextures()
     {
-        // ...existing code...
+        DefaultWhiteTexture = CreateDefaultTexture("__default_white",
+            [255, 255, 255, 255]);
+        DefaultNormalTexture = CreateDefaultTexture("__default_normal",
+            [128, 128, 255, 255]);
+        DefaultBlackTexture = CreateDefaultTexture("__default_black",
+            [0, 0, 0, 255]);
     }
 
     private int CreateDefaultTexture(string name, byte[] pixelData)
     {
-        // ...existing code...
+        var loadResult = new TextureLoadResult(
+            pixelData: pixelData,
+            width: 1,
+            height: 1,
+            mipLevels: 1,
+            dxgiFormat: Format.FormatR8G8B8A8Unorm,
+            bytesPerPixel: 4,
+            isCompressed: false,
+            sourcePath: name);
+        return RegisterTexture(name, loadResult);
     }
 
     private void ThrowIfDisposed()
@@ -307,6 +400,7 @@ public sealed class TextureManager : ITextureManager
         public TextureLoadResult LoadResult { get; }
         public DescriptorHandle SrvHandle { get; }
         public ComPtr<ID3D12Resource> GpuResource { get; }
+        public bool HasGpuResource { get; }
         public int RefCount => _refCount;
 
         public TextureEntry(string path, TextureLoadResult loadResult, DescriptorHandle srvHandle, ComPtr<ID3D12Resource> gpuResource = default)
@@ -315,6 +409,7 @@ public sealed class TextureManager : ITextureManager
             LoadResult = loadResult;
             SrvHandle = srvHandle;
             GpuResource = gpuResource;
+            unsafe { HasGpuResource = gpuResource.Handle != null; }
         }
 
         public int IncrementRef() => Interlocked.Increment(ref _refCount);
@@ -322,9 +417,10 @@ public sealed class TextureManager : ITextureManager
 
         public void Dispose()
         {
-            if (GpuResource.Handle != nint.Zero)
+            if (HasGpuResource)
                 GpuResource.Dispose();
             LoadResult.Dispose();
         }
     }
 }
+
