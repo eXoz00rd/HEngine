@@ -33,8 +33,11 @@
     </ItemGroup>
 
     <ItemGroup>
+      <ClCompile Include="Shaders\Bloom.hlsl" />
+      <ClCompile Include="Shaders\FXAA.hlsl" />
       <ClCompile Include="Shaders\PBR.hlsl" />
       <ClCompile Include="Shaders\ShadowPass.hlsl" />
+      <ClCompile Include="Shaders\ToneMapping.hlsl" />
     </ItemGroup>
 
 </Project>

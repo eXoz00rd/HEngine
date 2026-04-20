@@ -15,7 +15,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<GameTime>();
         services.AddSingleton<WorldManager>();
         services.AddSingleton<SystemManager>();
-
+        
         services.AddSingleton<IGameLoop, GameLoop>();
 
         return services;

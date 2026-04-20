@@ -5,6 +5,7 @@ using HEngine.Core.Mathematics;
 using HEngine.Core.Rendering.Contracts;
 using HEngine.Rendering.Data;
 using HEngine.Rendering.Logging;
+using HEngine.Rendering.PostProcessing;
 using HEngine.Rendering.Systems;
 using Microsoft.Extensions.Logging;
 
@@ -18,6 +19,29 @@ public class RenderPipeline : IRenderPipeline {
     private readonly ShadowRenderingSystem _shadowRenderingSystem;
     private readonly ShadowSettings _shadowSettings;
     private readonly WorldManager _world;
+    private readonly PostProcessStack _postProcessStack;
+
+    public PostProcessStack PostProcessStack => _postProcessStack;
+
+    public RenderPipeline(
+        IRenderManager renderManager,
+        IRenderingSystem renderingSystem,
+        WorldManager world,
+        LightingSystem lightingSystem,
+        ShadowRenderingSystem shadowRenderingSystem,
+        ShadowSettings shadowSettings,
+        PostProcessStack postProcessStack,
+        ILogger<RenderPipeline> logger)
+    {
+        _renderManager = renderManager;
+        _renderingSystem = renderingSystem;
+        _world = world;
+        _lightingSystem = lightingSystem;
+        _shadowRenderingSystem = shadowRenderingSystem;
+        _shadowSettings = shadowSettings;
+        _postProcessStack = postProcessStack;
+        _logger = logger;
+    }
 
     public RenderPipeline(
         IRenderManager renderManager,
@@ -34,6 +58,7 @@ public class RenderPipeline : IRenderPipeline {
         _lightingSystem = lightingSystem;
         _shadowRenderingSystem = shadowRenderingSystem;
         _shadowSettings = shadowSettings;
+        _postProcessStack = new PostProcessStack();
         _logger = logger;
     }
 
@@ -51,6 +76,7 @@ public class RenderPipeline : IRenderPipeline {
         _shadowRenderingSystem = new ShadowRenderingSystem();
         _shadowRenderingSystem.Initialize(world);
         _shadowSettings = new ShadowSettings { Enabled = false };
+        _postProcessStack = new PostProcessStack();
         _logger = logger;
     }
 
@@ -99,6 +125,8 @@ public class RenderPipeline : IRenderPipeline {
 
             _renderingSystem.Render(context);
 
+            ExecutePostProcessPass(context);
+
             _renderManager.EndRender();
             _logger.LogDebug(RenderLogEvents.PipelineEnd, "RenderFrame end");
         }
@@ -137,5 +165,16 @@ public class RenderPipeline : IRenderPipeline {
 
             break;
         }
+    }
+
+    private void ExecutePostProcessPass(IRenderContext context)
+    {
+        if (_postProcessStack.EnabledEffectCount == 0)
+            return;
+
+        _logger.LogDebug(RenderLogEvents.PipelineStart, "PostProcess pass: {Count} effects", _postProcessStack.EnabledEffectCount);
+
+        var ppContext = new NullPostProcessCommandContext(context);
+        _postProcessStack.Execute(ppContext);
     }
 }

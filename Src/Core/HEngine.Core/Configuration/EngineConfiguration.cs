@@ -14,6 +14,7 @@ public class EngineConfiguration {
     public PerformanceSettings Performance { get; set; } = new();
     public PbrSettings PBR { get; set; } = new();
     public ShadowSettings Shadow { get; set; } = new();
+    public PostProcessingSettings PostProcessing { get; set; } = new();
 }
 
 public class WindowSettings {
@@ -56,3 +57,14 @@ public class ShadowSettings {
     public float SlopeScaledDepthBias { get; set; } = 2.0f;
 }
 
+public class PostProcessingSettings {
+    public bool EnableBloom { get; set; } = true;
+    public float BloomThreshold { get; set; } = 1.0f;
+    public float BloomIntensity { get; set; } = 1.0f;
+    public int BloomMipLevels { get; set; } = 5;
+    public int ToneMapping { get; set; } = 0;
+    public int AntiAliasing { get; set; } = 1;
+    public float Exposure { get; set; } = 1.0f;
+    public bool EnableGammaCorrection { get; set; } = true;
+    public float Gamma { get; set; } = 2.2f;
+}
