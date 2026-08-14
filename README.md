@@ -399,8 +399,13 @@ ECS architecture, DirectX 12 rendering, transforms, scene graph, camera, lightin
 
 ## 📖 Documentation
 
-- **[Architecture Guide](docs/ARCHITECTURE.md)** — Design patterns, data flow, extension points
-- **[Contributing Guide](docs/CONTRIBUTING.md)** — Code style, testing, PR process
+- **[Contributing Guide](CONTRIBUTING.md)** — Branch flow, commits, code style, CI
+- **[Task Conventions](CONVENTIONS.md)** — Writing issues and definitions of done
+- **[Agent Instructions](AGENTS.md)** — Single source of truth for AI tools
+- **[Engine State Analysis](docs/ENGINE_STATE_ANALYSIS.md)** — What the engine actually does at runtime
+- **[Target Architecture](docs/TARGET_ARCHITECTURE.md)** — Target module split and public API
+
+> **Note:** this README describes intended capabilities. For what currently executes at runtime, read the Engine State Analysis first — several documented subsystems are implemented but not yet reachable from the game loop.
 
 ---
 
