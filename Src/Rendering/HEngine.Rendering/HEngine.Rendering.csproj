@@ -25,7 +25,7 @@
       <PackageReference Include="Silk.NET.DXGI" Version="2.23.0" />
       <PackageReference Include="Silk.NET.Input" Version="2.23.0" />
       <PackageReference Include="Silk.NET.Windowing" Version="2.23.0" />
-      <PackageReference Include="StbImageSharp" Version="2.30.13" />
+      <PackageReference Include="StbImageSharp" Version="2.30.16" />
     </ItemGroup>
 
     <ItemGroup>
