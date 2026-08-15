@@ -11,6 +11,7 @@
 
 **Spis treści**
 
+0. [Słownik pojęć](#0-słownik-pojęć)
 1. [Teza](#1-teza)
 2. [Zasady](#2-zasady)
 3. [Moduły docelowe](#3-moduły-docelowe)
@@ -23,6 +24,60 @@
 10. [Relacja do stanu obecnego](#10-relacja-do-stanu-obecnego)
 11. [Decyzje do zatwierdzenia](#11-decyzje-do-zatwierdzenia)
 12. [Podsumowanie](#12-podsumowanie)
+
+---
+
+## 0. Słownik pojęć
+
+Dokument posługuje się kilkoma pojęciami w ustalonym, wąskim znaczeniu. Kilka z nich to terminy, dla których nie ma dobrego polskiego odpowiednika i tłumaczenie ich na siłę zaciemniałoby sens — te zostawiamy po angielsku i wyjaśniamy tutaj.
+
+### Pojęcia własne tego dokumentu
+
+| Pojęcie | Znaczenie |
+|---|---|
+| **host** | Program, który tworzy silnik, jest właścicielem okna i wątku i wywołuje kolejne klatki. Hostem jest gra, edytor, serwer narzędzi albo test — silnik sam hostem nie jest i nie zna różnicy między nimi. |
+| **pętla zewnętrzna** | Ta część pętli gry, która należy do hosta: decyzja, kiedy zaczyna się kolejna klatka, oraz obsługa komunikatów okna. Nazwana osobno, bo tylko ona jest poza silnikiem (§4.2). |
+| **przebieg klatki** | Wszystko, co dzieje się wewnątrz jednej klatki i w jakiej kolejności: fazy systemów, krok stały, przygotowanie danych do rysowania, wykonanie przebiegów renderowania. Należy do silnika. |
+| **takt** | Pojedyncze wywołanie „wykonaj jedną klatkę" (`Tick`). Silnik nie wie, kto i jak często go woła. |
+| **krok stały** | Symulacja liczona zawsze tym samym wycinkiem czasu, niezależnie od tego, ile trwała klatka. Wymaga licznika nadmiaru czasu, który przenosi resztę do następnej klatki. |
+| **przygotowanie danych do rysowania** | Osobny krok, w którym stan świata zostaje przepisany do niezmiennego opisu tego, co ma zostać narysowane. Renderowanie czyta ten opis, a nie żywy świat. |
+| **cel prezentacji** | Miejsce, w które trafia gotowa klatka: okno, tekstura albo nic (§4.3). |
+| **moduł** | Jeden projekt, jedno assembly, jedna przestrzeń nazw główna, jeden projekt testów (§5.5). |
+| **konsument** | Ktokolwiek korzysta z publicznego API silnika: kod gry, edytor, agent AI, test. |
+
+### Terminy zostawione po angielsku
+
+| Termin | Znaczenie |
+|---|---|
+| **headless** | Tryb pracy bez okna i bez wyświetlania obrazu. Silnik wykonuje pełną logikę klatki, obraz albo powstaje w teksturze, albo nie powstaje wcale. |
+| **backend** | Wymienna warstwa wykonawcza pod wspólnym kontraktem — tu: konkretne API graficzne (Direct3D 12) albo konkretny system okien (Windows). |
+| **swap chain** | Zestaw buforów obrazu, które karta graficzna wymienia z monitorem przy wyświetlaniu kolejnych klatek. |
+| **fence** | Znacznik synchronizacji z kartą graficzną — pozwala procesorowi poczekać, aż karta skończy wcześniej zleconą pracę. |
+| **singleton** | Obiekt istniejący w programie w jednym globalnym egzemplarzu, dostępny zewsząd bez przekazywania. W tym dokumencie zawsze jako coś, czego unikamy. |
+| **culling** | Odrzucanie przed rysowaniem obiektów, których i tak nie widać. |
+| **hot-reload** | Podmiana kodu lub zasobu w działającym programie, bez restartu. |
+| **trimming** | Usuwanie nieużywanego kodu przy publikacji aplikacji, żeby zmniejszyć jej rozmiar. |
+| **loopback** | Lokalny interfejs sieciowy — połączenie osiągalne wyłącznie z tej samej maszyny. |
+| **draw call** | Pojedyncze zlecenie rysowania wysłane do karty graficznej. |
+| **prefab** | Zapisany wzorzec obiektu sceny, z którego tworzy się egzemplarze. |
+
+### Skróty
+
+| Skrót | Rozwinięcie | Co oznacza |
+|---|---|---|
+| **AOT** | Ahead-Of-Time | Kompilacja do kodu maszynowego przed uruchomieniem, zamiast w trakcie |
+| **ADR** | Architecture Decision Record | Krótka notatka: jaką decyzję podjęto i dlaczego |
+| **API** | Application Programming Interface | Powierzchnia, przez którą konsument korzysta z silnika |
+| **CI** | Continuous Integration | Automatyczny build i testy uruchamiane po każdej zmianie |
+| **CPM** | Central Package Management | Mechanizm .NET: wersje pakietów zapisane raz dla całego repozytorium |
+| **DI** | Dependency Injection | Wstrzykiwanie zależności — obiekt dostaje swoje zależności z zewnątrz, zamiast je tworzyć |
+| **ECS** | Entity-Component-System | Model danych: encja jako identyfikator, komponent jako dane, system jako logika |
+| **GUID** | Globally Unique Identifier | 128-bitowy identyfikator, w praktyce niepowtarzalny |
+| **MCP** | Model Context Protocol | Protokół, przez który agent AI wywołuje narzędzia udostępnione przez program (§8) |
+| **PSO** | Pipeline State Object | Obiekt Direct3D 12 opisujący komplet ustawień potoku graficznego |
+| **TFM** | Target Framework Moniker | Oznaczenie platformy docelowej projektu, np. `net10.0` albo `net10.0-windows` |
+| **UI** | User Interface | Interfejs użytkownika |
+| **VSync** | Vertical Synchronization | Wstrzymanie prezentacji klatki do momentu odświeżenia monitora |
 
 ---
 
@@ -49,11 +104,11 @@ flowchart TD
     API --> ENGINE
 ```
 
-Kluczowe rozstrzygnięcie: **to nie są trzy różne API.** Wymagania tych trzech konsumentów pokrywają się niemal całkowicie — jawny cykl życia, brak globalnego stanu, brak własności okna i pompy klatek, introspekcja, determinizm, głośne błędy zamiast cichej degradacji. Projektowanie pod jednego z nich automatycznie obsługuje pozostałych.
+Kluczowe rozstrzygnięcie: **to nie są trzy różne API.** Wymagania tych trzech konsumentów pokrywają się niemal całkowicie — jawny cykl życia, brak globalnego stanu, brak własności okna i pętli zewnętrznej, introspekcja, determinizm, głośne błędy zamiast cichej degradacji. Projektowanie pod jednego z nich automatycznie obsługuje pozostałych.
 
 Trzy konsekwencje warte podkreślenia na wstępie:
 
-- **Agent nie dostaje własnej ścieżki do środka silnika.** Serwer MCP jest cienkim adapterem nad tym samym publicznym API — i właśnie dlatego jest przydatny jako test kompletności tego API (§8).
+- **Agent nie dostaje własnej ścieżki do środka silnika.** Serwer MCP (Model Context Protocol — protokół, przez który agent AI wywołuje narzędzia udostępnione przez program) jest cienkim adapterem nad tym samym publicznym API — i właśnie dlatego jest przydatny jako test kompletności tego API (§8).
 - **Ta sama zdolność — renderowanie do tekstury zamiast do okna — obsługuje viewport edytora oraz automatyczną weryfikację zmian graficznych przez agenta.** Jeden szew, trzy zastosowania.
 - **„Silnik nie posiada pętli" to skrót myślowy, nie zasada.** Rozbicie tego zdania na trzy rozdzielne własności jest przedmiotem §4.2 i jest jedną z ważniejszych korekt w tej wersji dokumentu.
 
@@ -64,7 +119,7 @@ Trzy konsekwencje warte podkreślenia na wstępie:
 Osiem reguł, do których odwołują się wszystkie decyzje w dokumencie.
 
 **Z1 — Zależności płyną wyłącznie w dół.**
-Żaden moduł nie sięga do modułu wyższego: ani referencją projektu, ani refleksją, ani `Assembly.Load`. Egzekwowane testem architektonicznym w CI, nie ustaleniem w dokumencie.
+Żaden moduł nie sięga do modułu wyższego: ani referencją projektu, ani refleksją, ani `Assembly.Load`. Egzekwowane testem architektonicznym w CI (Continuous Integration — automatyczny build i testy po każdej zmianie), nie ustaleniem w dokumencie.
 
 **Z2 — Kod mieszka przy funkcji, nie przy typie technicznym.**
 Katalog nazywa obszar domeny (`Materials/`, `Shadows/`, `Shaders/`), nie kategorię wzorca (`Managers/`, `Data/`, `Factories/`). Zrozumienie jednego obszaru wymaga otwarcia jednego katalogu.
@@ -79,7 +134,7 @@ Nie istnieje centralne miejsce, które musi znać wszystkie moduły. Dodanie mod
 Żadnych konstruktorów zapasowych ani domyślnych atrap, które cicho wyłączają funkcje. Kompozycja albo powiedzie się w całości, albo zgłosi błąd przy starcie.
 
 **Z6 — Silnik nie jest właścicielem zasobów zewnętrznych.**
-Nie tworzy okna, nie zajmuje wątku, nie prowadzi pompy klatek i nie ma ambientnego dostępu do czasu. Okno, wątek i zegar wchodzą do silnika jawnie, przekazane przez hosta. Precyzyjny podział odpowiedzialności za klatkę — §4.2.
+Nie tworzy okna, nie zajmuje wątku, nie prowadzi pętli zewnętrznej i nigdzie w środku nie sięga po czas na własną rękę. Okno, wątek i zegar wchodzą do silnika jawnie, przekazane przez hosta. Precyzyjny podział odpowiedzialności za klatkę — §4.2.
 
 **Z7 — Niezmiennik nieegzekwowany maszynowo nie istnieje.**
 Reguła architektoniczna musi objawiać się jako błąd kompilacji lub czerwony test. Reguła żyjąca wyłącznie w dokumencie zostanie złamana — przez człowieka pod presją czasu i przez agenta zawsze.
@@ -172,16 +227,16 @@ Trzy własności tego grafu są nieprzypadkowe i warto je nazwać wprost:
 | Moduł | Odpowiada za | Uzasadnienie granicy (Z3) |
 |---|---|---|
 | **HEngine.Foundation** | Matematyka, kolekcje, diagnostyka, atrybuty metadanych | Zero zależności; fundament dla wszystkiego |
-| **HEngine.ECS** | Encje, storage, zapytania, świat, harmonogram systemów, **rejestr typów komponentów** | Konsumenci potrzebują ECS bez wciągania renderowania |
+| **HEngine.ECS** | Encje, magazyny komponentów, zapytania, świat, harmonogram systemów, **rejestr typów komponentów** | Konsumenci potrzebują samego ECS-a, bez wciągania renderowania |
 | **HEngine.Platform** | Kontrakty: okno, wejście, źródło czasu, system plików, uchwyt powierzchni | Kontrakt oddzielony od implementacji, żeby backend graficzny nie zależał od biblioteki okienkowej |
 | **HEngine.Assets** | Baza assetów na GUID-ach, importery, zliczanie referencji | Wymienny potok importu; używany także przez narzędzia offline |
 | **HEngine.Serialization** | Format sceny i prefabu, mechanizm (de)serializacji komponentów | Format jest kontraktem trwałym — izolacja chroni przed przypadkową zmianą |
 | **HEngine.Scene** | Transform, hierarchia, scene graph, culling, kamera | Semantyka sceny niezależna od backendu graficznego |
-| **HEngine.Rendering** | Abstrakcje renderowania, graf klatki, ekstrakcja widoku, materiały, światła, definicje post-processingu | **Warstwa bez API graficznego** — umożliwia drugi backend i tryb headless |
-| **HEngine.Rendering.D3D12** | Urządzenie DX12, PSO, bufory, shadery, konkretne przebiegi | Windows-only, ciężkie zależności Silk.NET; wymienny |
+| **HEngine.Rendering** | Abstrakcje renderowania, graf klatki, przygotowanie danych do rysowania, materiały, światła, definicje post-processingu | **Warstwa bez API graficznego** — umożliwia drugi backend i tryb headless |
+| **HEngine.Rendering.D3D12** | Urządzenie Direct3D 12, obiekty stanu potoku (PSO), bufory, shadery, konkretne przebiegi | Windows-only, ciężkie zależności Silk.NET; wymienny |
 | **HEngine.Platform.Windows** | Okno, wejście i zegar na Silk.NET | Windows-only; podstawialny przez konsumenta |
-| **HEngine.Runtime** | Host, takt, rejestr modułów, kompozycja DI, opcjonalny runner pętli | Jedyne miejsce znające pełny graf domeny — ale nie backendów (Z8) |
-| **HEngine.Testing** | Uprząż headless, cele testowe, porównanie z obrazem wzorcowym | Współdzielone przez projekty testowe i serwer MCP; nie wchodzi do buildu gry |
+| **HEngine.Runtime** | Kontrakt hosta, takt, rejestr modułów, składanie zależności (DI), opcjonalna gotowa pętla | Jedyne miejsce znające pełny graf domeny — ale nie backendów (Z8) |
+| **HEngine.Testing** | Rusztowanie do uruchamiania silnika w trybie headless, cele testowe, porównanie z obrazem wzorcowym | Współdzielone przez projekty testowe i serwer MCP; nie wchodzi do buildu gry |
 | **HEngine.Tooling.Mcp** | Serwer MCP nad publicznym API (§8) | Osobno wdrażalny, nigdy w buildzie Release gry |
 
 **Uwaga do `Serialization`:** moduł dostarcza *mechanizm* i format, nie wiedzę o konkretnych komponentach. Serializatory komponentów rejestruje moduł, który te komponenty definiuje (Z4) — `Scene` rejestruje `Transform`, `Rendering` rejestruje `Mesh`. Dlatego `Serialization` nie zależy od `Scene` ani od `Rendering` i nie musi.
@@ -246,7 +301,7 @@ Sekcja definiuje, co znaczy „mocne API" w tym projekcie. Każda właściwość
 | # | Właściwość | Konsument, który tego wymaga |
 |---|---|---|
 | 1 | Jawny cykl życia; brak singletonów i stanu globalnego | wszyscy trzej |
-| 2 | Silnik nie posiada okna ani pompy klatek (Z6) | edytor, agent |
+| 2 | Silnik nie posiada okna ani pętli zewnętrznej (Z6) | edytor, agent |
 | 3 | Introspekcja: rejestry typów komponentów, modułów, systemów, przebiegów | edytor, agent |
 | 4 | Jeden przechwytywalny punkt mutacji stanu | edytor (undo/redo), MCP |
 | 5 | Determinizm: takt z jawnie podanym czasem | agent, testy |
@@ -262,32 +317,32 @@ To najczęściej upraszczana część projektu silnika, więc rozstrzygamy ją w
 
 | Warstwa | Właściciel | Dlaczego |
 |---|---|---|
-| **Pompa** — kiedy zaczyna się kolejna klatka, obsługa komunikatów okna, własność wątku | **host** | Na Windows pompa komunikatów musi działać na wątku, który utworzył okno. W edytorze pętlę ma framework UI. Agent chce po prostu `for (i = 0; i < n; i++)`. Silnik nie ma tu nic do powiedzenia. |
-| **Orkiestracja klatki** — kolejność faz, akumulator kroku stałego, ekstrakcja widoku, budowa i wykonanie grafu klatki, ogrodzenia GPU, cykl życia zasobów per klatka | **silnik** | To jest dokładnie to, czym jest silnik. Host nie ma jak zrobić tego poprawnie i nie powinien próbować. |
-| **Tempo** — docelowy FPS, VSync, oczekiwanie na prezentację | **dzielone** | Polityka pochodzi z konfiguracji hosta; realizacja siedzi przy łańcuchu wymiany i ogrodzeniach, czyli w silniku. |
+| **Pętla zewnętrzna** — kiedy zaczyna się kolejna klatka, obsługa komunikatów okna, własność wątku | **host** | Na Windows komunikaty okna muszą być obsługiwane na tym wątku, który to okno utworzył. W edytorze pętlę prowadzi biblioteka interfejsu użytkownika. Agent chce po prostu `for (i = 0; i < n; i++)`. Silnik nie ma tu nic do powiedzenia. |
+| **Przebieg klatki** — kolejność faz, krok stały, przygotowanie danych do rysowania, budowa i wykonanie grafu klatki, synchronizacja z kartą graficzną, cykl życia zasobów w obrębie klatki | **silnik** | To jest dokładnie to, czym jest silnik. Host nie ma jak zrobić tego poprawnie i nie powinien próbować. |
+| **Tempo klatek** — docelowa liczba klatek na sekundę, VSync, oczekiwanie na wyświetlenie | **dzielone** | Decyzja „jak szybko" pochodzi z konfiguracji hosta; wykonanie siedzi przy swap chainie i fence'ach, czyli w silniku. |
 
 Stąd wniosek: **zdanie „silnik nie jest właścicielem pętli" jest prawdziwe wyłącznie w odniesieniu do pierwszego wiersza.** Wzięte dosłownie i rozciągnięte na dwa pozostałe prowadzi do silnika, który wypycha do hosta akumulator kroku stałego i synchronizację GPU — a to nie jest książkowa czystość, tylko przerzucenie na konsumenta pracy, której nie da się zrobić dobrze z zewnątrz. Z6 mówi więc dokładnie tyle:
 
 - silnik nie tworzy własnego wątku ani nie zajmuje cudzego na wyłączność,
 - silnik nie blokuje w oczekiwaniu na zdarzenia systemowe — jedyne dozwolone oczekiwanie to oczekiwanie na GPU wewnątrz własnej klatki,
-- silnik nie ma **ambientnego** dostępu do czasu; nigdzie w środku nie ma odczytu zegara systemowego, czas wchodzi jako argument,
-- silnik deklaruje swoje wymagania co do wątku (powinowactwo) zamiast zakładać, że zna kontekst wywołania.
+- silnik nigdzie w środku nie odczytuje zegara systemowego — czas wchodzi wyłącznie jako argument taktu,
+- silnik jawnie deklaruje, z jakiego wątku wolno go wołać, zamiast milcząco zakładać, że zna kontekst wywołania.
 
-**Silnik dostarcza gotową pętlę, choć jej nie posiada.** W `Runtime` żyje `StandaloneLoopRunner` — cienki, opcjonalny komponent realizujący `while`, pomiar czasu i tempo. Bez tego każda gra napisze własny akumulator i własne złe tempo klatek. Obowiązuje przy tym twardy warunek: **runner musi być w całości zbudowany na publicznym API i jego usunięcie nie może niczego zepsuć.** To jednocześnie samosprawdzenie kompletności API — jeżeli runner potrzebuje czegoś `internal`, to znaczy, że API ma dziurę.
+**Silnik dostarcza gotową pętlę, choć jej nie posiada.** W `Runtime` żyje `StandaloneLoopRunner` — cienki, opcjonalny komponent, który realizuje `while`, mierzy czas i pilnuje tempa. Bez niego każda gra napisze własne liczenie czasu i własne złe tempo klatek. Obowiązuje przy tym twardy warunek: **ten komponent musi być w całości zbudowany na publicznym API, a jego usunięcie nie może niczego zepsuć.** To jednocześnie sprawdzian kompletności API — jeżeli gotowa pętla potrzebuje czegoś oznaczonego `internal`, to znaczy, że w API jest dziura.
 
 #### Krok czasu
 
-Argumentem taktu nie jest goły `float`, tylko jawna struktura czasu klatki — numer klatki, delta i czas skumulowany. Powód jest praktyczny: goły `float dt` zmusza każdy system, który potrzebuje czegokolwiek poza deltą, do sięgnięcia po zegar globalny, czyli do złamania Z6 tylnymi drzwiami.
+Argumentem taktu nie jest goły `float`, tylko jawna struktura opisująca czas klatki: numer klatki, czas jej trwania i czas od startu. Powód jest praktyczny — sam czas trwania klatki wystarcza tylko najprostszym systemom, a każdy, który potrzebuje czegokolwiek poza nim, sięgnie po zegar globalny i tym samym złamie Z6 tylnymi drzwiami.
 
-Krok stały jest **wewnątrz** silnika: akumulator, limit podkroków i współczynnik interpolacji dla renderowania. Fizyka wymaga stałego kroku, renderowanie chce interpolacji — rozstrzyganie tego w każdym hoście osobno gwarantuje rozjazd.
+Krok stały jest **wewnątrz** silnika: licznik nadmiaru czasu, limit kroków wykonanych w jednej klatce i współczynnik do płynnego rysowania stanu pomiędzy dwoma krokami. Fizyka wymaga stałego kroku, renderowanie chce płynności — rozstrzyganie tego w każdym hoście osobno gwarantuje rozjazd.
 
-Determinizm rozumiemy precyzyjnie: **ta sama sekwencja czasów klatek plus to samo wejście daje ten sam stan świata.** Zegar jest wejściem, nie zależnością — i dlatego agent, który poda sekwencję stałych kroków, dostaje wynik powtarzalny co do bitu, niezależnie od obciążenia maszyny.
+Determinizm rozumiemy precyzyjnie: **ta sama sekwencja czasów klatek plus to samo wejście daje ten sam stan świata.** Zegar jest danymi wejściowymi, nie zależnością — i dlatego agent, który poda sekwencję stałych kroków, dostaje wynik powtarzalny co do bitu, niezależnie od obciążenia maszyny.
 
 #### Przebieg klatki
 
 ```mermaid
 sequenceDiagram
-    participant H as Host (pompa)
+    participant H as Host (pętla zewnętrzna)
     participant E as IEngineHost
     participant W as World
     participant R as RenderGraph
@@ -295,23 +350,23 @@ sequenceDiagram
 
     H->>E: Tick(FrameTiming, state)
     E->>W: systemy fazy Always
-    loop akumulator kroku stałego
+    loop kroki stałe (ile ich potrzeba)
         E->>W: systemy fazy Fixed (gdy state == Playing)
     end
     alt state == Playing
         E->>W: systemy fazy PlayModeOnly
     end
-    E->>E: ekstrakcja widoku ze świata
-    E->>R: buduj graf klatki z widoku
+    E->>E: przygotuj dane do rysowania
+    E->>R: zbuduj graf klatki
     R->>P: wykonaj przebiegi
     E-->>H: FrameResult (uchwyt klatki)
 ```
 
-Host standalone realizuje pętlę `while`. Edytor woła takt z UI. Agent woła takt N razy i porównuje wynik z obrazem wzorcowym. Silnik nie zna różnicy.
+Host gry realizuje pętlę `while`. Edytor woła takt ze swojego interfejsu. Agent woła takt N razy i porównuje wynik z obrazem wzorcowym. Silnik nie zna różnicy.
 
 Systemy deklarują **fazę wykonania** — `Always`, `Fixed`, `PlayModeOnly`, `EditorOnly`. Bez tego rozróżnienia tryb edycji nie jest możliwy: transform i renderowanie muszą działać zawsze, fizyka i logika gry tylko podczas odtwarzania.
 
-**Ekstrakcja widoku** jest osobnym, jawnym krokiem: świat ECS → niezmienna struktura opisująca to, co ma być narysowane. Dziś to głównie porządek; docelowo to jedyne miejsce, które pozwala kiedykolwiek rozdzielić symulację i renderowanie na różne wątki lub różne klatki. Bez niej graf klatki czyta świat w trakcie jego zmiany i pipeline'owanie staje się niemożliwe bez przepisania.
+**Przygotowanie danych do rysowania** jest osobnym, jawnym krokiem: stan świata zostaje przepisany do niezmiennej struktury opisującej, co ma się pojawić na ekranie. Dziś to głównie porządek; docelowo to jedyne miejsce, które pozwala kiedykolwiek rozdzielić symulację i renderowanie na osobne wątki albo osobne klatki. Bez tego kroku graf klatki czyta świat w trakcie jego zmiany, a nakładanie klatek na siebie staje się niemożliwe bez przepisania wszystkiego.
 
 #### Zdarzenia hosta wchodzą jawnie
 
@@ -319,7 +374,7 @@ Zmiana rozmiaru okna, utrata urządzenia graficznego, zmiana fokusu, wejście �
 
 #### Świadomie nierozstrzygnięte
 
-Potokowanie klatek (symulacja klatki N+1 równolegle z renderowaniem N) i model współbieżności systemów. Nie decydujemy o nich teraz, ale API nie może ich wykluczać — dlatego takt zwraca uchwyt klatki zamiast `void` i dlatego ekstrakcja widoku jest w kontrakcie od początku. Obie rzeczy nie kosztują dziś nic, a dokładane później wymagają ruszenia wszystkich systemów.
+Nakładanie klatek na siebie (symulacja klatki N+1 licząca się równolegle z rysowaniem klatki N) oraz model równoległości systemów. Nie decydujemy o nich teraz, ale API nie może ich wykluczać — dlatego takt zwraca uchwyt klatki zamiast `void` i dlatego przygotowanie danych do rysowania jest w kontrakcie od początku. Obie rzeczy nie kosztują dziś nic, a dokładane później wymagają ruszenia wszystkich systemów.
 
 ### 4.3 Powierzchnia prezentacji
 
@@ -333,7 +388,7 @@ flowchart TD
     ITGT --> TEX["TextureTarget<br/>tekstura offscreen"]
     ITGT --> NUL["HeadlessTarget<br/>bez prezentacji"]
 
-    SWAP --> U1["gra standalone"]
+    SWAP --> U1["gra w oknie"]
     TEX --> U2["viewport edytora"]
     TEX --> U3["zrzut klatki dla agenta"]
     NUL --> U4["CI, testy logiki"]
@@ -380,7 +435,7 @@ Rejestr dostarcza: listę zarejestrowanych typów, metadane pól, kategorię, or
 
 ### 4.6 Zakazane w publicznym API
 
-- `Assembly.Load` i wiązanie po nazwach typów — niewidoczne dla kompilatora, wyklucza trimming i AOT
+- `Assembly.Load` i wiązanie po nazwach typów — niewidoczne dla kompilatora, wyklucza trimming i kompilację AOT
 - ścieżki plikowe jako identyfikatory assetów — rozpadają się przy reorganizacji projektu
 - statyczny stan mutowalny i singletony
 - konstruktory zapasowe wypełniające brakujące zależności atrapami (Z5)
@@ -406,8 +461,8 @@ Katalog grupujący (`src/Core/HEngine.Core/`) ma sens przy dwóch modułach i pr
 ```
 HEngine.slnx                        solucja
 Directory.Build.props               wspólne właściwości kompilacji
-Directory.Packages.props            centralne wersje pakietów (CPM)
-.editorconfig                       styl + severity analizatorów
+Directory.Packages.props            wersje pakietów NuGet, wspólne dla repozytorium
+.editorconfig                       styl kodu + waga zgłoszeń analizatorów
 global.json                         przypięcie SDK
 
 src/
@@ -479,7 +534,7 @@ Puste katalogi solucji bez projektów są zakazane — to obietnica struktury, k
 
 To nie jest wygoda, tylko warunek działania §7.4: agent, który nie może zbudować i przetestować silnika na swojej maszynie, nie domyka pętli weryfikacji.
 
-**Format solucji.** Rekomendacja: `.slnx` zamiast `.sln`. Klasyczny format jest oparty na GUID-ach, agresywnie konfliktowy przy scalaniu i praktycznie nieedytowalny ręcznie — a dodanie modułu ma być czynnością rutynową, wykonywaną także przez agenta. `.slnx` jest zwykłym XML-em, w którym dodanie projektu to jedna linia. Do rozstrzygnięcia pozostaje potwierdzenie wersji narzędzi w naszym zestawie (§11 poz. 7).
+**Format solucji.** Rekomendacja: `.slnx` zamiast `.sln`. Klasyczny format identyfikuje projekty przez GUID-y (Globally Unique Identifier — 128-bitowe identyfikatory), agresywnie konfliktowy przy scalaniu i praktycznie nieedytowalny ręcznie — a dodanie modułu ma być czynnością rutynową, wykonywaną także przez agenta. `.slnx` jest zwykłym XML-em, w którym dodanie projektu to jedna linia. Do rozstrzygnięcia pozostaje potwierdzenie wersji narzędzi w naszym zestawie (§11 poz. 7).
 
 **Konfiguracje.** Wyłącznie `Debug` i `Release` na `Any CPU`, z `x64` tam, gdzie backend D3D12 tego wymaga. Konfiguracje `x86` istniejące „na wszelki wypadek" to sześć wariantów buildu, z których nikt nigdy nie zbuduje czterech.
 
@@ -489,12 +544,12 @@ Właściwości powtórzone w każdym pliku projektu rozjeżdżają się — nie 
 
 | Plik | Zawiera |
 |---|---|
-| `Directory.Build.props` (korzeń) | TFM, `Nullable`, `ImplicitUsings`, `LangVersion`, `TreatWarningsAsErrors`, build deterministyczny, wspólne analizatory |
+| `Directory.Build.props` (korzeń) | TFM (Target Framework Moniker — oznaczenie platformy docelowej, np. `net10.0`), `Nullable`, `ImplicitUsings`, `LangVersion`, `TreatWarningsAsErrors`, build deterministyczny, wspólne analizatory |
 | `Directory.Build.props` (`tests/`) | `IsPackable=false`, wspólne `Using` xUnit, pakiety testowe |
-| `Directory.Packages.props` | **Central Package Management** — jedna wersja każdego pakietu dla całego repozytorium |
-| `.editorconfig` | styl kodu i **severity analizatorów** — nośnik reguł z Z7 |
+| `Directory.Packages.props` | **CPM (Central Package Management)** — jedna wersja każdego pakietu NuGet dla całego repozytorium |
+| `.editorconfig` | Styl kodu i **waga zgłoszeń analizatorów** (ostrzeżenie czy błąd) — nośnik reguł z Z7 |
 
-Central Package Management jest tu wprost mechanizmem egzekwującym (Z7): rozjazd wersji tego samego pakietu między projektami przestaje być możliwy, bo wersja występuje w repozytorium dokładnie raz.
+CPM jest tu wprost mechanizmem egzekwującym (Z7): rozjazd wersji tego samego pakietu między projektami przestaje być możliwy, bo wersja występuje w repozytorium dokładnie raz.
 
 Docelowo plik projektu modułu zawiera prawie wyłącznie referencje. TFM, nullable i reszta znikają z niego — jeśli występują, to znaczy, że moduł świadomie odstaje od reszty i to odstępstwo jest widoczne.
 
@@ -541,7 +596,7 @@ Ostatnia pozycja nie wymaga teraz budowania systemu komend — wystarczy dyscypl
 
 ### 6.3 Świadomie nierozstrzygnięte
 
-Framework UI edytora, model dokowania, skrypting i hot-reload kodu gry, format pliku projektu. Żadna z tych decyzji nie jest przesądzana przez architekturę silnika — i to jest zamierzone. Decyzja o UI jest odwracalna, decyzje z §6.2 nie są.
+Biblioteka interfejsu użytkownika edytora, model dokowania paneli, skrypty i hot-reload kodu gry, format pliku projektu. Żadna z tych decyzji nie jest przesądzana przez architekturę silnika — i to jest zamierzone. Decyzja o interfejsie użytkownika jest odwracalna, decyzje z §6.2 nie są.
 
 ---
 
@@ -569,12 +624,12 @@ Agent nie przeczyta `CONTRIBUTING.md` przed każdą zmianą, ale **zawsze** zoba
 |---|---|
 | Kierunek zależności (Z1) | Test w `HEngine.Architecture.Tests` |
 | Runtime bez backendów (Z8) | Test zależności + rozdzielone TFM (§5.5) |
-| Zakaz `Assembly.Load` i wiązania po nazwach | Analizator, severity = error |
-| Brak konstruktorów zapasowych (Z5) | Test kompozycji DI weryfikujący komplet zależności |
+| Zakaz `Assembly.Load` i wiązania po nazwach | Analizator zgłaszający to jako błąd, nie ostrzeżenie |
+| Brak konstruktorów zapasowych (Z5) | Test składania zależności weryfikujący, że kontener dostarcza komplet |
 | Brak odczytu zegara w silniku (Z6) | Analizator zakazanych API |
 | Budżet rozmiaru (§3.5) | Kontrola w CI, ostrzeżenie |
 | Granica `public` / `internal` | Test powierzchni API |
-| Spójność wersji pakietów | Central Package Management (§5.4) |
+| Spójność wersji pakietów | CPM — jedna wersja w całym repozytorium (§5.4) |
 
 Komunikat błędu jest częścią interfejsu dla agenta. „Moduł Scene nie może zależeć od Rendering — przenieś typ do Foundation albo odwróć zależność" jest instrukcją. „Assertion failed" nią nie jest.
 
@@ -606,7 +661,7 @@ Transportem tej pętli jest serwer MCP (§8) — agent nie uruchamia dedykowaneg
 
 Przewidywany kierunek rozwoju to praca kilku agentów równolegle nad różnymi obszarami. Wtedy granica modułu przestaje być wyłącznie pojęciem architektonicznym i staje się granicą konfliktów scalania.
 
-Praktyczne konsekwencje: zadanie nie powinno wymagać edycji więcej niż jednego modułu, punkty rejestracji są rozproszone po modułach zamiast skupione w jednym pliku (Z4), testy są przypisane do modułu — co daje wąską, szybką pętlę zwrotną zamiast pełnego przebiegu całego zestawu — a format solucji jest scalalny (§5.3).
+Praktyczne konsekwencje: zadanie nie powinno wymagać edycji więcej niż jednego modułu, punkty rejestracji są rozproszone po modułach zamiast skupione w jednym pliku (Z4), testy są przypisane do modułu — co daje wąską, szybką pętlę zwrotną zamiast pełnego przebiegu całego zestawu — a plik solucji daje się scalać bez ręcznego rozstrzygania konfliktów (§5.3).
 
 ### 7.6 Introspekcja jako narzędzie
 
@@ -625,6 +680,8 @@ Krótkie ADR-y dla decyzji nieoczywistych. Powód jest specyficzny dla pracy z a
 ---
 
 ## 8. MCP — silnik jako serwer narzędzi
+
+MCP (Model Context Protocol) to protokół, przez który agent AI wywołuje narzędzia udostępniane mu przez program. Ta sekcja jest o tym, żeby silnik takie narzędzia udostępniał.
 
 ### 8.1 Dwa kierunki, tylko jeden jest architekturą
 
@@ -664,7 +721,7 @@ flowchart TD
 | Tryb | Co hostuje | Zastosowanie | Dostępność |
 |---|---|---|---|
 | **Headless (domyślny)** | Serwer tworzy własny `Runtime` z `HeadlessTarget` lub `TextureTarget` | Wczytaj scenę, przetaktuj N klatek, zrzuć obraz, porównaj z wzorcem | Zawsze, także na maszynie bez GPU |
-| **Podpięcie do procesu** | Serwer żyje w działającej grze lub edytorze | Podgląd żywej sesji, diagnostyka, ręczna eksploracja | Tylko buildy deweloperskie, nasłuch na loopbacku, wyłączony w Release |
+| **Podpięcie do procesu** | Serwer żyje w działającej grze lub edytorze | Podgląd żywej sesji, diagnostyka, ręczna eksploracja | Tylko buildy deweloperskie, nasłuch tylko lokalny (loopback), wyłączony w Release |
 
 W trybie podpięcia obowiązuje twarda reguła: **żądania MCP wykonują się w zdefiniowanym punkcie klatki, nigdy równolegle z taktem.** Kolejka żądań jest opróżniana w tym samym punkcie mutacji, przez który przechodzą komendy edytora (§4.1 poz. 4). Serwer wywołujący zapisy w dowolnym momencie jest generatorem wyścigów, których nikt nigdy nie odtworzy — i to jest właśnie ten rodzaj usterki, którego agent nie potrafi zdiagnozować.
 
@@ -685,7 +742,7 @@ Kształt docelowy. Kolumna po prawej pokazuje, dzięki której właściwości AP
 | `frame.capture` | Obraz klatki | `TextureTarget` (§4.3) |
 | `frame.compare` | Metryka różnicy wobec wzorca | Headless + `Testing` (poz. 6) |
 | `assets.list` / `assets.import` | Katalog assetów po GUID | ID zamiast ścieżek (poz. 7) |
-| `diagnostics.counters` | Czasy klatki, liczniki draw call | Diagnostyka w `Foundation` |
+| `diagnostics.counters` | Czasy klatki, liczba draw calli | Diagnostyka w `Foundation` |
 
 Warto zauważyć, czego na tej liście **nie ma**: żadne z tych narzędzi nie wymaga niczego, czego §4 nie wymaga już z innych powodów. **MCP nie dokłada wymagań do architektury — ujawnia te, które i tak są.** To jest argument za tym, żeby serwer powstał wcześnie: nie dlatego, że jest pilny sam w sobie, tylko dlatego, że jest najtańszym znanym testem na to, czy publiczne API rzeczywiście jest tym, za co się podaje.
 
@@ -710,11 +767,11 @@ Podsumowanie tezy z §1 — te same właściwości API obsługują wszystkich ko
 
 | Właściwość | Gra | Edytor | Agent AI |
 |---|:--:|:--:|:--:|
-| Host jest właścicielem pompy klatek (Z6, §4.2) | ○ | ● | ● |
-| Silnik jest właścicielem orkiestracji klatki (§4.2) | ● | ● | ● |
+| Host jest właścicielem pętli zewnętrznej (Z6, §4.2) | ○ | ● | ● |
+| Silnik jest właścicielem przebiegu klatki (§4.2) | ● | ● | ● |
 | Headless jako pełny tryb | ○ | ○ | ● |
 | Deterministyczny takt z jawnym czasem | ● | ● | ● |
-| Ekstrakcja widoku jako osobny krok | ● | ○ | ○ |
+| Przygotowanie danych do rysowania jako osobny krok | ● | ○ | ○ |
 | Świat bez singletonu | ○ | ● | ● |
 | Rejestr typów komponentów | ○ | ● | ● |
 | Jeden punkt mutacji stanu | ○ | ● | ● |
@@ -739,7 +796,7 @@ Wszystkie odniesienia do bieżącego zachowania silnika są skupione tutaj. Szcz
 | Decyzja docelowa | Odpowiada na | Ustalenie |
 |---|---|---|
 | Z5 — brak konstruktorów zapasowych | Konstruktor zapasowy `RenderPipeline` cicho wyłącza cienie i post-processing | #4 |
-| Z5 + test kompozycji DI (§7.2) | Trzy ukończone fazy nieosiągalne z pętli gry, bo niezarejestrowane | #3 |
+| Z5 + test składania zależności (§7.2) | Trzy ukończone fazy nieosiągalne z pętli gry, bo niezarejestrowane | #3 |
 | Z1 + zakaz wiązania po nazwach (§4.6) | `Assembly.Load("HEngine.Rendering")` w `AssetManager` przebija granicę warstw | §6.3 analizy |
 | Z4 — rejestracja w module | Centralna lista rejestracji w `ServiceCollectionExtensions` jako punkt konfliktów | §7.5 |
 | Z2 + budżet rozmiaru (§3.5) | Katalog `Managers/` z 21 niepowiązanymi klasami | §6.4 analizy |
@@ -748,7 +805,7 @@ Wszystkie odniesienia do bieżącego zachowania silnika są skupione tutaj. Szcz
 | §4.3 — rozdzielenie urządzenia, celu i okna | Zrośnięty kontrakt renderowania; brak jakiejkolwiek ścieżki offscreen | §3, §6 analizy |
 | §4.2 — jawny czas klatki, tempo z konfiguracji | `PerformanceSettings` nieodczytywane; pętla bez ograniczenia klatek | #17 |
 | Z8 + filtr `portable` (§5.3) | Cała warstwa renderowania jest Windows-only, a kompozycja z nią zrośnięta | §3 analizy |
-| §5.4 — Central Package Management | Rozjazd wersji `StbImageSharp` między projektami | §9 analizy |
+| §5.4 — CPM, jedna wersja pakietu w repozytorium | Rozjazd wersji `StbImageSharp` między projektami | §9 analizy |
 | §5.5 — zakaz pustych `<Folder Include>` | Puste katalogi-obietnice w plikach projektów i pusty `Src/Core/Mathematics/` | #19 |
 | §7.4 — zamknięta pętla weryfikacji | Zero testów integracyjnych ścieżki renderowania; zieloność testów nie oznacza działającej funkcji | §9 analizy |
 | §5.2 — `samples/` zamiast korzeniowego exe | `GameEngine` łączy kompozycję, scenę demo i logikę silnika | §4 analizy |
@@ -766,11 +823,11 @@ Dwie uwagi o charakterze ogólnym, bez których tabela byłaby myląca:
 |---|---|---|---|
 | 1 | Liczba modułów runtime | 10 wg §3.2 · scalenie do 7 (`Scene`→`ECS`, `Serialization`→`Assets`, `Platform` bez podziału) | 10 — każda granica ma uzasadnienie w Z3, a rozdział `Platform` na kontrakty i backend jest warunkiem Z8 |
 | 2 | Postać identyfikatora typu komponentu | Jawny GUID w atrybucie · stabilny string | Do rozstrzygnięcia; rzutuje na ergonomię i format sceny |
-| 3 | Format sceny | Tekstowy mergowalny · binarny | Tekstowy — mergowalność w Git i czytelność dla agenta |
+| 3 | Format sceny | Tekstowy dający się scalać · binarny | Tekstowy — daje się scalać w Git i jest czytelny dla agenta |
 | 4 | Los `NetworkWriter` | Rozwijać jako `HEngine.Network` · usunąć | Usunąć — wzorzec i tak wymaga przeprojektowania pod rejestr typów |
 | 5 | Budżet rozmiaru modułu | Per moduł · per katalog funkcji dla backendów (§3.5) · brak | Wariant z §3.5, jako ostrzeżenie w CI, nie twardy błąd |
-| 6 | Runner pętli w `Runtime` | Dostarczyć jako opcjonalny · zostawić hostom | Dostarczyć — z warunkiem, że stoi wyłącznie na publicznym API (§4.2) |
-| 7 | Format solucji | `.slnx` · pozostać przy `.sln` | `.slnx` — po potwierdzeniu wsparcia w naszych wersjach narzędzi |
+| 6 | Gotowa pętla w `Runtime` | Dostarczyć jako opcjonalną · zostawić hostom | Dostarczyć — z warunkiem, że stoi wyłącznie na publicznym API (§4.2) |
+| 7 | Format pliku solucji | `.slnx` · pozostać przy `.sln` | `.slnx` — po potwierdzeniu wsparcia w naszych wersjach narzędzi |
 | 8 | Układ katalogów | Płaskie `src/<Moduł>/` (§5.1) · zachować grupowanie `Src/<Obszar>/<Moduł>/` | Płaskie — ścieżka wyprowadzalna z nazwy assembly |
 | 9 | Moment powstania serwera MCP | Wcześnie, równolegle z API · po ustabilizowaniu modułów | Wcześnie — jest testem kompletności API (§8.2), nie nadbudową nad nim |
 | 10 | Zakres zapisu w MCP | Odczyt + zapis za flagą · wyłącznie odczyt | Odczyt + zapis za flagą, domyślnie wyłączony (§8.7) |
@@ -788,6 +845,6 @@ Trzy reguły niosą nieproporcjonalnie dużą część wartości:
 - **Z7** — niezmiennik nieegzekwowany maszynowo nie istnieje — jest jedynym mechanizmem, który utrzyma pozostałe zasady w mocy, gdy część zmian będzie powstawać automatycznie.
 - **Z8** — kompozycja backendu należy do hosta — jest różnicą między trybem headless jako zdolnością a trybem headless jako deklaracją, a od niej zależy zarówno CI bez GPU, jak i samodzielna praca agenta.
 
-Dwie korekty względem poprzedniej wersji dokumentu warto wymienić osobno, bo zmieniają treść, a nie tylko układ. Po pierwsze: **silnik nie posiada pompy klatek, ale jest właścicielem orkiestracji klatki** — wypchnięcie akumulatora kroku stałego i synchronizacji GPU do hosta byłoby czystością pozorną, kupioną kosztem konsumenta. Po drugie: **warstwa kompozycji nie referuje backendów** — poprzedni graf wiązał `Runtime` z D3D12, co unieważniałoby tryb headless niezależnie od tego, ile razy dokument nazwie go pełnoprawnym.
+Dwie korekty względem poprzedniej wersji dokumentu warto wymienić osobno, bo zmieniają treść, a nie tylko układ. Po pierwsze: **silnik nie prowadzi pętli zewnętrznej, ale jest właścicielem przebiegu klatki** — wypchnięcie kroku stałego i synchronizacji z kartą graficzną do hosta byłoby czystością pozorną, kupioną kosztem konsumenta. Po drugie: **warstwa kompozycji nie referuje backendów** — poprzedni graf wiązał `Runtime` z D3D12, co unieważniałoby tryb headless niezależnie od tego, ile razy dokument nazwie go pełnoprawnym.
 
 Warto też odnotować, co z tego dokumentu **nie** wynika. Nie przesądzamy technologii UI edytora, modelu współbieżności systemów, potokowania klatek ani formatu plików projektu. Te decyzje są odwracalne. Odwracalne nie są: własność okna, podział odpowiedzialności za klatkę, czas życia świata, sposób identyfikacji typów komponentów i kierunek referencji do backendów — i wyłącznie te pięć musi zostać rozstrzygnięte zawczasu.
