@@ -92,7 +92,23 @@ A subsystem is done when it is **reachable from the game loop and its effect is 
 ## 7. Scope discipline
 
 - One task at a time; finish it before starting another.
+- Write Polish documents in Polish, not translated from English (§8).
 - Keep pull requests small: roughly ≤400 changed lines and ≤15 files.
 - Do not commit until the work has been reviewed and you get an explicit go-ahead.
 - Ask when a requirement or expected behaviour is unclear rather than assuming.
 - Prefer the Rider MCP tools over raw console commands; fall back to the console when they fail.
+
+## 8. Writing documents
+
+Planning documents in `docs/` are written in Polish. Code, comments, commits, pull requests and issues stay in English — see `CONVENTIONS.md`.
+
+A Polish document must read as if it were written in Polish, not translated from an English draft. Word-for-word renderings of English jargon are the main failure mode here and they are not acceptable:
+
+- **Never calque a term.** A "pump" is not a `pompa`, a "GPU fence" is not an `ogrodzenie GPU`, a "swap chain" is not a `łańcuch wymiany`, "mergeable" is not `mergowalny`. When a literal rendering would puzzle a Polish reader, name the thing by what it does — `pętla zewnętrzna`, `synchronizacja z GPU` — or keep the established English term and gloss it once.
+- **Expand every abbreviation on first use**, in parentheses, with what it means — not just what the letters stand for. This includes ones that feel obvious in context: MCP, DI, CI, TFM, CPM, AOT, ADR, ECS, PSO.
+- **Keep an English term untranslated when it is the name actually used in the field** (backend, headless, swap chain, singleton, culling). Translating those invents private vocabulary that no one else uses. Gloss each one once in parentheses.
+- **Any document introducing more than a handful of terms carries a glossary near the top**, before the body.
+- **One term, one meaning, and it is in the glossary.** Reusing a word for two different concepts is as damaging as a calque and harder to spot — `faza` meaning both a stage of the frame and a condition for running a system left the document with two incompatible readings of the same sentence. If a word is doing two jobs, one of them needs a different word, and both belong in the glossary.
+- Coin no new Polish jargon. If a term needs a paragraph of explanation, the term is wrong.
+
+Test before committing a document: could someone who knows C# and game development, but has never read the English sources behind these ideas, read each paragraph once and understand it? If a sentence only parses after mentally translating it back into English, rewrite it.
