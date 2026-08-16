@@ -37,11 +37,15 @@ Dokument posługuje się kilkoma pojęciami w ustalonym, wąskim znaczeniu. Kilk
 |---|---|
 | **host** | Program, który tworzy silnik, jest właścicielem okna i wątku i wywołuje kolejne klatki. Hostem jest gra, edytor, serwer narzędzi albo test — silnik sam hostem nie jest i nie zna różnicy między nimi. |
 | **pętla zewnętrzna** | Ta część pętli gry, która należy do hosta: decyzja, kiedy zaczyna się kolejna klatka, oraz obsługa komunikatów okna. Nazwana osobno, bo tylko ona jest poza silnikiem (§4.2). |
-| **przebieg klatki** | Wszystko, co dzieje się wewnątrz jednej klatki i w jakiej kolejności: fazy systemów, krok stały, przygotowanie danych do rysowania, wykonanie przebiegów renderowania. Należy do silnika. |
+| **przebieg klatki** | Wszystko, co dzieje się wewnątrz jednej klatki i w jakiej kolejności: etapy systemów, krok stały, przygotowanie danych do rysowania, wykonanie przebiegów renderowania. Należy do silnika. |
+| **etap klatki** | Miejsce w przebiegu klatki, w którym wykonuje się dana grupa systemów — odpowiada na pytanie *kiedy w obrębie klatki*. Etapy są uporządkowane i wykonują się zawsze w tej samej kolejności (§4.2). |
+| **warunek wykonania** | Stan świata, w którym system w ogóle się wykonuje — odpowiada na pytanie *czy w tej klatce*. Wyrażany przez stany z §4.4, nie przez to, kto jest hostem. Pojęcie rozłączne z etapem klatki. |
 | **takt** | Pojedyncze wywołanie „wykonaj jedną klatkę" (`Tick`). Silnik nie wie, kto i jak często go woła. |
 | **krok stały** | Symulacja liczona zawsze tym samym wycinkiem czasu, niezależnie od tego, ile trwała klatka. Wymaga licznika nadmiaru czasu, który przenosi resztę do następnej klatki. |
 | **przygotowanie danych do rysowania** | Osobny krok, w którym stan świata zostaje przepisany do niezmiennego opisu tego, co ma zostać narysowane. Renderowanie czyta ten opis, a nie żywy świat. |
 | **cel prezentacji** | Miejsce, w które trafia gotowa klatka: okno, tekstura albo nic (§4.3). |
+| **stempel wersji** | Licznik przypisany do tablicy komponentów, podbijany przy każdym wydaniu dostępu do zapisu. Pozwala zapytać „co zmieniło się od wersji N" bez śledzenia pojedynczych zapisów (§4.6). |
+| **schemat komponentu** | Zestaw pól komponentu wraz z ich identyfikatorami i typami, w postaci, w jakiej trafia do zapisanej sceny. Zmienia się w czasie i dlatego wymaga reguł zgodności (§4.5). |
 | **moduł** | Jeden projekt, jedno assembly, jedna przestrzeń nazw główna, jeden projekt testów (§5.5). |
 | **konsument** | Ktokolwiek korzysta z publicznego API silnika: kod gry, edytor, agent AI, test. |
 
@@ -296,7 +300,7 @@ Backend graficzny z natury nie zmieści się w 4000 liniach i udawanie inaczej s
 
 Sekcja definiuje, co znaczy „mocne API" w tym projekcie. Każda właściwość jest uzasadniona konkretnym konsumentem.
 
-### 4.1 Dziesięć właściwości
+### 4.1 Dwanaście właściwości
 
 | # | Właściwość | Konsument, który tego wymaga |
 |---|---|---|
@@ -304,12 +308,14 @@ Sekcja definiuje, co znaczy „mocne API" w tym projekcie. Każda właściwość
 | 2 | Silnik nie posiada okna ani pętli zewnętrznej (Z6) | edytor, agent |
 | 3 | Introspekcja: rejestry typów komponentów, modułów, systemów, przebiegów | edytor, agent |
 | 4 | Jeden przechwytywalny punkt mutacji stanu | edytor (undo/redo), MCP |
-| 5 | Determinizm: takt z jawnie podanym czasem | agent, testy |
-| 6 | Headless jako pełnoprawny tryb, nie ścieżka awaryjna | agent, CI |
-| 7 | Stabilne identyfikatory zamiast nazw typów i ścieżek | edytor, serializacja |
-| 8 | Rozszerzalność przez rejestrację, bez modyfikacji silnika | gra, edytor |
-| 9 | Błąd zamiast cichej degradacji (Z5) | wszyscy trzej |
-| 10 | Jawna granica `public` / `internal` | wszyscy trzej |
+| 5 | Obserwowalność zmian: „co zmieniło się od wersji N" (§4.6) | edytor, sieć, agent |
+| 6 | Determinizm: takt z jawnie podanym czasem | agent, testy |
+| 7 | Headless jako pełnoprawny tryb, nie ścieżka awaryjna | agent, CI |
+| 8 | Stabilne identyfikatory typów **i pól**, zamiast nazw i ścieżek | edytor, serializacja |
+| 9 | Rozszerzalność przez rejestrację, bez modyfikacji silnika | gra, edytor |
+| 10 | Błąd zamiast cichej degradacji (Z5) | wszyscy trzej |
+| 11 | Jawna granica `public` / `internal` | wszyscy trzej |
+| 12 | Jawny kontrakt alokacji i czasu życia danych (§4.7) | gra, agent |
 
 ### 4.2 Klatka: co należy do hosta, a co do silnika
 
@@ -318,7 +324,7 @@ To najczęściej upraszczana część projektu silnika, więc rozstrzygamy ją w
 | Warstwa | Właściciel | Dlaczego |
 |---|---|---|
 | **Pętla zewnętrzna** — kiedy zaczyna się kolejna klatka, obsługa komunikatów okna, własność wątku | **host** | Na Windows komunikaty okna muszą być obsługiwane na tym wątku, który to okno utworzył. W edytorze pętlę prowadzi biblioteka interfejsu użytkownika. Agent chce po prostu `for (i = 0; i < n; i++)`. Silnik nie ma tu nic do powiedzenia. |
-| **Przebieg klatki** — kolejność faz, krok stały, przygotowanie danych do rysowania, budowa i wykonanie grafu klatki, synchronizacja z kartą graficzną, cykl życia zasobów w obrębie klatki | **silnik** | To jest dokładnie to, czym jest silnik. Host nie ma jak zrobić tego poprawnie i nie powinien próbować. |
+| **Przebieg klatki** — kolejność etapów, krok stały, przygotowanie danych do rysowania, budowa i wykonanie grafu klatki, synchronizacja z kartą graficzną, cykl życia zasobów w obrębie klatki | **silnik** | To jest dokładnie to, czym jest silnik. Host nie ma jak zrobić tego poprawnie i nie powinien próbować. |
 | **Tempo klatek** — docelowa liczba klatek na sekundę, VSync, oczekiwanie na wyświetlenie | **dzielone** | Decyzja „jak szybko" pochodzi z konfiguracji hosta; wykonanie siedzi przy swap chainie i fence'ach, czyli w silniku. |
 
 Stąd wniosek: **zdanie „silnik nie jest właścicielem pętli" jest prawdziwe wyłącznie w odniesieniu do pierwszego wiersza.** Wzięte dosłownie i rozciągnięte na dwa pozostałe prowadzi do silnika, który wypycha do hosta akumulator kroku stałego i synchronizację GPU — a to nie jest książkowa czystość, tylko przerzucenie na konsumenta pracy, której nie da się zrobić dobrze z zewnątrz. Z6 mówi więc dokładnie tyle:
@@ -348,14 +354,14 @@ sequenceDiagram
     participant R as RenderGraph
     participant P as IPresentationTarget
 
-    H->>E: Tick(FrameTiming, state)
-    E->>W: systemy fazy Always
-    loop kroki stałe (ile ich potrzeba)
-        E->>W: systemy fazy Fixed (gdy state == Playing)
+    H->>E: Tick(FrameTiming)
+    E->>W: etap wczesny — systemy o warunku „zawsze"
+    alt świat w stanie odtwarzania
+        loop kroki stałe (ile ich potrzeba)
+            E->>W: etap kroku stałego
+        end
     end
-    alt state == Playing
-        E->>W: systemy fazy PlayModeOnly
-    end
+    E->>W: etap główny — wg warunku wykonania
     E->>E: przygotuj dane do rysowania
     E->>R: zbuduj graf klatki
     R->>P: wykonaj przebiegi
@@ -364,7 +370,18 @@ sequenceDiagram
 
 Host gry realizuje pętlę `while`. Edytor woła takt ze swojego interfejsu. Agent woła takt N razy i porównuje wynik z obrazem wzorcowym. Silnik nie zna różnicy.
 
-Systemy deklarują **fazę wykonania** — `Always`, `Fixed`, `PlayModeOnly`, `EditorOnly`. Bez tego rozróżnienia tryb edycji nie jest możliwy: transform i renderowanie muszą działać zawsze, fizyka i logika gry tylko podczas odtwarzania.
+#### Etap klatki i warunek wykonania to dwie różne rzeczy
+
+System deklaruje **dwie niezależne właściwości**, a mieszanie ich w jedno wyliczenie jest błędem, który później trudno cofnąć:
+
+| Właściwość | Odpowiada na pytanie | Wartości |
+|---|---|---|
+| **Etap klatki** | *Kiedy w obrębie klatki?* | wczesny · krok stały · główny · po symulacji |
+| **Warunek wykonania** | *Czy w tej klatce w ogóle?* | zawsze · tylko w świecie odtwarzania · tylko w świecie edycji |
+
+Rozdzielenie ma dwa konkretne skutki. Po pierwsze, system fizyki jest „etap kroku stałego + tylko w świecie odtwarzania", a system transformów „etap główny + zawsze" — w jednym wyliczeniu trzeba by na to osobnej wartości dla każdej kombinacji. Po drugie, i ważniejsze: **warunek wykonania jest wyrażony przez stany świata z §4.4, nie przez to, kto jest hostem.** „Tylko w świecie edycji" jest własnością świata; „tylko w edytorze" byłoby wiedzą silnika o edytorze, a tej silnik mieć nie może (§6.1). Ta sama deklaracja działa więc identycznie, gdy świat edycji taktuje agent przez MCP albo test, w procesie, w którym żadnego edytora nie ma.
+
+Bez tego rozróżnienia tryb edycji nie jest możliwy: transformy i renderowanie muszą działać zawsze, fizyka i logika gry tylko podczas odtwarzania.
 
 **Przygotowanie danych do rysowania** jest osobnym, jawnym krokiem: stan świata zostaje przepisany do niezmiennej struktury opisującej, co ma się pojawić na ekranie. Dziś to głównie porządek; docelowo to jedyne miejsce, które pozwala kiedykolwiek rozdzielić symulację i renderowanie na osobne wątki albo osobne klatki. Bez tego kroku graf klatki czyta świat w trakcie jego zmiany, a nakładanie klatek na siebie staje się niemożliwe bez przepisania wszystkiego.
 
@@ -396,7 +413,7 @@ flowchart TD
 
 Ta jedna abstrakcja obsługuje cztery scenariusze. Odpowiada jej rozdzielenie trzech niezależnych kontraktów: urządzenie graficzne (adapter, kolejki), cel prezentacji (rozmiar, resize, present) oraz host okna i wejścia w module `Platform`.
 
-`HeadlessTarget` nie jest atrapą do testów — jest trybem, w którym silnik wykonuje pełną logikę klatki bez urządzenia graficznego. Dopiero to czyni własność #6 z §4.1 realną.
+`HeadlessTarget` nie jest atrapą do testów — jest trybem, w którym silnik wykonuje pełną logikę klatki bez urządzenia graficznego. Dopiero to czyni własność #7 z §4.1 realną.
 
 ### 4.4 Świat i jego cykl życia
 
@@ -422,7 +439,7 @@ Pojedynczy mechanizm obsługujący pięć niezależnych potrzeb. To najlepiej zw
 
 ```mermaid
 flowchart TD
-    REG["Rejestr typów komponentów<br/>stabilne ID · pola · kategorie"]
+    REG["Rejestr typów komponentów<br/>stabilne ID typów i pól · wersja schematu · kategorie"]
 
     REG --> S1["Serializacja sceny<br/>zapis po ID, nie po nazwie typu"]
     REG --> S2["Inspektor edytora<br/>edycja typów nieznanych w kompilacji"]
@@ -433,7 +450,59 @@ flowchart TD
 
 Rejestr dostarcza: listę zarejestrowanych typów, metadane pól, kategorię, oraz odczyt i zapis komponentu po identyfikatorze runtime. **Identyfikator musi być stabilny i jawny** — nie `Type.FullName`, bo nazwa typu zmienia się przy refaktoryzacji, a zapisane sceny muszą to przetrwać.
 
-### 4.6 Zakazane w publicznym API
+#### Ewolucja schematu komponentu
+
+Stabilny identyfikator typu rozwiązuje tylko połowę problemu. Druga połowa pojawia się przy pierwszej zmianie samego komponentu: dodajesz pole, zmieniasz nazwę pola, usuwasz pole, zmieniasz znaczenie pola — a na dysku leżą sceny zapisane wcześniej. Rozstrzygamy to dwupoziomowo, bo problem ma dwie warstwy o zupełnie różnym koszcie.
+
+**Poziom strukturalny — identyfikatory pól.** Każde pole komponentu ma stabilny identyfikator, tak samo jak typ. Wynikają z tego trzy zachowania czytnika, wszystkie domyślne i niewymagające niczyjej pracy:
+
+| Zmiana | Co się dzieje przy odczycie starej sceny |
+|---|---|
+| Zmiana nazwy pola | Nic — identyfikator się nie zmienił |
+| Dodanie pola | Brak w pliku, więc wartość domyślna zadeklarowana przy polu |
+| Usunięcie pola | Nieznany identyfikator jest pomijany |
+
+Czytnik jest więc **tolerancyjny z założenia**: nieznane pole pomija, brakujące uzupełnia domyślną wartością. To pokrywa większość zmian, jakie zachodzą w praktyce, i nie wymaga napisania ani jednej migracji.
+
+**Poziom semantyczny — wersja schematu.** Identyfikator pola nie wyłapie zmiany, w której pole zostaje na miejscu, ale zaczyna znaczyć co innego: metry zamiast centymetrów, inny układ współrzędnych, jedno pole rozbite na dwa. Dla takich przypadków typ komponentu niesie **numer wersji schematu**, a przejście między wersjami jest jawną funkcją migracji rejestrowaną razem z komponentem, w module, który ten komponent definiuje (Z4). Odczyt sceny zapisanej w starszej wersji przepuszcza dane przez kolejne migracje; brak migracji dla napotkanej wersji jest błędem wczytania, nie cichym pominięciem (Z5).
+
+Podział istnieje po to, żeby migracje pisać wyłącznie tam, gdzie są nieuniknione. Koszt wprowadzenia tego teraz jest bliski zeru, bo rejestr z metadanymi pól i tak powstaje. Koszt wprowadzenia później jest inny z natury: **identyfikatorów pól nie da się dodać wstecznie**, bo wszystkie już zapisane sceny są od nich starsze i nie ma czego z czym powiązać.
+
+### 4.6 Śledzenie zmian w świecie
+
+Konsumenci potrzebują nie tylko odczytu stanu świata, ale też odpowiedzi na pytanie **co się w nim zmieniło**. Inspektor edytora ma pokazywać aktualne wartości, nie odświeżać wszystkiego co klatkę. Replikacja sieciowa wysyła różnicę, nie cały świat. Agent po takcie chce wiedzieć, czy jego zmiana w ogóle coś poruszyła.
+
+```mermaid
+flowchart TD
+    VER["Stempel wersji<br/>licznik na tablicę komponentów"]
+
+    VER --> C1["Inspektor edytora<br/>odświeżenie tylko tego, co się zmieniło"]
+    VER --> C2["Replikacja sieciowa<br/>różnica zamiast pełnego stanu"]
+    VER --> C3["Weryfikacja przez agenta<br/>czy takt cokolwiek zmienił"]
+    VER --> C4["Unieważnianie zapytań i cache'y<br/>zamiast przeliczania co klatkę"]
+```
+
+**Mechanizmem nie jest strumień zdarzeń, tylko stempel wersji.** Powód jest konkretny i wynika z modelu dostępu do komponentów: mutacja bez kopiowania odbywa się przez `ref` wydany na zewnątrz, więc świat z definicji nie widzi momentu zapisu i nie ma jak wyemitować zdarzenia. Strumień zdarzeń wymagałby albo rezygnacji z dostępu przez `ref`, albo drugiej, deklarującej ścieżki zapisu, którą wszyscy prędzej czy później obejdą.
+
+Stempel wersji nie ma tego problemu, bo liczy nie zapisy, tylko **wydania dostępu do zapisu**: każda tablica komponentów w świecie ma licznik podbijany w momencie, gdy ktoś prosi o `ref` albo o zapisywalny widok. Konsument zapamiętuje wersję i pyta „co zmieniło się od N". Mechanizm jest przybliżeniem od góry — potrafi zgłosić zmianę, której nie było, nigdy nie przegapi tej, która nastąpiła. Dla wszystkich czterech zastosowań powyżej to właściwy kompromis, bo każde z nich i tak kończy się porównaniem wartości.
+
+Rozdzielenie względem właściwości #4 z §4.1 jest celowe: **punkt mutacji odpowiada na pytanie „przez co przechodzi zmiana" i obsługuje undo/redo, stempel wersji odpowiada na pytanie „co się zmieniło" i obsługuje obserwację.** To dwa różne mechanizmy i żaden nie zastępuje drugiego.
+
+Koszt teraz: jedno pole na tablicę komponentów i jedno podbicie w miejscu, które i tak już istnieje. Koszt później: audyt każdej ścieżki zapisu w silniku, który do tego czasu urośnie — czyli ta sama kategoria co pozycje z §6.2, do której ta właściwość dołącza.
+
+### 4.7 Kształt API: alokacje i czas życia danych
+
+Sekcja celowo krótka. **Rozstrzygamy tu zasadę, nie kontrakty** — konkretne sygnatury doprecyzujemy przy projektowaniu poszczególnych modułów. Zapisujemy ją mimo to, bo kształt API decyduje się raz i zmienia się drogo: publiczna metoda, która alokuje przy każdym wywołaniu, nie da się później „odalokować" bez zmiany sygnatury u wszystkich konsumentów.
+
+Zasada brzmi: **publiczne API deklaruje, co alokuje i jak długo żyją dane, które zwraca.** Trzy wynikające z niej reguły:
+
+- **Ścieżki wykonywane co klatkę nie alokują** — przechodzenie zapytań, dostęp do komponentów, budowa danych do rysowania. To jest ta część API, która wykona się kilkadziesiąt tysięcy razy na sekundę.
+- **Dane o czasie życia klatki są jawnie oznaczone jako takie** i nie wolno ich przechowywać dłużej. Konsument, który zatrzyma sobie taki widok, ma zobaczyć błąd, a nie ciche uszkodzenie danych (Z5).
+- **Publiczne API nie zwraca `IEnumerable<T>` na ścieżkach klatkowych** ani niczego, co wymusza alokację przy iteracji. Poza ścieżkami klatkowymi — konfiguracja, introspekcja, narzędzia — wygoda jest ważniejsza niż alokacja i ta reguła nie obowiązuje.
+
+Ostatnie zdanie jest istotne: to nie jest reguła „nigdzie nie alokujemy", tylko rozdzielenie API na część gorącą i część chłodną, z jawnie powiedzianym, która jest która.
+
+### 4.8 Zakazane w publicznym API
 
 - `Assembly.Load` i wiązanie po nazwach typów — niewidoczne dla kompilatora, wyklucza trimming i kompilację AOT
 - ścieżki plikowe jako identyfikatory assetów — rozpadają się przy reorganizacji projektu
@@ -489,7 +558,7 @@ tests/
   HEngine.Foundation.Tests/
   HEngine.ECS.Tests/
   ...                               jeden projekt testów na moduł
-  HEngine.Architecture.Tests/       niezmienniki Z1 · Z5 · Z7 · §4.6
+  HEngine.Architecture.Tests/       niezmienniki Z1 · Z5 · Z7 · §4.8
   HEngine.Integration.Tests/        pełna klatka headless, obrazy wzorcowe
 
 benchmarks/
@@ -583,16 +652,21 @@ Runtime nigdy nie referuje edytora i nie zawiera kodu warunkowego `if (isEditor)
 
 ### 6.2 Właściwości o wysokim koszcie odroczenia
 
-Cztery pozycje z §4 mają tę cechę, że są tanie teraz i bardzo drogie później — każda przecina kod, który w międzyczasie urośnie:
+Siedem pozycji z §4 ma tę cechę, że są tanie teraz i bardzo drogie później — każda przecina kod, który w międzyczasie urośnie:
 
 | Właściwość | Dlaczego kosztowna później |
 |---|---|
 | Rozdzielenie urządzenia i okna (§4.3) | Przechodzi przez cały potok renderowania |
 | Świat bez singletonu (§4.4) | Przechodzi przez każdy system |
 | Rejestr typów komponentów (§4.5) | Przechodzi przez każdy komponent |
+| Identyfikatory pól komponentów (§4.5) | Nie da się dodać wstecznie — zapisane sceny są od nich starsze |
 | Jeden punkt mutacji stanu (§4.1 poz. 4) | Wymaga audytu wszystkich ścieżek zapisu |
+| Stempel wersji tablic komponentów (§4.6) | Wymaga audytu wszystkich ścieżek zapisu |
+| Kontrakt alokacji na ścieżkach klatkowych (§4.7) | Zmiana wymaga zmiany sygnatur u wszystkich konsumentów |
 
-Ostatnia pozycja nie wymaga teraz budowania systemu komend — wystarczy dyscyplina: `World` jest jedyną drogą do zmiany stanu, bez obchodzenia go bezpośrednim dostępem do warstwy komponentów. Ta sama dyscyplina jest później warunkiem bezpiecznego zapisu przez MCP (§8.4).
+Dwie uwagi do tej listy. Po pierwsze, punkt mutacji nie wymaga teraz budowania systemu komend — wystarczy dyscyplina: `World` jest jedyną drogą do zmiany stanu, bez obchodzenia go bezpośrednim dostępem do warstwy komponentów. Ta sama dyscyplina jest później warunkiem bezpiecznego zapisu przez MCP (§8.4).
+
+Po drugie, warto nazwać wprost, **dlaczego akurat te pozycje muszą być rozstrzygnięte zawczasu, skoro dodanie całego modułu jest w tej architekturze tanie (§5.6).** Moduł jest tani, bo Z4 czyni go samowystarczalnym: wnosi własną rejestrację i nikt poniżej niego nie musi się zmienić. Żadna z powyższych pozycji modułem nie jest — każda z nich zmienia kontrakt czegoś, co już istnieje w wielu miejscach naraz. To jest właściwa linia podziału: **tanie jest dokładanie, drogie jest zmienianie kształtu tego, co już dołożono.** Ta sekcja zawiera wyłącznie tę drugą kategorię i to jest jedyny powód, dla którego jest w dokumencie.
 
 ### 6.3 Świadomie nierozstrzygnięte
 
@@ -651,7 +725,7 @@ flowchart LR
     E -->|zgodne| F["gotowe"]
 ```
 
-Wymaga to czterech rzeczy, z których każda jest w tym dokumencie z innego powodu: headless jako pełnoprawny tryb (§4.1 poz. 6), `TextureTarget` (§4.3), deterministyczny takt (§4.2) i filtr solucji budujący się bez GPU (§5.3).
+Wymaga to czterech rzeczy, z których każda jest w tym dokumencie z innego powodu: headless jako pełnoprawny tryb (§4.1 poz. 7), `TextureTarget` (§4.3), deterministyczny takt (§4.2) i filtr solucji budujący się bez GPU (§5.3).
 
 **To jest ten sam szew, który obsługuje viewport edytora.** Zdolność zaprojektowana pod przyszły edytor okazuje się warunkiem samodzielnej pracy agenta nad grafiką — i odwrotnie. Dobra ilustracja tezy z §1.
 
@@ -733,15 +807,16 @@ Kształt docelowy. Kolumna po prawej pokazuje, dzięki której właściwości AP
 |---|---|---|
 | `engine.describe` | Moduły, wersje, złożony graf usług | Rejestr modułów (§4.1 poz. 3) |
 | `components.list` / `components.describe` | Typy komponentów, pola, stabilne ID | Rejestr typów (§4.5) |
-| `systems.list` | Harmonogram: kolejność i fazy | Rejestr systemów, fazy (§4.2) |
+| `systems.list` | Harmonogram: etapy klatki i warunki wykonania | Rejestr systemów (§4.2) |
 | `render.describe_graph` | Przebiegi, cele, formaty | Graf klatki jako dane (§4.3) |
-| `scene.load` / `scene.save` | Wczytanie i zapis sceny | Format sceny, stabilne ID (poz. 7) |
+| `scene.load` / `scene.save` | Wczytanie i zapis sceny | Format sceny, stabilne ID (poz. 8) |
 | `world.query` | Encje spełniające zapytanie | Świat jako obiekt (§4.4) |
 | `world.apply` | Mutacja stanu | Jeden punkt mutacji (poz. 4) |
-| `engine.tick` | N klatek o zadanym kroku | Determinizm (poz. 5) |
+| `world.changes` | Co zmieniło się od podanej wersji | Stempel wersji (§4.6) |
+| `engine.tick` | N klatek o zadanym kroku | Determinizm (poz. 6) |
 | `frame.capture` | Obraz klatki | `TextureTarget` (§4.3) |
-| `frame.compare` | Metryka różnicy wobec wzorca | Headless + `Testing` (poz. 6) |
-| `assets.list` / `assets.import` | Katalog assetów po GUID | ID zamiast ścieżek (poz. 7) |
+| `frame.compare` | Metryka różnicy wobec wzorca | Headless + `Testing` (poz. 7) |
+| `assets.list` / `assets.import` | Katalog assetów po GUID | ID zamiast ścieżek (poz. 8) |
 | `diagnostics.counters` | Czasy klatki, liczba draw calli | Diagnostyka w `Foundation` |
 
 Warto zauważyć, czego na tej liście **nie ma**: żadne z tych narzędzi nie wymaga niczego, czego §4 nie wymaga już z innych powodów. **MCP nie dokłada wymagań do architektury — ujawnia te, które i tak są.** To jest argument za tym, żeby serwer powstał wcześnie: nie dlatego, że jest pilny sam w sobie, tylko dlatego, że jest najtańszym znanym testem na to, czy publiczne API rzeczywiście jest tym, za co się podaje.
@@ -774,7 +849,10 @@ Podsumowanie tezy z §1 — te same właściwości API obsługują wszystkich ko
 | Przygotowanie danych do rysowania jako osobny krok | ● | ○ | ○ |
 | Świat bez singletonu | ○ | ● | ● |
 | Rejestr typów komponentów | ○ | ● | ● |
+| Identyfikatory pól i wersja schematu (§4.5) | ● | ● | ○ |
 | Jeden punkt mutacji stanu | ○ | ● | ● |
+| Stempel wersji — „co się zmieniło" (§4.6) | ○ | ● | ● |
+| Kontrakt alokacji na ścieżkach klatkowych (§4.7) | ● | ● | ○ |
 | Głośny błąd zamiast degradacji (Z5) | ● | ● | ● |
 | Kompozycja backendu w hoście (Z8) | ○ | ● | ● |
 | Kolokacja funkcji (Z2) | ○ | ○ | ● |
@@ -796,8 +874,8 @@ Wszystkie odniesienia do bieżącego zachowania silnika są skupione tutaj. Szcz
 | Decyzja docelowa | Odpowiada na | Ustalenie |
 |---|---|---|
 | Z5 — brak konstruktorów zapasowych | Konstruktor zapasowy `RenderPipeline` cicho wyłącza cienie i post-processing | #4 |
-| Z5 + test składania zależności (§7.2) | Trzy ukończone fazy nieosiągalne z pętli gry, bo niezarejestrowane | #3 |
-| Z1 + zakaz wiązania po nazwach (§4.6) | `Assembly.Load("HEngine.Rendering")` w `AssetManager` przebija granicę warstw | §6.3 analizy |
+| Z5 + test składania zależności (§7.2) | Trzy ukończone fazy planu prac nieosiągalne z pętli gry, bo niezarejestrowane | #3 |
+| Z1 + zakaz wiązania po nazwach (§4.8) | `Assembly.Load("HEngine.Rendering")` w `AssetManager` przebija granicę warstw | §6.3 analizy |
 | Z4 — rejestracja w module | Centralna lista rejestracji w `ServiceCollectionExtensions` jako punkt konfliktów | §7.5 |
 | Z2 + budżet rozmiaru (§3.5) | Katalog `Managers/` z 21 niepowiązanymi klasami | §6.4 analizy |
 | §4.4 — świat bez singletonu, jeden harmonogram na świat | Dwa rozłączne rejestry `SystemManager`; systemy dodane przez `WorldManager` nigdy się nie wykonują | #5 |
@@ -832,6 +910,10 @@ Dwie uwagi o charakterze ogólnym, bez których tabela byłaby myląca:
 | 9 | Moment powstania serwera MCP | Wcześnie, równolegle z API · po ustabilizowaniu modułów | Wcześnie — jest testem kompletności API (§8.2), nie nadbudową nad nim |
 | 10 | Zakres zapisu w MCP | Odczyt + zapis za flagą · wyłącznie odczyt | Odczyt + zapis za flagą, domyślnie wyłączony (§8.7) |
 | 11 | Krok czasu w kontrakcie taktu | Struktura czasu klatki · goły `float` | Struktura — goły `float` wypycha systemy do zegara globalnego |
+| 12 | Mechanizm obserwacji zmian | Stempel wersji na tablicę komponentów · strumień zdarzeń · brak | Stempel wersji — strumień zdarzeń jest nie do pogodzenia z mutacją przez `ref` (§4.6) |
+| 13 | Ziarnistość stempla wersji | Tablica komponentów · encja · pojedyncze pole | Tablica — najtańsza i wystarczająca dla wszystkich czterech konsumentów z §4.6 |
+| 14 | Zgodność zapisanych scen | Identyfikatory pól + wersja schematu (§4.5) · sama wersja schematu · brak reguł | Identyfikatory pól + wersja schematu — same migracje oznaczają pisanie ich dla każdej zmiany strukturalnej |
+| 15 | Rozdział etapu klatki od warunku wykonania | Dwie niezależne właściwości systemu · jedno wyliczenie | Dwie właściwości — jedno wyliczenie wymusza wartość na każdą kombinację i wpuszcza pojęcie edytora do rdzenia (§4.2) |
 
 ---
 
@@ -847,4 +929,6 @@ Trzy reguły niosą nieproporcjonalnie dużą część wartości:
 
 Dwie korekty względem poprzedniej wersji dokumentu warto wymienić osobno, bo zmieniają treść, a nie tylko układ. Po pierwsze: **silnik nie prowadzi pętli zewnętrznej, ale jest właścicielem przebiegu klatki** — wypchnięcie kroku stałego i synchronizacji z kartą graficzną do hosta byłoby czystością pozorną, kupioną kosztem konsumenta. Po drugie: **warstwa kompozycji nie referuje backendów** — poprzedni graf wiązał `Runtime` z D3D12, co unieważniałoby tryb headless niezależnie od tego, ile razy dokument nazwie go pełnoprawnym.
 
-Warto też odnotować, co z tego dokumentu **nie** wynika. Nie przesądzamy technologii UI edytora, modelu współbieżności systemów, potokowania klatek ani formatu plików projektu. Te decyzje są odwracalne. Odwracalne nie są: własność okna, podział odpowiedzialności za klatkę, czas życia świata, sposób identyfikacji typów komponentów i kierunek referencji do backendów — i wyłącznie te pięć musi zostać rozstrzygnięte zawczasu.
+Warto też odnotować, co z tego dokumentu **nie** wynika. Nie przesądzamy technologii UI edytora, modelu współbieżności systemów, potokowania klatek ani formatu plików projektu. Te decyzje są odwracalne. Odwracalne nie są: własność okna, podział odpowiedzialności za klatkę, czas życia świata, sposób identyfikacji typów komponentów **i ich pól**, sposób obserwacji zmian w świecie, kontrakt alokacji na ścieżkach klatkowych oraz kierunek referencji do backendów — i wyłącznie te siedem musi zostać rozstrzygnięte zawczasu.
+
+Wszystkie siedem łączy jedna cecha, warta wypowiedzenia wprost, bo bez niej lista wygląda na arbitralną: **żadna z nich nie jest modułem.** Architektura jest celowo tak zbudowana, żeby dokładanie modułów było tanie (Z4, §5.6) — i dlatego `Physics` czy `Audio` nie muszą być rozstrzygane teraz. Powyższe siedem to kontrakty przecinające wszystko, co już istnieje; ich koszt nie rośnie liniowo z rozmiarem silnika, tylko z liczbą miejsc, które trzeba by odwiedzić przy zmianie. To jedyne kryterium, według którego ta lista powstała.

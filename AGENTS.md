@@ -108,6 +108,7 @@ A Polish document must read as if it were written in Polish, not translated from
 - **Expand every abbreviation on first use**, in parentheses, with what it means — not just what the letters stand for. This includes ones that feel obvious in context: MCP, DI, CI, TFM, CPM, AOT, ADR, ECS, PSO.
 - **Keep an English term untranslated when it is the name actually used in the field** (backend, headless, swap chain, singleton, culling). Translating those invents private vocabulary that no one else uses. Gloss each one once in parentheses.
 - **Any document introducing more than a handful of terms carries a glossary near the top**, before the body.
+- **One term, one meaning, and it is in the glossary.** Reusing a word for two different concepts is as damaging as a calque and harder to spot — `faza` meaning both a stage of the frame and a condition for running a system left the document with two incompatible readings of the same sentence. If a word is doing two jobs, one of them needs a different word, and both belong in the glossary.
 - Coin no new Polish jargon. If a term needs a paragraph of explanation, the term is wrong.
 
 Test before committing a document: could someone who knows C# and game development, but has never read the English sources behind these ideas, read each paragraph once and understand it? If a sentence only parses after mentally translating it back into English, rewrite it.
