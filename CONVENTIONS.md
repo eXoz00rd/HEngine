@@ -35,7 +35,7 @@ When the solution is obvious and unambiguous (no design decision or "how to do i
 
 **Rule of thumb:** if a title with a verb doesn't assume any still-undecided solution (config, version, simple fix), the verb form is fine. If it requires research, a design decision, or a "how to do it" discussion — go back to the verb-less form (problem/topic description). When in doubt: the verb-less form is the safer choice.
 
-The bracketed prefix `[System]` = module/area. Use the target architecture module names where they apply: `Foundation`, `ECS`, `Scene`, `Rendering`, `Assets`, `Serialization`, `Platform`, `Runtime`. Plus the cross-cutting ones: `Architecture`, `Build`, `CI`, `Docs`, `Tech`.
+The bracketed prefix `[System]` = module/area. Use the target architecture module names where they apply: `Foundation`, `ECS`, `Scene`, `Rendering`, `Rendering.D3D12`, `Assets`, `Serialization`, `Platform`, `Platform.Windows`, `Runtime`, `Testing`, `Tooling.Mcp`. Plus the cross-cutting ones: `Architecture`, `Build`, `CI`, `Docs`, `Tech`.
 
 ## Task type
 

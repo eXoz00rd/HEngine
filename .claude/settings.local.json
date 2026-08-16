@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(wc -l /d/Projects/HEngine/Src/Core/HEngine.Core/Managers/*.cs)",
+      "Bash(find /d/Projects/HEngine -type f -name README* -o -name *.md -o -name CMakeLists.txt -o -name *.premake*)",
+      "Bash(find /d/Projects/HEngine/Tests -name *.cs -type f)",
+      "Bash(wc -l /d/Projects/HEngine/Src/Core/HEngine.Core/**/*.cs /d/Projects/HEngine/Src/Rendering/HEngine.Rendering/**/*.cs)"
+    ]
+  }
+}
