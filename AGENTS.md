@@ -98,7 +98,12 @@ A subsystem is done when it is **reachable from the game loop and its effect is 
 - Ask when a requirement or expected behaviour is unclear rather than assuming.
 - Prefer the Rider MCP tools over raw console commands; fall back to the console when they fail.
 
-## 8. Writing documents
+## 8. Reviewing pull requests
+
+- Submit the review as `REQUEST_CHANGES` whenever the findings say changes are needed — that verdict is not softened to `COMMENT` just because the request only asked for "comments" or "uwagi". `COMMENT` is for a review with no blocking findings; `APPROVE` only when explicitly asked to approve.
+- Review comments and the review summary are in English, same as commits, PR bodies and issues (§9).
+
+## 9. Writing documents
 
 Planning documents in `docs/` are written in Polish. Code, comments, commits, pull requests and issues stay in English — see `CONVENTIONS.md`.
 
