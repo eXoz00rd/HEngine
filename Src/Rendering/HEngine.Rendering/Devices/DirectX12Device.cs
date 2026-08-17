@@ -174,11 +174,14 @@ public class DirectX12Device : IGraphicsDevice
             _logger.LogInformation("Disposing DirectX12Device");
         }
 
-        _initialized = false;
+        if (_initialized)
+        {
+            _swapChain.Dispose();
+            _commandQueue.Dispose();
+            _core.Dispose();
+        }
 
-        _swapChain?.Dispose();
-        _commandQueue?.Dispose();
-        _core?.Dispose();
+        _initialized = false;
         _window?.Dispose();
 
         _disposed = true;

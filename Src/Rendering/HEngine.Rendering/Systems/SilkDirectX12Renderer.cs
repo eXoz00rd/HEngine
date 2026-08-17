@@ -350,11 +350,11 @@ public class SilkDirectX12Renderer : IRenderer
         _logger.LogInformation("Disposing SilkDirectX12Renderer");
         _initialized = false;
 
-        _meshBufferManager.Dispose();
-        _meshPipelineManager.Dispose();
+        _meshBufferManager?.Dispose();
+        _meshPipelineManager?.Dispose();
         _spriteBatch.Dispose();
         _spriteRenderer.Dispose();
-        _commandList.Dispose();
+        _commandList?.Dispose();
         _shaderManager.Dispose();
         _device.Dispose();
         _disposed = true;
