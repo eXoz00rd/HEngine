@@ -56,7 +56,12 @@ public class SilkDirectX12Renderer : IRenderer
             if (!_device.IsInitialized)
             {
                 var errorMessage = "GraphicsDevice failed to initialize";
-                _logger.LogError(errorMessage);
+
+                if (_logger.IsEnabled(LogLevel.Error))
+                {
+                    _logger.LogError(errorMessage);
+                }
+
                 throw new InvalidOperationException(errorMessage);
             }
 
@@ -83,7 +88,11 @@ public class SilkDirectX12Renderer : IRenderer
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to initialize SilkDirectX12Renderer");
+            if (_logger.IsEnabled(LogLevel.Error))
+            {
+                _logger.LogError(ex, "Failed to initialize SilkDirectX12Renderer");
+            }
+
             _initialized = false;
             throw;
         }
@@ -106,7 +115,11 @@ public class SilkDirectX12Renderer : IRenderer
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error in Present");
+            if (_logger.IsEnabled(LogLevel.Error))
+            {
+                _logger.LogError(ex, "Error in Present");
+            }
+
             throw;
         }
     }
@@ -160,7 +173,11 @@ public class SilkDirectX12Renderer : IRenderer
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to begin frame");
+            if (_logger.IsEnabled(LogLevel.Error))
+            {
+                _logger.LogError(ex, "Failed to begin frame");
+            }
+
             _frameInProgress = false;
             throw;
         }
@@ -192,7 +209,11 @@ public class SilkDirectX12Renderer : IRenderer
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to end frame");
+            if (_logger.IsEnabled(LogLevel.Error))
+            {
+                _logger.LogError(ex, "Failed to end frame");
+            }
+
             _frameInProgress = false;
             throw;
         }
@@ -335,7 +356,11 @@ public class SilkDirectX12Renderer : IRenderer
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to draw mesh");
+            if (_logger.IsEnabled(LogLevel.Error))
+            {
+                _logger.LogError(ex, "Failed to draw mesh");
+            }
+
             throw;
         }
     }
