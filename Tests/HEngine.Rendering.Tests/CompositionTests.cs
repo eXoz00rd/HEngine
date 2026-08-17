@@ -1,7 +1,8 @@
+using System.Numerics;
+using HEngine.Core.Components.Rendering;
 using HEngine.Core.Configuration;
 using HEngine.Core.Extensions;
-using HEngine.Core.Rendering.Contracts;
-using HEngine.Rendering;
+using HEngine.Core.Managers;
 using HEngine.Rendering.Extensions;
 using HEngine.Rendering.PostProcessing;
 using HEngine.Rendering.Systems;
@@ -12,7 +13,7 @@ namespace HEngine.Rendering.Tests
 {
     public class CompositionTests
     {
-        private static ServiceProvider BuildProductionServiceProvider(EngineConfiguration? config = null)
+        private static ServiceCollection BuildProductionServiceCollection(EngineConfiguration? config = null)
         {
             var services = new ServiceCollection();
             var configuration = config ?? new EngineConfiguration();
@@ -21,17 +22,16 @@ namespace HEngine.Rendering.Tests
             services.AddHEngineRendering(configuration);
             services.AddLogging(builder => builder.SetMinimumLevel(LogLevel.None));
 
-            return services.BuildServiceProvider();
+            return services;
         }
 
-        [Fact(DisplayName = "Production composition resolves IRenderPipeline without falling back to no-op dependencies")]
-        public void Composition_Resolves_RenderPipeline_With_Explicit_Dependencies()
+        [Fact(DisplayName = "Production composition validates the full service graph without a native/filesystem dependency, proving no registration is missing behind a silent fallback")]
+        public void Composition_Validates_Full_Service_Graph()
         {
-            using var provider = BuildProductionServiceProvider();
+            var services = BuildProductionServiceCollection();
 
-            var pipeline = provider.GetRequiredService<IRenderPipeline>();
-
-            Assert.IsType<RenderPipeline>(pipeline);
+            using var provider = services.BuildServiceProvider(
+                new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });
         }
 
         [Fact(DisplayName = "Shadow settings resolved from DI reflect engine configuration, not a disabled fallback")]
@@ -42,7 +42,7 @@ namespace HEngine.Rendering.Tests
                 Shadow = new ShadowSettings { Enabled = true, Resolution = 4096, CascadeCount = 3 }
             };
 
-            using var provider = BuildProductionServiceProvider(configuration);
+            using var provider = BuildProductionServiceCollection(configuration).BuildServiceProvider();
 
             var shadowSettings = provider.GetRequiredService<ShadowSettings>();
 
@@ -61,34 +61,53 @@ namespace HEngine.Rendering.Tests
                 PostProcessing = new PostProcessingSettings { BloomIntensity = 3.0f }
             };
 
-            using var provider = BuildProductionServiceProvider(configuration);
+            using var provider = BuildProductionServiceCollection(configuration).BuildServiceProvider();
 
             var pbrSettings = provider.GetRequiredService<PbrSettings>();
             var postProcessingSettings = provider.GetRequiredService<PostProcessingSettings>();
 
+            Assert.Same(configuration.PBR, pbrSettings);
+            Assert.Same(configuration.PostProcessing, postProcessingSettings);
             Assert.Equal(2.5f, pbrSettings.Exposure);
             Assert.Equal(3.0f, postProcessingSettings.BloomIntensity);
         }
 
-        [Fact(DisplayName = "LightingSystem and ShadowRenderingSystem are registered and initialized in DI")]
-        public void Composition_Resolves_Initialized_Lighting_And_Shadow_Systems()
+        [Fact(DisplayName = "LightingSystem is registered as an initialized singleton that can gather lights from the resolved WorldManager")]
+        public void Composition_Resolves_Initialized_LightingSystem_Singleton()
         {
-            using var provider = BuildProductionServiceProvider();
+            using var provider = BuildProductionServiceCollection().BuildServiceProvider();
+
+            var world = provider.GetRequiredService<WorldManager>();
+            var entity = world.CreateEntity();
+            world.AddComponent(entity, new DirectionalLight
+            {
+                Direction = new Vector3(0, -1, 0),
+                Color = Vector3.One,
+                Intensity = 1f
+            });
 
             var lightingSystem = provider.GetRequiredService<LightingSystem>();
-            var shadowRenderingSystem = provider.GetRequiredService<ShadowRenderingSystem>();
-
-            // Both systems throw on Update/RenderShadows before Initialize() has been called with a
-            // WorldManager; resolving them from the container must not require callers to do that
-            // themselves, or the container is silently handing back an unusable instance.
             lightingSystem.Update(0f);
-            Assert.NotNull(lightingSystem.LastLights);
+
+            Assert.Equal(1, lightingSystem.LastLights.Length);
+            Assert.Same(lightingSystem, provider.GetRequiredService<LightingSystem>());
+        }
+
+        [Fact(DisplayName = "ShadowRenderingSystem is registered as a shared singleton")]
+        public void Composition_Resolves_ShadowRenderingSystem_As_Singleton()
+        {
+            using var provider = BuildProductionServiceCollection().BuildServiceProvider();
+
+            var shadowRenderingSystemA = provider.GetRequiredService<ShadowRenderingSystem>();
+            var shadowRenderingSystemB = provider.GetRequiredService<ShadowRenderingSystem>();
+
+            Assert.Same(shadowRenderingSystemA, shadowRenderingSystemB);
         }
 
         [Fact(DisplayName = "PostProcessStack is registered in DI as a shared singleton")]
         public void Composition_Resolves_PostProcessStack_As_Singleton()
         {
-            using var provider = BuildProductionServiceProvider();
+            using var provider = BuildProductionServiceCollection().BuildServiceProvider();
 
             var stackA = provider.GetRequiredService<PostProcessStack>();
             var stackB = provider.GetRequiredService<PostProcessStack>();

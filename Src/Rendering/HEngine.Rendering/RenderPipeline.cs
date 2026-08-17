@@ -81,7 +81,7 @@ public class RenderPipeline : IRenderPipeline {
             context.Renderer.SetViewMatrix(context.ViewMatrix);
             context.Renderer.SetProjectionMatrix(context.ProjectionMatrix);
 
-            if (_shadowSettings.Enabled && hasCamera)
+            if (_shadowSettings.Enabled && hasCamera && _shadowRenderingSystem.HasShadowRenderer)
             {
                 ExecuteShadowPass(activeCamera);
             }

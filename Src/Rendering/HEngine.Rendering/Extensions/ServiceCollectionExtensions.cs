@@ -66,9 +66,9 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IMeshRenderingSystem, MeshRenderingSystem>();
         services.AddSingleton<IRenderingSystem, RenderingSystem>();
 
-        services.AddSingleton(provider => provider.GetRequiredService<EngineConfiguration>().Shadow);
-        services.AddSingleton(provider => provider.GetRequiredService<EngineConfiguration>().PBR);
-        services.AddSingleton(provider => provider.GetRequiredService<EngineConfiguration>().PostProcessing);
+        services.AddSingleton(config.Shadow);
+        services.AddSingleton(config.PBR);
+        services.AddSingleton(config.PostProcessing);
 
         services.AddSingleton<LightingSystem>(provider =>
         {
