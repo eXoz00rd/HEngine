@@ -29,6 +29,9 @@ public class DirectX12Device : IGraphicsDevice
     private IInputContext _inputContext = null!;
     private IWindow _window = null!;
 
+    private Action<IMouse, MouseButton> _onMouseDown = null!;
+    private Action<IMouse, MouseButton> _onMouseUp = null!;
+
     public DirectX12Device(InputState inputState, ILogger<DirectX12Device> logger)
     {
         _inputState = inputState ?? throw new ArgumentNullException(nameof(inputState));
@@ -52,11 +55,14 @@ public class DirectX12Device : IGraphicsDevice
                 kb.KeyUp += OnKeyUp;
             }
 
+            _onMouseDown = (m, btn) => _inputState.OnMouseDown(btn);
+            _onMouseUp = (m, btn) => _inputState.OnMouseUp(btn);
+
             foreach (var mouse in _inputContext.Mice)
             {
                 mouse.MouseMove += _inputState.OnMouseMove;
-                mouse.MouseDown += (m, btn) => _inputState.OnMouseDown(btn);
-                mouse.MouseUp += (m, btn) => _inputState.OnMouseUp(btn);
+                mouse.MouseDown += _onMouseDown;
+                mouse.MouseUp += _onMouseUp;
             }
 
             _core.Initialize();
@@ -69,6 +75,12 @@ public class DirectX12Device : IGraphicsDevice
         catch (Exception ex)
         {
             _initialized = false;
+
+            if (_logger.IsEnabled(LogLevel.Error))
+            {
+                _logger.LogError(ex, "Error in Initialize");
+            }
+
             throw;
         }
     }
@@ -176,6 +188,21 @@ public class DirectX12Device : IGraphicsDevice
 
         if (_initialized)
         {
+            foreach (var kb in _inputContext.Keyboards)
+            {
+                kb.KeyDown -= OnKeyDown;
+                kb.KeyUp -= OnKeyUp;
+            }
+
+            foreach (var mouse in _inputContext.Mice)
+            {
+                mouse.MouseMove -= _inputState.OnMouseMove;
+                mouse.MouseDown -= _onMouseDown;
+                mouse.MouseUp -= _onMouseUp;
+            }
+
+            _inputContext.Dispose();
+
             _swapChain.Dispose();
             _commandQueue.Dispose();
             _core.Dispose();

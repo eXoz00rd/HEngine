@@ -347,7 +347,11 @@ public class SilkDirectX12Renderer : IRenderer
             return;
         }
 
-        _logger.LogInformation("Disposing SilkDirectX12Renderer");
+        if (_logger.IsEnabled(LogLevel.Information))
+        {
+            _logger.LogInformation("Disposing SilkDirectX12Renderer");
+        }
+
         _initialized = false;
 
         _meshBufferManager?.Dispose();
