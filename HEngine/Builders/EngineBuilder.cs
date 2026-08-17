@@ -52,7 +52,8 @@ public class EngineBuilder
     {
         _services.AddSingleton<GameEngine>();
 
-        var serviceProvider = _services.BuildServiceProvider();
+        var serviceProvider = _services.BuildServiceProvider(
+            new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });
 
         return serviceProvider.GetRequiredService<GameEngine>();
     }

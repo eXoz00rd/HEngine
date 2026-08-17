@@ -33,6 +33,13 @@ public class ShadowRenderingSystem : ISystem
     }
 
     /// <summary>
+    /// Whether a real shadow renderer has been wired via <see cref="SetShadowRenderer"/>.
+    /// Callers should skip the shadow pass entirely when this is false instead of paying for
+    /// light gathering and cascade-split computation that <see cref="RenderShadows"/> would discard.
+    /// </summary>
+    public bool HasShadowRenderer => _shadowRenderer is not null;
+
+    /// <summary>
     /// Executes the full CSM shadow pass for a single directional light.
     /// </summary>
     public void RenderShadows(

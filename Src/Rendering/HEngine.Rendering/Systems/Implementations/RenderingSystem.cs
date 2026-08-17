@@ -9,6 +9,7 @@ public class RenderingSystem : IRenderingSystem
 {
     private readonly IMeshRenderingSystem _meshSystem;
     private readonly ISpriteRenderingSystem _spriteSystem;
+    private readonly ILogger<RenderingSystem> _logger;
     private bool _disposed;
     private bool _isInitialized;
 
@@ -17,18 +18,7 @@ public class RenderingSystem : IRenderingSystem
     {
         _spriteSystem = spriteSystem;
         _meshSystem = meshSystem;
-    }
-
-    public RenderingSystem(ISpriteRenderingSystem spriteSystem, IMeshRenderingSystem meshSystem)
-    {
-        _spriteSystem = spriteSystem;
-        _meshSystem = meshSystem;
-    }
-
-    public RenderingSystem()
-    {
-        _spriteSystem = new SpriteRenderingSystem();
-        _meshSystem = new MeshRenderingSystem();
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     public bool IsInitialized => _isInitialized && !_disposed;
@@ -92,6 +82,7 @@ public class RenderingSystem : IRenderingSystem
         _spriteSystem.Initialize(worldManager);
         _meshSystem.Initialize(worldManager);
         _isInitialized = true;
+        _logger.LogDebug("RenderingSystem initialized");
     }
 
     public void Initialize()

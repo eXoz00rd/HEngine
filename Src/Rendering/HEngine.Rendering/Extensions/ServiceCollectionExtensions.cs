@@ -1,11 +1,13 @@
 ﻿using HEngine.Core.Configuration;
 using HEngine.Core.Contracts;
+using HEngine.Core.Managers;
 using HEngine.Core.Rendering.Contracts;
 using HEngine.Rendering.Batches;
 using HEngine.Rendering.Devices;
 using HEngine.Rendering.Factories;
 using HEngine.Rendering.Input;
 using HEngine.Rendering.Managers;
+using HEngine.Rendering.PostProcessing;
 using HEngine.Rendering.Renderers;
 using HEngine.Rendering.Systems;
 using HEngine.Rendering.Systems.Contracts;
@@ -63,6 +65,26 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ISpriteRenderingSystem, SpriteRenderingSystem>();
         services.AddSingleton<IMeshRenderingSystem, MeshRenderingSystem>();
         services.AddSingleton<IRenderingSystem, RenderingSystem>();
+
+        services.AddSingleton(config.Shadow);
+        services.AddSingleton(config.PBR);
+        services.AddSingleton(config.PostProcessing);
+
+        services.AddSingleton<LightingSystem>(provider =>
+        {
+            var lightingSystem = new LightingSystem();
+            lightingSystem.Initialize(provider.GetRequiredService<WorldManager>());
+            return lightingSystem;
+        });
+
+        services.AddSingleton<ShadowRenderingSystem>(provider =>
+        {
+            var shadowRenderingSystem = new ShadowRenderingSystem();
+            shadowRenderingSystem.Initialize(provider.GetRequiredService<WorldManager>());
+            return shadowRenderingSystem;
+        });
+
+        services.AddSingleton<PostProcessStack>();
 
         services.AddSingleton<IRenderPipeline, RenderPipeline>();
 

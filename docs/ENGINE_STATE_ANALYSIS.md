@@ -116,6 +116,8 @@ flowchart TD
 
 ### 4.1 Dowód: co jest zarejestrowane w DI
 
+**Status: naprawione w #7 / PR #23.** Poniższy opis to stan sprzed tej zmiany, zachowany jako kontekst historyczny.
+
 Zweryfikowałem to empirycznie, budując kontener dokładnie tak jak robi to `EngineBuilder`, i odpytując go o poszczególne usługi:
 
 ```
@@ -131,16 +133,20 @@ Pipeline ShadowSettings.Enabled: False
 RenderPipeline ctor count      : 3
 ```
 
-`RenderPipeline` ma trzy konstruktory ([RenderPipeline.cs:26,46,65](../Src/Rendering/HEngine.Rendering/RenderPipeline.cs#L26)). Ponieważ `LightingSystem`, `ShadowRenderingSystem`, `ShadowSettings` i `PostProcessStack` nie są zarejestrowane, `Microsoft.Extensions.DependencyInjection` wybiera **konstruktor 4-argumentowy** ([RenderPipeline.cs:65](../Src/Rendering/HEngine.Rendering/RenderPipeline.cs#L65)), który:
+`RenderPipeline` miał trzy konstruktory. Ponieważ `LightingSystem`, `ShadowRenderingSystem`, `ShadowSettings` i `PostProcessStack` nie były zarejestrowane, `Microsoft.Extensions.DependencyInjection` wybierał **konstruktor 4-argumentowy**, który:
 
 ```csharp
-_shadowSettings = new ShadowSettings { Enabled = false };   // linia 78
-_postProcessStack = new PostProcessStack();                  // linia 79 — pusty
+_shadowSettings = new ShadowSettings { Enabled = false };   // wymuszone wyłączenie
+_postProcessStack = new PostProcessStack();                  // zawsze pusty
 ```
 
-W efekcie `ExecuteShadowPass` nigdy się nie wykonuje (`_shadowSettings.Enabled == false`), a `ExecutePostProcessPass` kończy się na pierwszej linii (`EnabledEffectCount == 0`).
+W efekcie `ExecuteShadowPass` nigdy się nie wykonywał (`_shadowSettings.Enabled == false`), a `ExecutePostProcessPass` kończył się na pierwszej linii (`EnabledEffectCount == 0`).
 
-To jest **cichy downgrade**. Konstruktory zapasowe zamieniają brakującą konfigurację DI w milczące wyłączenie funkcji zamiast w błąd startu.
+To był **cichy downgrade**. Konstruktory zapasowe zamieniały brakującą konfigurację DI w milczące wyłączenie funkcji zamiast w błąd startu.
+
+**Po #7:** `AddHEngineRendering` rejestruje `LightingSystem`, `ShadowRenderingSystem`, `PostProcessStack` oraz `ShadowSettings`/`PbrSettings`/`PostProcessingSettings` wprost z parametru `config`. `RenderPipeline` ma teraz jeden, w pełni jawny konstruktor — brakująca zależność jest błędem kompozycji, nie cichym fallbackiem. `Tests/HEngine.Rendering.Tests/CompositionTests.cs` waliduje cały graf usług (`ServiceProviderOptions.ValidateOnBuild`) jako regression guard.
+
+**To nie zamyka historii cieni/post-processingu.** `ShadowSettings.Enabled` jest teraz honorowane zgodnie z configiem (domyślnie `true`), ale `ShadowRenderingSystem.SetShadowRenderer` nadal nie jest wołane nigdzie w kodzie produkcyjnym — jedyna implementacja `IShadowRenderer` to `FakeShadowRenderer` w testach (patrz 4.4). `RenderPipeline` sprawdza teraz `ShadowRenderingSystem.HasShadowRenderer` przed wejściem w `ExecuteShadowPass`, żeby nie płacić za gathering świateł i liczenie splitów kaskad bez żadnego efektu — ale wynik end-to-end jest ten sam: cienie się nie renderują, dopóki #19 nie dostarczy prawdziwego `IShadowRenderer` i nie podłączy go w kompozycji. Analogicznie post-processing: `PostProcessStack` jest teraz współdzielonym singletonem, ale nic w kodzie produkcyjnym nie woła `AddEffect`, więc `EnabledEffectCount == 0` nadal trzyma `ExecutePostProcessPass` na pierwszej linii — to zakres #20.
 
 ### 4.2 Dowód: geometria 3D idzie przez shader sprite'ów
 
@@ -472,9 +478,9 @@ Kolejność wynika z zależności technicznych — każdy krok odblokowuje nast�
 
 ### Etap 0 — Widoczność problemu (fundament)
 
-1. **Usunąć konstruktory zapasowe** z `RenderPipeline` i `RenderingSystem`. Zostawić jeden, w pełni jawny. Brak zależności ma powodować błąd startu, a nie ciche wyłączenie funkcji.
-2. **Zarejestrować w DI**: `LightingSystem`, `ShadowRenderingSystem`, `PostProcessStack`, oraz `config.Shadow` / `config.PBR` / `config.PostProcessing` jako osobne usługi.
-3. **Dodać test rejestracji DI**, który weryfikuje, że kontener dostarcza komplet zależności potoku. To zabezpieczenie przed regresją całej tej klasy błędów.
+1. ✅ **Usunąć konstruktory zapasowe** z `RenderPipeline` i `RenderingSystem`. Zostawić jeden, w pełni jawny. Brak zależności ma powodować błąd startu, a nie ciche wyłączenie funkcji. — #7 / PR #23.
+2. ✅ **Zarejestrować w DI**: `LightingSystem`, `ShadowRenderingSystem`, `PostProcessStack`, oraz `config.Shadow` / `config.PBR` / `config.PostProcessing` jako osobne usługi. — #7 / PR #23.
+3. ✅ **Dodać test rejestracji DI**, który weryfikuje, że kontener dostarcza komplet zależności potoku. To zabezpieczenie przed regresją całej tej klasy błędów. — #7 / PR #23.
 4. **Ujednolicić `SystemManager`** — `WorldManager` powinien przyjmować go przez konstruktor, a nie tworzyć własny.
 
 ### Etap 1 — Naprawa ścieżki 3D (największy zwrot)
