@@ -10,7 +10,7 @@ public class FrustumCullingSystemTests
 {
     private static WorldManager CreateWorldWithDefaultCamera()
     {
-        var world = new WorldManager();
+        var world = new WorldManager(new SystemManager());
         var camEntity = world.CreateEntity();
         world.AddComponent(camEntity, new Camera
         {

@@ -19,7 +19,7 @@ public class ComponentQueryBenchmarks
     [GlobalSetup]
     public void Setup()
     {
-        _world = new WorldManager();
+        _world = new WorldManager(new SystemManager());
 
         for (int i = 0; i < EntityCount; i++)
         {
