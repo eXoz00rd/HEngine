@@ -12,7 +12,7 @@ namespace HEngine.Core.Tests.Scene
 {
     public class SceneGraphTests : IDisposable
     {
-        private readonly WorldManager _world = new();
+        private readonly WorldManager _world = new(new SystemManager());
         private readonly TransformHierarchySystem _hierarchySystem = new();
 
         public SceneGraphTests()

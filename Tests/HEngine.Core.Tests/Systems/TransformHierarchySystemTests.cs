@@ -11,7 +11,7 @@ public class TransformHierarchySystemTests
     [Fact]
     public void SetParent_PreventsCycles_Throws()
     {
-        using var world = new WorldManager();
+        using var world = new WorldManager(new SystemManager());
         var system = new TransformHierarchySystem();
         world.AddSystem(system);
 
@@ -32,7 +32,7 @@ public class TransformHierarchySystemTests
     [Fact]
     public void GetWorldMatrix_WithParentChain_ComputesExpectedWorldPosition()
     {
-        using var world = new WorldManager();
+        using var world = new WorldManager(new SystemManager());
         var system = new TransformHierarchySystem();
         world.AddSystem(system);
 
@@ -56,7 +56,7 @@ public class TransformHierarchySystemTests
     [Fact]
     public void DirtyFlag_RecomputeOnNextUpdate()
     {
-        using var world = new WorldManager();
+        using var world = new WorldManager(new SystemManager());
         var system = new TransformHierarchySystem();
         world.AddSystem(system);
 

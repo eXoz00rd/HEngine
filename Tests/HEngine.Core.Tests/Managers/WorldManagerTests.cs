@@ -6,7 +6,7 @@ using NSubstitute;
 namespace HEngine.Core.Tests.Managers;
 
 public class WorldManagerTests : IDisposable {
-    private readonly WorldManager _worldManager = new();
+    private readonly WorldManager _worldManager = new(new SystemManager());
 
     public void Dispose()
         => _worldManager.Dispose();
@@ -14,7 +14,7 @@ public class WorldManagerTests : IDisposable {
     [Fact]
     public void Constructor_ShouldInitializeAllManagers()
     {
-        using var worldManager = new WorldManager();
+        using var worldManager = new WorldManager(new SystemManager());
 
         Assert.NotNull(worldManager.EntityManager);
         Assert.NotNull(worldManager.ComponentManager);
@@ -24,7 +24,7 @@ public class WorldManagerTests : IDisposable {
     [Fact]
     public void CreateEntity_ShouldReturnValidEntity()
     {
-        using var worldManager = new WorldManager();
+        using var worldManager = new WorldManager(new SystemManager());
         var entity = worldManager.CreateEntity();
 
         Assert.NotEqual(Entity.Null, entity);
@@ -34,7 +34,7 @@ public class WorldManagerTests : IDisposable {
     [Fact]
     public void CreateEntity_Multiple_ShouldReturnUniqueEntities()
     {
-        using var worldManager = new WorldManager();
+        using var worldManager = new WorldManager(new SystemManager());
         var entity1 = worldManager.CreateEntity();
         var entity2 = worldManager.CreateEntity();
         var entity3 = worldManager.CreateEntity();
@@ -48,7 +48,7 @@ public class WorldManagerTests : IDisposable {
     [Fact]
     public void DestroyEntity_WithValidEntity_ShouldRemoveEntity()
     {
-        using var worldManager = new WorldManager();
+        using var worldManager = new WorldManager(new SystemManager());
         var entity = worldManager.CreateEntity();
         worldManager.AddComponent(entity, new TestComponent { Value = 42 });
 
@@ -68,7 +68,7 @@ public class WorldManagerTests : IDisposable {
 
         void RemoveSystem()
         {
-            using var worldManager = new WorldManager();
+            using var worldManager = new WorldManager(new SystemManager());
             var invalidEntity = new Entity(999);
             worldManager.DestroyEntity(invalidEntity);
         }
@@ -77,7 +77,7 @@ public class WorldManagerTests : IDisposable {
     [Fact]
     public void AddComponent_WithValidEntity_ShouldAddComponent()
     {
-        using var worldManager = new WorldManager();
+        using var worldManager = new WorldManager(new SystemManager());
         var entity = worldManager.CreateEntity();
         var component = new TestComponent { Value = 42 };
 
@@ -90,7 +90,7 @@ public class WorldManagerTests : IDisposable {
     [Fact]
     public void AddComponent_WithInvalidEntity_ShouldThrowArgumentException()
     {
-        using var worldManager = new WorldManager();
+        using var worldManager = new WorldManager(new SystemManager());
         var invalidEntity = new Entity(999);
         var component = new TestComponent { Value = 42 };
 
@@ -100,7 +100,7 @@ public class WorldManagerTests : IDisposable {
     [Fact]
     public void RemoveComponent_WithValidEntity_ShouldRemoveComponent()
     {
-        using var worldManager = new WorldManager();
+        using var worldManager = new WorldManager(new SystemManager());
         var entity = worldManager.CreateEntity();
         worldManager.AddComponent(entity, new TestComponent { Value = 42 });
 
@@ -113,7 +113,7 @@ public class WorldManagerTests : IDisposable {
     [Fact]
     public void RemoveComponent_WithInvalidEntity_ShouldReturnFalse()
     {
-        using var worldManager = new WorldManager();
+        using var worldManager = new WorldManager(new SystemManager());
         var invalidEntity = new Entity(999);
 
         var result = worldManager.RemoveComponent<TestComponent>(invalidEntity);
@@ -124,7 +124,7 @@ public class WorldManagerTests : IDisposable {
     [Fact]
     public void RemoveComponent_WithValidEntityButNoComponent_ShouldReturnFalse()
     {
-        using var worldManager = new WorldManager();
+        using var worldManager = new WorldManager(new SystemManager());
         var entity = worldManager.CreateEntity();
 
         var result = worldManager.RemoveComponent<TestComponent>(entity);
@@ -135,7 +135,7 @@ public class WorldManagerTests : IDisposable {
     [Fact]
     public void GetComponent_WithValidEntity_ShouldReturnComponent()
     {
-        using var worldManager = new WorldManager();
+        using var worldManager = new WorldManager(new SystemManager());
         var entity = worldManager.CreateEntity();
         worldManager.AddComponent(entity, new TestComponent { Value = 42 });
 
@@ -147,7 +147,7 @@ public class WorldManagerTests : IDisposable {
     [Fact]
     public void GetComponent_WithInvalidEntity_ShouldThrowArgumentException()
     {
-        using var worldManager = new WorldManager();
+        using var worldManager = new WorldManager(new SystemManager());
         var invalidEntity = new Entity(999);
 
         Assert.Throws<ArgumentException>(() => worldManager.GetComponent<TestComponent>(invalidEntity));
@@ -156,7 +156,7 @@ public class WorldManagerTests : IDisposable {
     [Fact]
     public void GetComponent_ShouldReturnReference()
     {
-        using var worldManager = new WorldManager();
+        using var worldManager = new WorldManager(new SystemManager());
         var entity = worldManager.CreateEntity();
         worldManager.AddComponent(entity, new TestComponent { Value = 42 });
 
@@ -170,7 +170,7 @@ public class WorldManagerTests : IDisposable {
     [Fact]
     public void HasComponent_WithValidEntity_ShouldReturnCorrectValue()
     {
-        using var worldManager = new WorldManager();
+        using var worldManager = new WorldManager(new SystemManager());
         var entity = worldManager.CreateEntity();
 
         Assert.False(worldManager.HasComponent<TestComponent>(entity));
@@ -183,7 +183,7 @@ public class WorldManagerTests : IDisposable {
     [Fact]
     public void HasComponent_WithInvalidEntity_ShouldReturnFalse()
     {
-        using var worldManager = new WorldManager();
+        using var worldManager = new WorldManager(new SystemManager());
         var invalidEntity = new Entity(999);
 
         Assert.False(worldManager.HasComponent<TestComponent>(invalidEntity));
@@ -192,7 +192,7 @@ public class WorldManagerTests : IDisposable {
     [Fact]
     public void TryGetComponent_WithValidEntity_ShouldReturnComponent()
     {
-        using var worldManager = new WorldManager();
+        using var worldManager = new WorldManager(new SystemManager());
         var entity = worldManager.CreateEntity();
         worldManager.AddComponent(entity, new TestComponent { Value = 42 });
 
@@ -205,7 +205,7 @@ public class WorldManagerTests : IDisposable {
     [Fact]
     public void TryGetComponent_WithInvalidEntity_ShouldReturnFalse()
     {
-        using var worldManager = new WorldManager();
+        using var worldManager = new WorldManager(new SystemManager());
         var invalidEntity = new Entity(999);
 
         var result = worldManager.TryGetComponent<TestComponent>(invalidEntity, out var component);
@@ -217,7 +217,7 @@ public class WorldManagerTests : IDisposable {
     [Fact]
     public void TryGetComponent_WithValidEntityButNoComponent_ShouldReturnFalse()
     {
-        using var worldManager = new WorldManager();
+        using var worldManager = new WorldManager(new SystemManager());
         var entity = worldManager.CreateEntity();
 
         var result = worldManager.TryGetComponent<TestComponent>(entity, out var component);
@@ -229,7 +229,7 @@ public class WorldManagerTests : IDisposable {
     [Fact]
     public void AddSystem_WithNewSystem_ShouldAddSystem()
     {
-        using var worldManager = new WorldManager();
+        using var worldManager = new WorldManager(new SystemManager());
         var system = Substitute.For<ISystem>();
 
         worldManager.AddSystem(system, 1);
@@ -242,7 +242,7 @@ public class WorldManagerTests : IDisposable {
     [Fact]
     public void AddSystem_WithDefaultParameters_ShouldAddSystem()
     {
-        using var worldManager = new WorldManager();
+        using var worldManager = new WorldManager(new SystemManager());
         var system = Substitute.For<ISystem>();
 
         worldManager.AddSystem(system);
@@ -255,7 +255,7 @@ public class WorldManagerTests : IDisposable {
     [Fact]
     public void AddSystem_WithExistingSystem_ShouldThrowInvalidOperationException()
     {
-        using var worldManager = new WorldManager();
+        using var worldManager = new WorldManager(new SystemManager());
         var system1 = Substitute.For<ISystem>();
         var system2 = Substitute.For<ISystem>();
 
@@ -267,7 +267,7 @@ public class WorldManagerTests : IDisposable {
     [Fact]
     public void RemoveSystem_WithExistingSystem_ShouldRemoveSystem()
     {
-        using var worldManager = new WorldManager();
+        using var worldManager = new WorldManager(new SystemManager());
         var system = Substitute.For<ISystem>();
         worldManager.AddSystem(system);
 
@@ -288,7 +288,7 @@ public class WorldManagerTests : IDisposable {
 
         void Action()
         {
-            using var worldManager = new WorldManager();
+            using var worldManager = new WorldManager(new SystemManager());
 
             worldManager.RemoveSystem<ISystem>();
         }
@@ -297,7 +297,7 @@ public class WorldManagerTests : IDisposable {
     [Fact]
     public void SetSystemEnabled_WithExistingSystem_ShouldToggleState()
     {
-        using var worldManager = new WorldManager();
+        using var worldManager = new WorldManager(new SystemManager());
         var system = Substitute.For<ISystem>();
         worldManager.AddSystem(system);
 
@@ -318,7 +318,7 @@ public class WorldManagerTests : IDisposable {
 
         void Action()
         {
-            using var worldManager = new WorldManager();
+            using var worldManager = new WorldManager(new SystemManager());
             worldManager.SetSystemEnabled<ISystem>(false);
         }
     }
@@ -326,7 +326,7 @@ public class WorldManagerTests : IDisposable {
     [Fact]
     public void GetSystem_WithExistingSystem_ShouldReturnSystem()
     {
-        using var worldManager = new WorldManager();
+        using var worldManager = new WorldManager(new SystemManager());
         var system = Substitute.For<TestSystem>();
         worldManager.AddSystem(system);
 
@@ -338,7 +338,7 @@ public class WorldManagerTests : IDisposable {
     [Fact]
     public void GetSystem_WithNonExistingSystem_ShouldReturnNull()
     {
-        using var worldManager = new WorldManager();
+        using var worldManager = new WorldManager(new SystemManager());
 
         var result = worldManager.GetSystem<TestSystem>();
 
@@ -348,7 +348,7 @@ public class WorldManagerTests : IDisposable {
     [Fact]
     public void HasSystem_WithExistingSystem_ShouldReturnTrue()
     {
-        using var worldManager = new WorldManager();
+        using var worldManager = new WorldManager(new SystemManager());
         var system = Substitute.For<ISystem>();
         worldManager.AddSystem(system);
 
@@ -358,7 +358,7 @@ public class WorldManagerTests : IDisposable {
     [Fact]
     public void HasSystem_WithNonExistingSystem_ShouldReturnFalse()
     {
-        using var worldManager = new WorldManager();
+        using var worldManager = new WorldManager(new SystemManager());
 
         Assert.False(worldManager.HasSystem<ISystem>());
     }
@@ -366,7 +366,7 @@ public class WorldManagerTests : IDisposable {
     [Fact]
     public void CreateQuery_ShouldReturnQueryAndCacheIt()
     {
-        using var worldManager = new WorldManager();
+        using var worldManager = new WorldManager(new SystemManager());
 
         var query = worldManager.CreateQuery<TestComponent>();
 
@@ -376,7 +376,7 @@ public class WorldManagerTests : IDisposable {
     [Fact]
     public void CreateQuery_WithTwoComponents_ShouldReturnQueryAndCacheIt()
     {
-        using var worldManager = new WorldManager();
+        using var worldManager = new WorldManager(new SystemManager());
 
         var query = worldManager.CreateQuery<TestComponent, TestComponent2>();
 
@@ -386,7 +386,7 @@ public class WorldManagerTests : IDisposable {
     [Fact]
     public void CreateQuery_WithThreeComponents_ShouldReturnQueryAndCacheIt()
     {
-        using var worldManager = new WorldManager();
+        using var worldManager = new WorldManager(new SystemManager());
 
         var query = worldManager.CreateQuery<TestComponent, TestComponent2, TestComponent3>();
 
@@ -396,7 +396,7 @@ public class WorldManagerTests : IDisposable {
     [Fact]
     public void DestroyEntities_WithValidEntities_ShouldDestroyAll()
     {
-        using var worldManager = new WorldManager();
+        using var worldManager = new WorldManager(new SystemManager());
         var entities = new Entity[3];
         for (var i = 0; i < 3; i++)
         {
@@ -413,7 +413,7 @@ public class WorldManagerTests : IDisposable {
     [Fact]
     public void DestroyEntities_WithMixedValidAndInvalidEntities_ShouldDestroyOnlyValid()
     {
-        using var worldManager = new WorldManager();
+        using var worldManager = new WorldManager(new SystemManager());
         var validEntity = worldManager.CreateEntity();
         var invalidEntity = new Entity(999);
         worldManager.AddComponent(validEntity, new TestComponent { Value = 42 });
@@ -436,7 +436,7 @@ public class WorldManagerTests : IDisposable {
 
         void Action()
         {
-            using var worldManager = new WorldManager();
+            using var worldManager = new WorldManager(new SystemManager());
             worldManager.DestroyEntities(ReadOnlySpan<Entity>.Empty);
         }
     }
@@ -444,7 +444,7 @@ public class WorldManagerTests : IDisposable {
     [Fact]
     public void AddComponents_WithValidEntities_ShouldAddAllComponents()
     {
-        using var worldManager = new WorldManager();
+        using var worldManager = new WorldManager(new SystemManager());
         var entities = new Entity[3];
         for (var i = 0; i < 3; i++)
             entities[i] = worldManager.CreateEntity();
@@ -465,7 +465,7 @@ public class WorldManagerTests : IDisposable {
     [Fact]
     public void AddComponents_WithInvalidEntities_ShouldSkipInvalidOnes()
     {
-        using var worldManager = new WorldManager();
+        using var worldManager = new WorldManager(new SystemManager());
         var validEntity = worldManager.CreateEntity();
         var invalidEntity = new Entity(999);
 
@@ -491,7 +491,7 @@ public class WorldManagerTests : IDisposable {
 
         void Action()
         {
-            using var worldManager = new WorldManager();
+            using var worldManager = new WorldManager(new SystemManager());
             worldManager.AddComponents(ReadOnlySpan<(Entity, TestComponent)>.Empty);
         }
     }
@@ -499,7 +499,7 @@ public class WorldManagerTests : IDisposable {
     [Fact]
     public void Update_ShouldCallSystemManagerUpdate()
     {
-        using var worldManager = new WorldManager();
+        using var worldManager = new WorldManager(new SystemManager());
         var system = Substitute.For<ISystem>();
         worldManager.AddSystem(system);
 
@@ -511,7 +511,7 @@ public class WorldManagerTests : IDisposable {
     [Fact]
     public void Update_WithDisabledSystem_ShouldNotCallUpdate()
     {
-        using var worldManager = new WorldManager();
+        using var worldManager = new WorldManager(new SystemManager());
         var system = Substitute.For<ISystem>();
         worldManager.AddSystem(system);
         worldManager.SetSystemEnabled<ISystem>(false);
@@ -532,15 +532,28 @@ public class WorldManagerTests : IDisposable {
 
         void Action()
         {
-            using var worldManager = new WorldManager();
+            using var worldManager = new WorldManager(new SystemManager());
             worldManager.Update(0.16f);
         }
     }
 
     [Fact]
+    public void AddSystem_ThenUpdateOnSharedSystemManager_ShouldRunTheSystem()
+    {
+        var systemManager = new SystemManager();
+        using var worldManager = new WorldManager(systemManager);
+        var system = Substitute.For<ISystem>();
+
+        worldManager.AddSystem(system);
+        systemManager.Update(0.16f);
+
+        system.Received(1).Update(0.16f);
+    }
+
+    [Fact]
     public void Dispose_ShouldCleanupResourcesAndPreventFurtherOperations()
     {
-        var worldManager = new WorldManager();
+        var worldManager = new WorldManager(new SystemManager());
         var entity = worldManager.CreateEntity();
         worldManager.AddComponent(entity, new TestComponent { Value = 42 });
 
@@ -552,9 +565,23 @@ public class WorldManagerTests : IDisposable {
     }
 
     [Fact]
+    public void Dispose_ShouldNotDisposeTheSharedSystemManager()
+    {
+        var systemManager = new SystemManager();
+        var worldManager = new WorldManager(systemManager);
+        var system = Substitute.For<ISystem>();
+        worldManager.AddSystem(system);
+
+        worldManager.Dispose();
+        systemManager.Update(0.16f);
+
+        system.Received(1).Update(0.16f);
+    }
+
+    [Fact]
     public void GetEntityCount_ShouldReturnCorrectCount()
     {
-        using var worldManager = new WorldManager();
+        using var worldManager = new WorldManager(new SystemManager());
 
         Assert.Equal(0, worldManager.GetEntityCount());
 
@@ -571,7 +598,7 @@ public class WorldManagerTests : IDisposable {
     [Fact]
     public void GetSystemCount_ShouldReturnCorrectCount()
     {
-        using var worldManager = new WorldManager();
+        using var worldManager = new WorldManager(new SystemManager());
 
         Assert.Equal(0, worldManager.GetSystemCount());
 
@@ -590,7 +617,7 @@ public class WorldManagerTests : IDisposable {
     [Fact]
     public void GetActiveSystemCount_WithEnabledSystems_ShouldReturnCorrectCount()
     {
-        using var worldManager = new WorldManager();
+        using var worldManager = new WorldManager(new SystemManager());
 
         Assert.Equal(0, worldManager.GetActiveSystemCount());
 
@@ -608,7 +635,7 @@ public class WorldManagerTests : IDisposable {
     [Fact]
     public void GetActiveSystemCount_WithDisabledSystem_ShouldReturnCorrectCount()
     {
-        using var worldManager = new WorldManager();
+        using var worldManager = new WorldManager(new SystemManager());
 
         var system1 = new TestSystemA();
         worldManager.AddSystem(system1);
@@ -627,7 +654,7 @@ public class WorldManagerTests : IDisposable {
     [Fact]
     public void GetComponentCount_ShouldReturnCorrectCount()
     {
-        using var worldManager = new WorldManager();
+        using var worldManager = new WorldManager(new SystemManager());
 
         Assert.Equal(0, worldManager.GetComponentCount<TestComponent>());
 
@@ -646,7 +673,7 @@ public class WorldManagerTests : IDisposable {
     [Fact]
     public void GetComponentCount_WithMultipleComponentTypes_ShouldReturnCorrectCounts()
     {
-        using var worldManager = new WorldManager();
+        using var worldManager = new WorldManager(new SystemManager());
         var entity = worldManager.CreateEntity();
 
         worldManager.AddComponent(entity, new TestComponent { Value = 1 });
@@ -660,7 +687,7 @@ public class WorldManagerTests : IDisposable {
     [Fact]
     public void AddComponent_ShouldInvalidateQueries()
     {
-        using var worldManager = new WorldManager();
+        using var worldManager = new WorldManager(new SystemManager());
         var entity = worldManager.CreateEntity();
         var query = worldManager.CreateQuery<TestComponent>();
 
@@ -675,7 +702,7 @@ public class WorldManagerTests : IDisposable {
     [Fact]
     public void RemoveComponent_ShouldInvalidateQueries()
     {
-        using var worldManager = new WorldManager();
+        using var worldManager = new WorldManager(new SystemManager());
         var entity1 = worldManager.CreateEntity();
         var entity2 = worldManager.CreateEntity();
         worldManager.AddComponent(entity1, new TestComponent { Value = 1 });
@@ -692,7 +719,7 @@ public class WorldManagerTests : IDisposable {
     [Fact]
     public void DestroyEntity_ShouldInvalidateQueries()
     {
-        using var worldManager = new WorldManager();
+        using var worldManager = new WorldManager(new SystemManager());
         var entity1 = worldManager.CreateEntity();
         var entity2 = worldManager.CreateEntity();
         worldManager.AddComponent(entity1, new TestComponent { Value = 1 });
@@ -709,7 +736,7 @@ public class WorldManagerTests : IDisposable {
     [Fact]
     public void AddComponents_ShouldInvalidateQueries()
     {
-        using var worldManager = new WorldManager();
+        using var worldManager = new WorldManager(new SystemManager());
         var entity1 = worldManager.CreateEntity();
         var entity2 = worldManager.CreateEntity();
         var query = worldManager.CreateQuery<TestComponent>();
@@ -730,7 +757,7 @@ public class WorldManagerTests : IDisposable {
     [Fact]
     public void Query_WithMultipleComponents_ShouldReturnCorrectEntities()
     {
-        using var worldManager = new WorldManager();
+        using var worldManager = new WorldManager(new SystemManager());
         var entity1 = worldManager.CreateEntity();
         var entity2 = worldManager.CreateEntity();
         var entity3 = worldManager.CreateEntity();
@@ -757,7 +784,7 @@ public class WorldManagerTests : IDisposable {
     [Fact]
     public void Query_WithThreeComponents_ShouldReturnCorrectEntities()
     {
-        using var worldManager = new WorldManager();
+        using var worldManager = new WorldManager(new SystemManager());
         var entity1 = worldManager.CreateEntity();
         var entity2 = worldManager.CreateEntity();
 
@@ -784,7 +811,7 @@ public class WorldManagerTests : IDisposable {
     [Fact]
     public void Query_Enumeration_ShouldIterateOverMatchingEntities()
     {
-        using var worldManager = new WorldManager();
+        using var worldManager = new WorldManager(new SystemManager());
         var entities = new List<Entity>();
 
         for (var i = 0; i < 3; i++)
@@ -815,7 +842,7 @@ public class WorldManagerTests : IDisposable {
     [Fact]
     public void Query_TryGetFirst_WithEmptyQuery_ShouldReturnFalse()
     {
-        using var worldManager = new WorldManager();
+        using var worldManager = new WorldManager(new SystemManager());
         var query = worldManager.CreateQuery<TestComponent>();
 
         var hasFirst = query.TryGetFirst(out var entity, out var component);
@@ -828,7 +855,7 @@ public class WorldManagerTests : IDisposable {
     [Fact]
     public void Query_Clear_ShouldInvalidateAndEmpty()
     {
-        using var worldManager = new WorldManager();
+        using var worldManager = new WorldManager(new SystemManager());
         var entity = worldManager.CreateEntity();
         worldManager.AddComponent(entity, new TestComponent { Value = 1 });
 
@@ -843,7 +870,7 @@ public class WorldManagerTests : IDisposable {
     [Fact]
     public void DestroyEntities_ShouldInvalidateQueries()
     {
-        using var worldManager = new WorldManager();
+        using var worldManager = new WorldManager(new SystemManager());
         var entities = new Entity[3];
         for (var i = 0; i < 3; i++)
         {
@@ -862,7 +889,7 @@ public class WorldManagerTests : IDisposable {
     [Fact]
     public void AddComponent_SameComponentTwice_ShouldOverwriteExisting()
     {
-        using var worldManager = new WorldManager();
+        using var worldManager = new WorldManager(new SystemManager());
         var entity = worldManager.CreateEntity();
 
         worldManager.AddComponent(entity, new TestComponent { Value = 1 });
@@ -877,7 +904,7 @@ public class WorldManagerTests : IDisposable {
     [Fact]
     public void Dispose_ShouldPreventCreateEntityOperation()
     {
-        var worldManager = new WorldManager();
+        var worldManager = new WorldManager(new SystemManager());
         var entity = worldManager.CreateEntity();
         worldManager.AddComponent(entity, new TestComponent { Value = 42 });
 
@@ -892,7 +919,7 @@ public class WorldManagerTests : IDisposable {
     [Fact]
     public void Dispose_ShouldMakeAllOperationsReturnFalse()
     {
-        var worldManager = new WorldManager();
+        var worldManager = new WorldManager(new SystemManager());
         var entity = worldManager.CreateEntity();
         worldManager.AddComponent(entity, new TestComponent { Value = 42 });
 
@@ -916,7 +943,7 @@ public class WorldManagerTests : IDisposable {
     [Fact]
     public void Dispose_MultipleCallsShouldNotThrow()
     {
-        var worldManager = new WorldManager();
+        var worldManager = new WorldManager(new SystemManager());
         var entity = worldManager.CreateEntity();
         worldManager.AddComponent(entity, new TestComponent { Value = 42 });
 
@@ -928,9 +955,9 @@ public class WorldManagerTests : IDisposable {
     }
 
     [Fact]
-    public void Dispose_WithSystems_ShouldDisposeAllSystems()
+    public void Dispose_WithSystems_ShouldNotDisposeSystemsOwnedByTheSharedSystemManager()
     {
-        var worldManager = new WorldManager();
+        var worldManager = new WorldManager(new SystemManager());
         var system1 = new TestDisposableSystem1();
         var system2 = new TestDisposableSystem2();
 
@@ -939,14 +966,14 @@ public class WorldManagerTests : IDisposable {
 
         worldManager.Dispose();
 
-        Assert.True(system1.WasDisposed);
-        Assert.True(system2.WasDisposed);
+        Assert.False(system1.WasDisposed);
+        Assert.False(system2.WasDisposed);
     }
 
     [Fact]
     public void CreateEntity_OnDisposedWorldManager_ShouldThrowObjectDisposedException()
     {
-        var worldManager = new WorldManager();
+        var worldManager = new WorldManager(new SystemManager());
         worldManager.Dispose();
 
         Assert.Throws<ObjectDisposedException>(() => worldManager.CreateEntity());
@@ -955,7 +982,7 @@ public class WorldManagerTests : IDisposable {
     [Fact]
     public void Operations_OnDisposedWorldManager_MixedBehavior()
     {
-        var worldManager = new WorldManager();
+        var worldManager = new WorldManager(new SystemManager());
         var entity = worldManager.CreateEntity();
         worldManager.AddComponent(entity, new TestComponent { Value = 42 });
         worldManager.Dispose();
@@ -982,7 +1009,7 @@ public class WorldManagerTests : IDisposable {
     [Fact]
     public void AddSystem_WithPriority_ShouldExecuteInCorrectOrder()
     {
-        using var worldManager = new WorldManager();
+        using var worldManager = new WorldManager(new SystemManager());
         var executionOrder = new List<string>();
 
         var highPrioritySystem = new HighPriorityOrderTestSystem("High", executionOrder);
@@ -1005,7 +1032,7 @@ public class WorldManagerTests : IDisposable {
     [Fact]
     public void AddSystem_WithSamePriority_ShouldExecuteInAddOrder()
     {
-        using var worldManager = new WorldManager();
+        using var worldManager = new WorldManager(new SystemManager());
         var executionOrder = new List<string>();
 
         var system1 = new FirstOrderTestSystem("First", executionOrder);

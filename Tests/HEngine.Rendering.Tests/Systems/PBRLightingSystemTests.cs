@@ -19,7 +19,7 @@ public class PBRLightingSystemTests
     [Fact(DisplayName = "GatherLights collects SpotLight with direction and cone angles")]
     public void GatherLights_CollectsSpotLight()
     {
-        using var world = new WorldManager();
+        using var world = new WorldManager(new SystemManager());
         var system = new LightingSystem();
         system.Initialize(world);
 
@@ -48,7 +48,7 @@ public class PBRLightingSystemTests
     [Fact(DisplayName = "GatherLights skips spot lights on culled entities")]
     public void GatherLights_SkipsCulledSpotLights()
     {
-        using var world = new WorldManager();
+        using var world = new WorldManager(new SystemManager());
         var system = new LightingSystem();
         system.Initialize(world);
 
@@ -70,7 +70,7 @@ public class PBRLightingSystemTests
     [Fact(DisplayName = "GatherLights collects directional, point and spot lights together up to MaxLights")]
     public void GatherLights_CollectsMixedLights_UpToMax()
     {
-        using var world = new WorldManager();
+        using var world = new WorldManager(new SystemManager());
         var system = new LightingSystem();
         system.Initialize(world);
 

@@ -65,7 +65,7 @@ public class MeshRenderingSystemTests
     [Fact(DisplayName = "Render with two mesh entities should call DrawMesh twice")]
     public void Render_WithMeshEntities_CallsDrawMesh()
     {
-        var world = new WorldManager();
+        var world = new WorldManager(new SystemManager());
         var system = new MeshRenderingSystem();
         system.Initialize(world);
 
@@ -88,7 +88,7 @@ public class MeshRenderingSystemTests
     [Fact(DisplayName = "Render should skip entities marked as Culled")]
     public void Render_SkipsCulledEntities()
     {
-        var world = new WorldManager();
+        var world = new WorldManager(new SystemManager());
         var system = new MeshRenderingSystem();
         system.Initialize(world);
 
@@ -112,7 +112,7 @@ public class MeshRenderingSystemTests
     [Fact(DisplayName = "Render should use world matrix for child transforms")]
     public void Render_UsesWorldMatrix_ForChild()
     {
-        var world = new WorldManager();
+        var world = new WorldManager(new SystemManager());
         var system = new MeshRenderingSystem();
         system.Initialize(world);
 

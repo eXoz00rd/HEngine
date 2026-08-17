@@ -10,7 +10,7 @@ namespace HEngine.Core.Tests.Components.Transform
         [Fact(DisplayName = "Child world matrix equals parent * child local (translation only)")]
         public void ChildWorldMatrix_WithParentTranslation_ComputesCorrectly()
         {
-            using var world = new WorldManager();
+            using var world = new WorldManager(new SystemManager());
 
             var parent = world.CreateEntity();
             var child = world.CreateEntity();
@@ -34,7 +34,7 @@ namespace HEngine.Core.Tests.Components.Transform
         [Fact(DisplayName = "Child inherits rotation from parent")]
         public void ChildWorldMatrix_WithParentRotation_ComputesCorrectly()
         {
-            using var world = new WorldManager();
+            using var world = new WorldManager(new SystemManager());
 
             var parent = world.CreateEntity();
             var child = world.CreateEntity();
@@ -64,7 +64,7 @@ namespace HEngine.Core.Tests.Components.Transform
         [Fact(DisplayName = "Dirty flag invalidates cache and recomputes")]
         public void DirtyFlag_ControlsCache()
         {
-            using var world = new WorldManager();
+            using var world = new WorldManager(new SystemManager());
 
             var parent = world.CreateEntity();
             var child = world.CreateEntity();

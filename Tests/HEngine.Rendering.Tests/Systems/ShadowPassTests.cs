@@ -46,7 +46,7 @@ public class ShadowPassTests
     [Fact(DisplayName = "ShadowRenderingSystem skips entities with CastShadows=false")]
     public void ShadowPass_Skips_Entities_With_CastShadows_False()
     {
-        using var world = new WorldManager();
+        using var world = new WorldManager(new SystemManager());
         var system = new ShadowRenderingSystem();
         system.Initialize(world);
 
@@ -82,7 +82,7 @@ public class ShadowPassTests
     [Fact(DisplayName = "ShadowRenderingSystem skips culled entities")]
     public void ShadowPass_Skips_Culled_Entities()
     {
-        using var world = new WorldManager();
+        using var world = new WorldManager(new SystemManager());
         var system = new ShadowRenderingSystem();
         system.Initialize(world);
 
@@ -109,7 +109,7 @@ public class ShadowPassTests
     [Fact(DisplayName = "ShadowRenderingSystem creates one shadow pass per cascade")]
     public void ShadowPass_Creates_One_Pass_Per_Cascade()
     {
-        using var world = new WorldManager();
+        using var world = new WorldManager(new SystemManager());
         var system = new ShadowRenderingSystem();
         system.Initialize(world);
 
@@ -126,7 +126,7 @@ public class ShadowPassTests
     [Fact(DisplayName = "ShadowRenderingSystem does nothing when no shadow renderer")]
     public void ShadowPass_DoesNothing_When_No_ShadowRenderer()
     {
-        using var world = new WorldManager();
+        using var world = new WorldManager(new SystemManager());
         var system = new ShadowRenderingSystem();
         system.Initialize(world);
 
@@ -140,7 +140,7 @@ public class ShadowPassTests
     [Fact(DisplayName = "ShadowRenderingSystem cascade indices passed in order")]
     public void ShadowPass_CascadeIndices_In_Order()
     {
-        using var world = new WorldManager();
+        using var world = new WorldManager(new SystemManager());
         var system = new ShadowRenderingSystem();
         system.Initialize(world);
 
