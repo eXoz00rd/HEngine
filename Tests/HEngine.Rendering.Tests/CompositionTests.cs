@@ -135,7 +135,7 @@ namespace HEngine.Rendering.Tests
             var shadowSettingsDescriptor = services.Single(d => d.ServiceType == typeof(ShadowSettings));
             services.Remove(shadowSettingsDescriptor);
 
-            Assert.ThrowsAny<Exception>(() =>
+            Assert.Throws<AggregateException>(() =>
                 services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true }));
         }
 
