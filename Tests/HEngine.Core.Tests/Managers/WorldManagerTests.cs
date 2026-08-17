@@ -565,6 +565,20 @@ public class WorldManagerTests : IDisposable {
     }
 
     [Fact]
+    public void Dispose_ShouldNotDisposeTheSharedSystemManager()
+    {
+        var systemManager = new SystemManager();
+        var worldManager = new WorldManager(systemManager);
+        var system = Substitute.For<ISystem>();
+        worldManager.AddSystem(system);
+
+        worldManager.Dispose();
+        systemManager.Update(0.16f);
+
+        system.Received(1).Update(0.16f);
+    }
+
+    [Fact]
     public void GetEntityCount_ShouldReturnCorrectCount()
     {
         using var worldManager = new WorldManager(new SystemManager());
@@ -941,7 +955,7 @@ public class WorldManagerTests : IDisposable {
     }
 
     [Fact]
-    public void Dispose_WithSystems_ShouldDisposeAllSystems()
+    public void Dispose_WithSystems_ShouldNotDisposeSystemsOwnedByTheSharedSystemManager()
     {
         var worldManager = new WorldManager(new SystemManager());
         var system1 = new TestDisposableSystem1();
@@ -952,8 +966,8 @@ public class WorldManagerTests : IDisposable {
 
         worldManager.Dispose();
 
-        Assert.True(system1.WasDisposed);
-        Assert.True(system2.WasDisposed);
+        Assert.False(system1.WasDisposed);
+        Assert.False(system2.WasDisposed);
     }
 
     [Fact]

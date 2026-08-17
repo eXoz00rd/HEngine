@@ -27,7 +27,6 @@ public class WorldManager : IDisposable {
         if (_disposed)
             return;
 
-        _systemManager.Dispose();
         _systemCache.Clear();
         _queryCache.Clear();
         ComponentManager.Dispose();
