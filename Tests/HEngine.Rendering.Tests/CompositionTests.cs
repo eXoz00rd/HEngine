@@ -1,11 +1,15 @@
+using System.Linq;
 using System.Numerics;
 using HEngine.Core.Components.Rendering;
 using HEngine.Core.Configuration;
 using HEngine.Core.Extensions;
 using HEngine.Core.Managers;
+using HEngine.Core.Rendering.Contracts;
+using HEngine.Rendering;
 using HEngine.Rendering.Extensions;
 using HEngine.Rendering.PostProcessing;
 using HEngine.Rendering.Systems;
+using HEngine.Rendering.Systems.Implementations;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -113,6 +117,53 @@ namespace HEngine.Rendering.Tests
             var stackB = provider.GetRequiredService<PostProcessStack>();
 
             Assert.Same(stackA, stackB);
+        }
+
+        [Fact(DisplayName = "Production composition resolves the real RenderPipeline/RenderingSystem implementations, not a test double")]
+        public void Composition_Resolves_RenderPipeline_And_RenderingSystem_As_Concrete_Production_Types()
+        {
+            // Not `using` deliberately: disposing this provider resolves and tears down the full
+            // render graph, including SilkDirectX12Renderer, whose Dispose() NullReferenceExceptions
+            // when never Initialize()'d (a separate, pre-existing bug, out of scope here).
+            var provider = BuildProductionServiceCollection().BuildServiceProvider();
+
+            Assert.IsType<RenderPipeline>(provider.GetRequiredService<IRenderPipeline>());
+            Assert.IsType<RenderingSystem>(provider.GetRequiredService<IRenderingSystem>());
+        }
+
+        [Fact(DisplayName = "Production composition fails to build when a required dependency's registration is removed")]
+        public void Composition_Fails_When_A_Required_Registration_Is_Missing()
+        {
+            var services = BuildProductionServiceCollection();
+            var shadowSettingsDescriptor = services.Single(d => d.ServiceType == typeof(ShadowSettings));
+            services.Remove(shadowSettingsDescriptor);
+
+            Assert.ThrowsAny<Exception>(() =>
+                services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true }));
+        }
+
+        [Fact(DisplayName = "Shadows are enabled by default configuration but no IShadowRenderer is wired in production yet — tracks #19")]
+        public void Composition_ShadowsEnabledByDefault_RequireAWiredShadowRenderer()
+        {
+            using var provider = BuildProductionServiceCollection().BuildServiceProvider();
+
+            var shadowSettings = provider.GetRequiredService<ShadowSettings>();
+            var shadowRenderingSystem = provider.GetRequiredService<ShadowRenderingSystem>();
+
+            Assert.True(shadowSettings.Enabled);
+            Assert.True(shadowRenderingSystem.HasShadowRenderer);
+        }
+
+        [Fact(DisplayName = "Bloom is enabled by default configuration but no post-process effect is registered in production yet — tracks #20")]
+        public void Composition_BloomEnabledByDefault_RequiresARegisteredPostProcessEffect()
+        {
+            using var provider = BuildProductionServiceCollection().BuildServiceProvider();
+
+            var postProcessingSettings = provider.GetRequiredService<PostProcessingSettings>();
+            var postProcessStack = provider.GetRequiredService<PostProcessStack>();
+
+            Assert.True(postProcessingSettings.EnableBloom);
+            Assert.True(postProcessStack.EnabledEffectCount > 0);
         }
     }
 }
