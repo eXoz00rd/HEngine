@@ -25,12 +25,6 @@ public class RenderingSystem : IRenderingSystem
         _meshSystem = meshSystem;
     }
 
-    public RenderingSystem()
-    {
-        _spriteSystem = new SpriteRenderingSystem();
-        _meshSystem = new MeshRenderingSystem();
-    }
-
     public bool IsInitialized => _isInitialized && !_disposed;
 
     public void Update(float deltaTime)

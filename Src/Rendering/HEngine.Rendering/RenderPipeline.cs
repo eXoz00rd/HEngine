@@ -43,43 +43,6 @@ public class RenderPipeline : IRenderPipeline {
         _logger = logger;
     }
 
-    public RenderPipeline(
-        IRenderManager renderManager,
-        IRenderingSystem renderingSystem,
-        WorldManager world,
-        LightingSystem lightingSystem,
-        ShadowRenderingSystem shadowRenderingSystem,
-        ShadowSettings shadowSettings,
-        ILogger<RenderPipeline> logger)
-    {
-        _renderManager = renderManager;
-        _renderingSystem = renderingSystem;
-        _world = world;
-        _lightingSystem = lightingSystem;
-        _shadowRenderingSystem = shadowRenderingSystem;
-        _shadowSettings = shadowSettings;
-        _postProcessStack = new PostProcessStack();
-        _logger = logger;
-    }
-
-    public RenderPipeline(
-        IRenderManager renderManager,
-        IRenderingSystem renderingSystem,
-        WorldManager world,
-        ILogger<RenderPipeline> logger)
-    {
-        _renderManager = renderManager;
-        _renderingSystem = renderingSystem;
-        _world = world;
-        _lightingSystem = new LightingSystem();
-        _lightingSystem.Initialize(world);
-        _shadowRenderingSystem = new ShadowRenderingSystem();
-        _shadowRenderingSystem.Initialize(world);
-        _shadowSettings = new ShadowSettings { Enabled = false };
-        _postProcessStack = new PostProcessStack();
-        _logger = logger;
-    }
-
     public void RenderFrame()
     {
         if (!_renderManager.CanRender)

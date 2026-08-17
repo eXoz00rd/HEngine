@@ -29,4 +29,8 @@
     <ProjectReference Include="..\..\Src\Core\HEngine.Core\HEngine.Core.csproj" />
     <ProjectReference Include="..\..\Src\Rendering\HEngine.Rendering\HEngine.Rendering.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\Src\Rendering\HEngine.Rendering\Shaders\*.hlsl" Link="Shaders\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

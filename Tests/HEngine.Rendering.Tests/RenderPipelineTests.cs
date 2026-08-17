@@ -1,9 +1,12 @@
 ﻿using System;
 using System.Numerics;
 using HEngine.Core.Components.Rendering;
+using HEngine.Core.Configuration;
 using HEngine.Core.Managers;
 using HEngine.Core.Rendering.Contracts;
 using HEngine.Rendering;
+using HEngine.Rendering.PostProcessing;
+using HEngine.Rendering.Systems;
 using Xunit;
 
 namespace HEngine.Rendering.Tests
@@ -154,7 +157,22 @@ namespace HEngine.Rendering.Tests
             var renderingSystem = new FakeRenderingSystem();
             var logger = new NullLogger<RenderPipeline>();
 
-            var pipeline = new RenderPipeline(renderManager, renderingSystem, world, logger);
+            var lightingSystem = new LightingSystem();
+            lightingSystem.Initialize(world);
+            var shadowRenderingSystem = new ShadowRenderingSystem();
+            shadowRenderingSystem.Initialize(world);
+            var shadowSettings = new ShadowSettings { Enabled = false };
+            var postProcessStack = new PostProcessStack();
+
+            var pipeline = new RenderPipeline(
+                renderManager,
+                renderingSystem,
+                world,
+                lightingSystem,
+                shadowRenderingSystem,
+                shadowSettings,
+                postProcessStack,
+                logger);
             
             pipeline.RenderFrame();
             
