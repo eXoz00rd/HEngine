@@ -23,7 +23,7 @@ public class TransformHierarchyBenchmarks
     [GlobalSetup]
     public void Setup()
     {
-        _world = new WorldManager();
+        _world = new WorldManager(new SystemManager());
         _hierarchySystem = new TransformHierarchySystem();
         _hierarchySystem.Initialize(_world);
 

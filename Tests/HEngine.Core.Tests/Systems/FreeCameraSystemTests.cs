@@ -19,7 +19,7 @@ public class FreeCameraSystemTests
     [Fact(DisplayName = "FreeCameraSystem translates camera forward with positive Z movement")]
     public void Update_Moves_Forward()
     {
-        var world = new WorldManager();
+        var world = new WorldManager(new SystemManager());
         var entity = world.CreateEntity();
         world.AddComponent(entity, new Camera
         {
@@ -49,7 +49,7 @@ public class FreeCameraSystemTests
     [Fact(DisplayName = "FreeCameraSystem yaw rotates camera around Up vector")]
     public void Update_Yaw_Rotates_View()
     {
-        var world = new WorldManager();
+        var world = new WorldManager(new SystemManager());
         var entity = world.CreateEntity();
         world.AddComponent(entity, new Camera
         {
@@ -79,7 +79,7 @@ public class FreeCameraSystemTests
     [Fact(DisplayName = "FreeCameraSystem disabled does not change camera")]
     public void Disabled_Does_Not_Update()
     {
-        var world = new WorldManager();
+        var world = new WorldManager(new SystemManager());
         var entity = world.CreateEntity();
         world.AddComponent(entity, new Camera
         {
@@ -108,7 +108,7 @@ public class FreeCameraSystemTests
     [Fact(DisplayName = "FreeCameraSystem moves up/down with Y axis and respects MoveSpeed and deltaTime")]
     public void Update_Moves_Up_With_Speed_And_DeltaTime()
     {
-        var world = new WorldManager();
+        var world = new WorldManager(new SystemManager());
         var entity = world.CreateEntity();
         world.AddComponent(entity, new Camera
         {

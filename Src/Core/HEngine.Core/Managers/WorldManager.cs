@@ -7,11 +7,12 @@ namespace HEngine.Core.Managers;
 public class WorldManager : IDisposable {
     private readonly List<IQuery> _queryCache = new();
     private readonly Dictionary<Type, ISystem> _systemCache = new();
-    private readonly SystemManager _systemManager = new();
+    private readonly SystemManager _systemManager;
     private bool _disposed;
 
-    public WorldManager()
+    public WorldManager(SystemManager systemManager)
     {
+        _systemManager = systemManager ?? throw new ArgumentNullException(nameof(systemManager));
         EntityManager = new EntityManager();
         ComponentManager = new ComponentManager(EntityManager);
         QueryBuilder = new QueryBuilder(ComponentManager, EntityManager);
@@ -26,7 +27,6 @@ public class WorldManager : IDisposable {
         if (_disposed)
             return;
 
-        _systemManager.Dispose();
         _systemCache.Clear();
         _queryCache.Clear();
         ComponentManager.Dispose();

@@ -9,7 +9,7 @@ public class TransformWorldMatrixTests
     [Fact]
     public void GetWorldMatrix_NoParent_EqualsLocalMatrix()
     {
-        using var world = new WorldManager();
+        using var world = new WorldManager(new SystemManager());
         var e = world.CreateEntity();
         world.AddComponent(e, new HEngine.Core.Components.Transform.Transform(new Vector3(3, 4, 5), Quaternion.CreateFromYawPitchRoll(0.1f, 0.2f, 0.3f), new Vector3(2, 2, 2)));
 

@@ -136,7 +136,7 @@ namespace HEngine.Rendering.Tests
         [Fact(DisplayName = "RenderPipeline uses ECS Camera view/projection matrices")]
         public void RenderPipeline_Uses_ECS_Camera_Matrices()
         {
-            var world = new WorldManager();
+            var world = new WorldManager(new SystemManager());
             var e = world.CreateEntity();
             var cam = new Camera
             {
@@ -191,7 +191,7 @@ namespace HEngine.Rendering.Tests
         [Fact(DisplayName = "Shadow pass is skipped when no IShadowRenderer is wired, even with shadows enabled")]
         public void Shadow_Pass_Skipped_Without_ShadowRenderer()
         {
-            var world = new WorldManager();
+            var world = new WorldManager(new SystemManager());
 
             var camEntity = world.CreateEntity();
             world.AddComponent(camEntity, new Camera

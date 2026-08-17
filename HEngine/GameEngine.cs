@@ -62,13 +62,11 @@ public class GameEngine : IDisposable
     private readonly ILogger<GameEngine> _logger;
     private readonly IRenderingSystem _renderingSystem;
     private readonly IRenderManager _renderManager;
-    private readonly SystemManager _systemManager;
     private readonly WorldManager _worldManager;
     private bool _disposed;
 
     public GameEngine(
         IGameLoop gameLoop,
-        SystemManager systemManager,
         WorldManager worldManager,
         IRenderManager renderManager,
         IRenderingSystem renderingSystem,
@@ -77,7 +75,6 @@ public class GameEngine : IDisposable
         ILogger<GameEngine> logger)
     {
         _gameLoop = gameLoop ?? throw new ArgumentNullException(nameof(gameLoop));
-        _systemManager = systemManager ?? throw new ArgumentNullException(nameof(systemManager));
         _worldManager = worldManager ?? throw new ArgumentNullException(nameof(worldManager));
         _renderManager = renderManager ?? throw new ArgumentNullException(nameof(renderManager));
         _renderingSystem = renderingSystem ?? throw new ArgumentNullException(nameof(renderingSystem));
@@ -165,10 +162,9 @@ public class GameEngine : IDisposable
                 MoveSpeed = 5f,
                 LookSpeed = 0.0025f
             };
-            freeCameraSystem.Initialize(_worldManager);
-            _systemManager.AddSystem(freeCameraSystem, 10);
+            _worldManager.AddSystem(freeCameraSystem, 10);
 
-            _systemManager.AddSystem(_renderingSystem);
+            _worldManager.AddSystem(_renderingSystem);
 
             CreateExampleEntities();
 

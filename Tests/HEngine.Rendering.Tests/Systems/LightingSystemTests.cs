@@ -15,7 +15,7 @@ public class LightingSystemTests
     [Fact(DisplayName = "GatherLights collects directional and point lights with expected data")]
     public void GatherLights_CollectsLights()
     {
-        using var world = new WorldManager();
+        using var world = new WorldManager(new SystemManager());
         var system = new LightingSystem();
         system.Initialize(world);
 
@@ -47,7 +47,7 @@ public class LightingSystemTests
     [Fact(DisplayName = "GatherLights limits to MaxLights and preserves gathering order (dir first)")]
     public void GatherLights_Limits_To_MaxLights()
     {
-        using var world = new WorldManager();
+        using var world = new WorldManager(new SystemManager());
         var system = new LightingSystem();
         system.Initialize(world);
 
@@ -72,7 +72,7 @@ public class LightingSystemTests
     [Fact(DisplayName = "GatherLights skips point lights on culled entities")]
     public void GatherLights_Skips_Culled_Point_Lights()
     {
-        using var world = new WorldManager();
+        using var world = new WorldManager(new SystemManager());
         var system = new LightingSystem();
         system.Initialize(world);
 

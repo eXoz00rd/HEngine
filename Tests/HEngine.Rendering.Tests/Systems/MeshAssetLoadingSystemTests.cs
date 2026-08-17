@@ -16,7 +16,7 @@ public class MeshAssetLoadingSystemTests : IDisposable
 
     public MeshAssetLoadingSystemTests()
     {
-        _world = new WorldManager();
+        _world = new WorldManager(new SystemManager());
         _assetManager = CreateMockAssetManager();
         _system = new MeshAssetLoadingSystem();
         _system.Initialize(_world, _assetManager);
