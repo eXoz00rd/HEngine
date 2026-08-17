@@ -25,7 +25,7 @@ namespace HEngine.Rendering.Tests
             return services;
         }
 
-        [Fact(DisplayName = "Production composition validates the full service graph without a native/filesystem dependency, proving no registration is missing behind a silent fallback")]
+        [Fact(DisplayName = "Production composition validates every constructor-injected registration in the graph without instantiating anything; factory-backed registrations are covered separately by the targeted resolve tests below")]
         public void Composition_Validates_Full_Service_Graph()
         {
             var services = BuildProductionServiceCollection();

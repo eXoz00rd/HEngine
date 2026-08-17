@@ -480,7 +480,7 @@ Kolejność wynika z zależności technicznych — każdy krok odblokowuje nast�
 
 1. ✅ **Usunąć konstruktory zapasowe** z `RenderPipeline` i `RenderingSystem`. Zostawić jeden, w pełni jawny. Brak zależności ma powodować błąd startu, a nie ciche wyłączenie funkcji. — #7 / PR #23.
 2. ✅ **Zarejestrować w DI**: `LightingSystem`, `ShadowRenderingSystem`, `PostProcessStack`, oraz `config.Shadow` / `config.PBR` / `config.PostProcessing` jako osobne usługi. — #7 / PR #23.
-3. **Dodać test rejestracji DI**, który weryfikuje, że kontener dostarcza komplet zależności potoku. To zabezpieczenie przed regresją całej tej klasy błędów.
+3. ✅ **Dodać test rejestracji DI**, który weryfikuje, że kontener dostarcza komplet zależności potoku. To zabezpieczenie przed regresją całej tej klasy błędów. — #7 / PR #23.
 4. **Ujednolicić `SystemManager`** — `WorldManager` powinien przyjmować go przez konstruktor, a nie tworzyć własny.
 
 ### Etap 1 — Naprawa ścieżki 3D (największy zwrot)

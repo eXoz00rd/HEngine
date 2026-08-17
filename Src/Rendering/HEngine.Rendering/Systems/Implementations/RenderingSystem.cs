@@ -18,7 +18,7 @@ public class RenderingSystem : IRenderingSystem
     {
         _spriteSystem = spriteSystem;
         _meshSystem = meshSystem;
-        _logger = logger;
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     public bool IsInitialized => _isInitialized && !_disposed;
