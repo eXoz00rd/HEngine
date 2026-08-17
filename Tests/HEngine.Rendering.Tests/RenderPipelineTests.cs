@@ -188,6 +188,43 @@ namespace HEngine.Rendering.Tests
             Assert.True(renderingSystem.RenderCalled);
         }
 
+        [Fact(DisplayName = "Shadow pass is skipped when no IShadowRenderer is wired, even with shadows enabled")]
+        public void Shadow_Pass_Skipped_Without_ShadowRenderer()
+        {
+            var world = new WorldManager();
+
+            var camEntity = world.CreateEntity();
+            world.AddComponent(camEntity, new Camera
+            {
+                FieldOfView = MathF.PI / 3f, NearPlane = 0.1f, FarPlane = 100f,
+                AspectRatio = 16f / 9f, IsOrthographic = false,
+                Position = new Vector3(0, 1, 5), Target = Vector3.Zero, Up = Vector3.UnitY
+            });
+
+            var lightEntity = world.CreateEntity();
+            world.AddComponent(lightEntity, new DirectionalLight
+            {
+                Direction = new Vector3(0, -1, 0), Color = Vector3.One, Intensity = 1f
+            });
+
+            var lightingSystem = new LightingSystem();
+            lightingSystem.Initialize(world);
+            var shadowRenderingSystem = new ShadowRenderingSystem();
+            shadowRenderingSystem.Initialize(world);
+
+            var pipeline = new RenderPipeline(
+                new FakeRenderManager(new FakeRenderContext(new FakeRenderer())),
+                new FakeRenderingSystem(), world,
+                lightingSystem, shadowRenderingSystem,
+                new ShadowSettings { Enabled = true },
+                new PostProcessStack(), new NullLogger<RenderPipeline>());
+
+            pipeline.RenderFrame();
+
+            Assert.False(shadowRenderingSystem.HasShadowRenderer);
+            Assert.Equal(0, lightingSystem.LastLights.Length);
+        }
+
         private static bool MatricesEqual(in Matrix4x4 a, in Matrix4x4 b, float eps = 1e-5f)
         {
             return MathF.Abs(a.M11 - b.M11) < eps &&

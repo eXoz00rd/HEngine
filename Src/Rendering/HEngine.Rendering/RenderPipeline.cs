@@ -33,14 +33,14 @@ public class RenderPipeline : IRenderPipeline {
         PostProcessStack postProcessStack,
         ILogger<RenderPipeline> logger)
     {
-        _renderManager = renderManager;
-        _renderingSystem = renderingSystem;
-        _world = world;
-        _lightingSystem = lightingSystem;
-        _shadowRenderingSystem = shadowRenderingSystem;
-        _shadowSettings = shadowSettings;
-        _postProcessStack = postProcessStack;
-        _logger = logger;
+        _renderManager = renderManager ?? throw new ArgumentNullException(nameof(renderManager));
+        _renderingSystem = renderingSystem ?? throw new ArgumentNullException(nameof(renderingSystem));
+        _world = world ?? throw new ArgumentNullException(nameof(world));
+        _lightingSystem = lightingSystem ?? throw new ArgumentNullException(nameof(lightingSystem));
+        _shadowRenderingSystem = shadowRenderingSystem ?? throw new ArgumentNullException(nameof(shadowRenderingSystem));
+        _shadowSettings = shadowSettings ?? throw new ArgumentNullException(nameof(shadowSettings));
+        _postProcessStack = postProcessStack ?? throw new ArgumentNullException(nameof(postProcessStack));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     public void RenderFrame()
