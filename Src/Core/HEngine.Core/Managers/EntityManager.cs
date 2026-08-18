@@ -5,6 +5,7 @@ namespace HEngine.Core.Managers;
 public sealed class EntityManager : IDisposable {
     private readonly Dictionary<uint, uint> _entityGenerations = new();
     private readonly Queue<uint> _freeEntityIds = new();
+    private readonly HashSet<uint> _freeEntityIdSet = new();
     private readonly Lock _lock = new();
     private bool _disposed;
     private uint _nextEntityId = 1;
@@ -33,6 +34,7 @@ public sealed class EntityManager : IDisposable {
 
             _entityGenerations.Clear();
             _freeEntityIds.Clear();
+            _freeEntityIdSet.Clear();
             _disposed = true;
         }
     }
@@ -48,6 +50,7 @@ public sealed class EntityManager : IDisposable {
             if (_freeEntityIds.Count > 0)
             {
                 entityId = _freeEntityIds.Dequeue();
+                _freeEntityIdSet.Remove(entityId);
                 _entityGenerations[entityId]++;
             }
             else
@@ -68,6 +71,7 @@ public sealed class EntityManager : IDisposable {
                 return;
 
             _freeEntityIds.Enqueue(entity.Id);
+            _freeEntityIdSet.Add(entity.Id);
         }
     }
 
@@ -79,7 +83,8 @@ public sealed class EntityManager : IDisposable {
                 return false;
 
             return _entityGenerations.TryGetValue(entity.Id, out var generation) &&
-                generation == entity.Generation;
+                generation == entity.Generation &&
+                !_freeEntityIdSet.Contains(entity.Id);
         }
     }
 
@@ -89,9 +94,8 @@ public sealed class EntityManager : IDisposable {
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
 
-            var freeIds = _freeEntityIds.ToHashSet();
             return _entityGenerations
-                   .Where(kvp => !freeIds.Contains(kvp.Key))
+                   .Where(kvp => !_freeEntityIdSet.Contains(kvp.Key))
                    .Select(kvp => new Entity(kvp.Key, kvp.Value))
                    .ToList();
         }
@@ -122,7 +126,7 @@ public sealed class EntityManager : IDisposable {
                 return false;
 
             return _entityGenerations.ContainsKey(entityId) &&
-                !_freeEntityIds.Contains(entityId);
+                !_freeEntityIdSet.Contains(entityId);
         }
     }
 
