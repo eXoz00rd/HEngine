@@ -47,6 +47,12 @@ Bulleted checklist of how the change was verified (build, tests, what was observ
 
 - The same no-self-attribution rule as commits applies to the PR body.
 
+### Responding to review comments
+
+- When a fix addresses a reviewer's inline comment, reply directly in that comment's thread (not a new top-level PR comment) and mark the thread resolved once the fix is pushed.
+- Keep the reply to one brief sentence: what changed and, if useful, the commit it landed in. No walls of text.
+- Do this for every review thread the fix addresses — don't leave threads open once the code has moved on.
+
 ## C# code
 
 - Match the style of the surrounding code. There is **no `.editorconfig` in this repo yet** — until there is, the existing sources are the reference.
