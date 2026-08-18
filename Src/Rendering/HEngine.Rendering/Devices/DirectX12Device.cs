@@ -203,8 +203,8 @@ public class DirectX12Device : IGraphicsDevice
 
             _inputContext.Dispose();
 
-            _swapChain.Dispose();
             _commandQueue.Dispose();
+            _swapChain.Dispose();
             _core.Dispose();
         }
 
