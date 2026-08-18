@@ -41,6 +41,13 @@ public class RenderPipeline : IRenderPipeline {
         _shadowSettings = shadowSettings ?? throw new ArgumentNullException(nameof(shadowSettings));
         _postProcessStack = postProcessStack ?? throw new ArgumentNullException(nameof(postProcessStack));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
+        if (_shadowSettings.Enabled && !_shadowRenderingSystem.HasShadowRenderer)
+        {
+            throw new InvalidOperationException(
+                "ShadowSettings.Enabled is true, but ShadowRenderingSystem has no IShadowRenderer wired (tracks #19). " +
+                "Either wire a production IShadowRenderer via ShadowRenderingSystem.SetShadowRenderer before constructing RenderPipeline, or set ShadowSettings.Enabled = false.");
+        }
     }
 
     public void RenderFrame()
@@ -88,7 +95,7 @@ public class RenderPipeline : IRenderPipeline {
 
             _renderingSystem.Render(context);
 
-            ExecutePostProcessPass(context);
+            ExecutePostProcessPass();
 
             _renderManager.EndRender();
             _logger.LogDebug(RenderLogEvents.PipelineEnd, "RenderFrame end");
@@ -130,14 +137,14 @@ public class RenderPipeline : IRenderPipeline {
         }
     }
 
-    private void ExecutePostProcessPass(IRenderContext context)
+    private void ExecutePostProcessPass()
     {
         if (_postProcessStack.EnabledEffectCount == 0)
             return;
 
-        _logger.LogDebug(RenderLogEvents.PipelineStart, "PostProcess pass: {Count} effects", _postProcessStack.EnabledEffectCount);
-
-        var ppContext = new NullPostProcessCommandContext(context);
-        _postProcessStack.Execute(ppContext);
+        throw new InvalidOperationException(
+            $"PostProcessStack has {_postProcessStack.EnabledEffectCount} registered effect(s), but RenderPipeline has no " +
+            "production IPostProcessCommandContext to execute them (tracks #20). NullPostProcessCommandContext is a " +
+            "headless/test-only no-op and must not run real effects.");
     }
 }

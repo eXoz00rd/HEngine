@@ -12,6 +12,23 @@ namespace HEngine.Rendering.Tests.Systems;
 
 public class LightingSystemTests
 {
+    [Fact(DisplayName = "Update throws when called before Initialize")]
+    public void Update_Throws_When_Not_Initialized()
+    {
+        var system = new LightingSystem();
+
+        Assert.Throws<InvalidOperationException>(() => system.Update(0f));
+    }
+
+    [Fact(DisplayName = "GatherLights throws when called before Initialize")]
+    public void GatherLights_Throws_When_Not_Initialized()
+    {
+        using var world = new WorldManager(new SystemManager());
+        var system = new LightingSystem();
+
+        Assert.Throws<InvalidOperationException>(() => system.GatherLights(world));
+    }
+
     [Fact(DisplayName = "GatherLights collects directional and point lights with expected data")]
     public void GatherLights_CollectsLights()
     {
