@@ -13,7 +13,11 @@ This `SKILL.md` is only responsible for making sure Claude Code knows *when* to 
 
 Repo: `eXoz00rd/HEngine`. Default branch: `master`.
 
-**No GitHub Projects board exists for this repo yet** — tasks live as plain issues. If a board is created later, add its number and owner here and extend the command below with `gh project item-add`.
+Issues live on the **HEngine** GitHub Projects (v2) board, owner `eXoz00rd`, project number `2`. New issues aren't auto-added to it — add them explicitly, and see the `backlog-task` skill for the board's `Status` field IDs and how to move an item through Backlog → In progress → In review → Done.
+
+```bash
+gh project item-add 2 --owner eXoz00rd --url https://github.com/eXoz00rd/HEngine/issues/<number>
+```
 
 ## Creating a task via gh CLI
 
