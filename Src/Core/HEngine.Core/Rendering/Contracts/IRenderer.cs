@@ -1,4 +1,5 @@
 ﻿using System.Numerics;
+using HEngine.Core.Rendering.Data;
 
 namespace HEngine.Core.Rendering.Contracts;
 
@@ -16,6 +17,7 @@ public interface IRenderer : IDisposable
 
     void SetViewMatrix(Matrix4x4 viewMatrix);
     void SetProjectionMatrix(Matrix4x4 projectionMatrix);
+    void SetLights(ReadOnlySpan<LightData> lights);
 
     void DrawSprite(Vector2 position, Vector2 size, Vector4 color);
     void FlushBatch();

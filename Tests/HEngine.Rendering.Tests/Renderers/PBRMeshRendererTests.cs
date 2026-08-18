@@ -29,6 +29,7 @@ file sealed class NullPBRRenderer : IRenderer
     public void PollEvents() { }
     public void SetViewMatrix(Matrix4x4 viewMatrix) { }
     public void SetProjectionMatrix(Matrix4x4 projectionMatrix) { }
+    public void SetLights(ReadOnlySpan<LightData> lights) { }
     public void DrawSprite(Vector2 position, Vector2 size, Vector4 color) { }
     public void FlushBatch() { }
     public void DrawMesh(Matrix4x4 transform, ReadOnlySpan<float> vertices, ReadOnlySpan<uint> indices) { }

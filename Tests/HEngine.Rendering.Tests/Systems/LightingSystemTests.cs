@@ -5,7 +5,7 @@ using HEngine.Core.Components.Rendering;
 using HEngine.Core.Components.Transform;
 using HEngine.Core.Managers;
 using HEngine.Rendering.Systems;
-using HEngine.Rendering.Data;
+using HEngine.Core.Rendering.Data;
 using Xunit;
 
 namespace HEngine.Rendering.Tests.Systems;

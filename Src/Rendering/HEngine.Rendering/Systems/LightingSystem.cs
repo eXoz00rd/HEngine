@@ -8,7 +8,7 @@ using HEngine.Core.Contracts;
 using HEngine.Core.Managers;
 using HEngine.Core.Queries;
 using HEngine.Core.Rendering.Contracts;
-using HEngine.Rendering.Data;
+using HEngine.Core.Rendering.Data;
 
 namespace HEngine.Rendering.Systems;
 

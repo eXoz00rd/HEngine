@@ -6,6 +6,7 @@ using HEngine.Core.Components.Rendering;
 using HEngine.Core.Components.Transform;
 using HEngine.Core.Managers;
 using HEngine.Core.Rendering.Contracts;
+using HEngine.Core.Rendering.Data;
 using HEngine.Rendering.Components;
 using HEngine.Rendering.Systems;
 using Xunit;
@@ -32,6 +33,7 @@ file sealed class FakeRenderer : IRenderer
 
     public void SetViewMatrix(Matrix4x4 viewMatrix) { }
     public void SetProjectionMatrix(Matrix4x4 projectionMatrix) { }
+    public void SetLights(ReadOnlySpan<LightData> lights) { }
 
     public void DrawSprite(Vector2 position, Vector2 size, Vector4 color) { }
 

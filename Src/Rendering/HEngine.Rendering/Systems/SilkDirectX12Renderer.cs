@@ -29,6 +29,7 @@ public class SilkDirectX12Renderer : IRenderer
 
     private DirectX12MeshRenderer _meshRenderer = null!;
     private MeshDrawContext _meshDrawContext = null!;
+    private LightData[] _lights = Array.Empty<LightData>();
 
     private const int MeshDrawStackAllocThreshold = 256;
 
@@ -250,6 +251,16 @@ public class SilkDirectX12Renderer : IRenderer
         _commandList.SetProjectionMatrix(projectionMatrix);
     }
 
+    public void SetLights(ReadOnlySpan<LightData> lights)
+    {
+        if (_disposed || !IsInitialized)
+        {
+            return;
+        }
+
+        _lights = lights.ToArray();
+    }
+
     public void DrawSprite(Vector2 position, Vector2 size, Vector4 color)
     {
         if (_disposed || !IsInitialized)
@@ -371,7 +382,7 @@ public class SilkDirectX12Renderer : IRenderer
             _meshDrawContext.ViewMatrix = _commandList.CurrentViewMatrix;
             _meshDrawContext.ProjectionMatrix = _commandList.CurrentProjectionMatrix;
 
-            _meshRenderer.DrawMesh(transform, meshVertices, indices, _meshDrawContext);
+            _meshRenderer.DrawMesh(transform, meshVertices, indices, _meshDrawContext, lights: _lights);
         }
         catch (Exception ex)
         {
