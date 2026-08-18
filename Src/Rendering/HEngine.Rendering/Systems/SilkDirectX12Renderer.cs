@@ -258,7 +258,18 @@ public class SilkDirectX12Renderer : IRenderer
             return;
         }
 
-        _lights = lights.ToArray();
+        if (lights.Length == 0)
+        {
+            _lights = Array.Empty<LightData>();
+            return;
+        }
+
+        if (_lights.Length != lights.Length)
+        {
+            _lights = new LightData[lights.Length];
+        }
+
+        lights.CopyTo(_lights);
     }
 
     public void DrawSprite(Vector2 position, Vector2 size, Vector4 color)
