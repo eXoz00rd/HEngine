@@ -99,14 +99,4 @@ public class RenderingSystem : IRenderingSystem
 
         _isInitialized = true;
     }
-
-    public void SetRenderContext(IRenderContext renderContext)
-    {
-        if (_disposed)
-        {
-            throw new ObjectDisposedException(nameof(RenderingSystem));
-        }
-
-        ArgumentNullException.ThrowIfNull(renderContext);
-    }
 }
