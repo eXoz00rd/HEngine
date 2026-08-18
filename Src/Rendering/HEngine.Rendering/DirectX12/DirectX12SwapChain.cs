@@ -18,9 +18,10 @@ public class DirectX12SwapChain : IDisposable
     private ComPtr<ID3D12DescriptorHeap> _rtvHeap;
     private ComPtr<ID3D12DescriptorHeap> _dsvHeap;
     private ComPtr<ID3D12Resource> _depthBuffer;
+    private int _bufferWidth;
+    private int _bufferHeight;
 
     private ComPtr<IDXGISwapChain3> _swapChain;
-    private IWindow _window = null!;
 
     public bool VSyncEnabled { get; set; } = true;
     public bool TearingSupported { get; private set; }
@@ -43,7 +44,8 @@ public class DirectX12SwapChain : IDisposable
 
     public unsafe void Initialize(ComPtr<ID3D12Device> device, DirectX12CommandQueue commandQueue, IWindow window)
     {
-        _window = window;
+        _bufferWidth = window.Size.X;
+        _bufferHeight = window.Size.Y;
 
         using var dxgi = DXGI.GetApi(window);
         using var factory = dxgi.CreateDXGIFactory1<IDXGIFactory4>();
@@ -63,8 +65,8 @@ public class DirectX12SwapChain : IDisposable
         var swapChainDesc = new SwapChainDesc1
         {
             BufferCount = FrameCount,
-            Width = (uint)window.Size.X,
-            Height = (uint)window.Size.Y,
+            Width = (uint)_bufferWidth,
+            Height = (uint)_bufferHeight,
             Format = Format.FormatR8G8B8A8Unorm,
             BufferUsage = DXGI.UsageRenderTargetOutput,
             SwapEffect = SwapEffect.FlipDiscard,
@@ -121,15 +123,15 @@ public class DirectX12SwapChain : IDisposable
         {
             TopLeftX = 0,
             TopLeftY = 0,
-            Width = _window.Size.X,
-            Height = _window.Size.Y,
+            Width = _bufferWidth,
+            Height = _bufferHeight,
             MinDepth = 0.0f,
             MaxDepth = 1.0f
         };
 
         commandList.RSSetViewports(1, ref viewport);
 
-        var scissorRect = new Box2D<int>(0, 0, _window.Size.X, _window.Size.Y);
+        var scissorRect = new Box2D<int>(0, 0, _bufferWidth, _bufferHeight);
         commandList.RSSetScissorRects(1, in scissorRect);
     }
 
@@ -232,8 +234,8 @@ public class DirectX12SwapChain : IDisposable
         {
             Dimension = ResourceDimension.Texture2D,
             Alignment = 0,
-            Width = (ulong)_window.Size.X,
-            Height = (uint)_window.Size.Y,
+            Width = (ulong)_bufferWidth,
+            Height = (uint)_bufferHeight,
             DepthOrArraySize = 1,
             MipLevels = 1,
             Format = DepthFormat,
