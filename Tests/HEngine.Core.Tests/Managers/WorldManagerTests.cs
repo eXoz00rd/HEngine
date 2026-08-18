@@ -394,6 +394,68 @@ public class WorldManagerTests : IDisposable {
     }
 
     [Fact]
+    public void CreateQuery_CalledRepeatedlyForSameShape_ShouldReuseCachedInstance()
+    {
+        using var worldManager = new WorldManager(new SystemManager());
+
+        var first = worldManager.CreateQuery<TestComponent>();
+        for (var i = 0; i < 1000; i++)
+        {
+            var repeated = worldManager.CreateQuery<TestComponent>();
+            Assert.Same(first, repeated);
+        }
+    }
+
+    [Fact]
+    public void CreateQuery_WithTwoComponents_CalledRepeatedly_ShouldReuseCachedInstance()
+    {
+        using var worldManager = new WorldManager(new SystemManager());
+
+        var first = worldManager.CreateQuery<TestComponent, TestComponent2>();
+        var repeated = worldManager.CreateQuery<TestComponent, TestComponent2>();
+
+        Assert.Same(first, repeated);
+    }
+
+    [Fact]
+    public void CreateQuery_WithThreeComponents_CalledRepeatedly_ShouldReuseCachedInstance()
+    {
+        using var worldManager = new WorldManager(new SystemManager());
+
+        var first = worldManager.CreateQuery<TestComponent, TestComponent2, TestComponent3>();
+        var repeated = worldManager.CreateQuery<TestComponent, TestComponent2, TestComponent3>();
+
+        Assert.Same(first, repeated);
+    }
+
+    [Fact]
+    public void CreateQuery_DifferentShapesSharingAComponent_ShouldNotReuseCachedInstance()
+    {
+        using var worldManager = new WorldManager(new SystemManager());
+
+        var single = worldManager.CreateQuery<TestComponent>();
+        var pair = worldManager.CreateQuery<TestComponent, TestComponent2>();
+
+        Assert.NotSame((object)single, pair);
+    }
+
+    [Fact]
+    public void CreateQuery_ReusedInstance_ShouldStillReceiveInvalidationUpdates()
+    {
+        using var worldManager = new WorldManager(new SystemManager());
+        var entity = worldManager.CreateEntity();
+
+        var first = worldManager.CreateQuery<TestComponent>();
+        Assert.Equal(0, first.Count);
+
+        var reused = worldManager.CreateQuery<TestComponent>();
+        worldManager.AddComponent(entity, new TestComponent { Value = 1 });
+
+        Assert.Same(first, reused);
+        Assert.Equal(1, reused.Count);
+    }
+
+    [Fact]
     public void DestroyEntities_WithValidEntities_ShouldDestroyAll()
     {
         using var worldManager = new WorldManager(new SystemManager());
@@ -899,6 +961,47 @@ public class WorldManagerTests : IDisposable {
 
         Assert.Equal(2, worldManager.GetComponent<TestComponent>(entity).Value);
         Assert.Equal(1, worldManager.GetComponentCount<TestComponent>());
+    }
+
+    [Fact]
+    public void ComponentManager_GetAllComponents_ShouldReturnAllStoredValues()
+    {
+        using var worldManager = new WorldManager(new SystemManager());
+        var entity1 = worldManager.CreateEntity();
+        var entity2 = worldManager.CreateEntity();
+
+        worldManager.AddComponent(entity1, new TestComponent { Value = 1 });
+        worldManager.AddComponent(entity2, new TestComponent { Value = 2 });
+
+        var components = worldManager.ComponentManager.GetAllComponents<TestComponent>();
+
+        Assert.Equal(2, components.Length);
+        var values = new[] { components[0].Value, components[1].Value };
+        Assert.Contains(1, values);
+        Assert.Contains(2, values);
+    }
+
+    [Fact]
+    public void ComponentManager_GetAllComponents_DoesNotClaimWritability()
+    {
+        using var worldManager = new WorldManager(new SystemManager());
+        var entity = worldManager.CreateEntity();
+        worldManager.AddComponent(entity, new TestComponent { Value = 1 });
+
+        ReadOnlySpan<TestComponent> components = worldManager.ComponentManager.GetAllComponents<TestComponent>();
+
+        Assert.Equal(1, components.Length);
+        Assert.Equal(1, components[0].Value);
+    }
+
+    [Fact]
+    public void ComponentManager_GetAllComponents_WithNoStorage_ShouldReturnEmptySpan()
+    {
+        using var worldManager = new WorldManager(new SystemManager());
+
+        var components = worldManager.ComponentManager.GetAllComponents<TestComponent>();
+
+        Assert.True(components.IsEmpty);
     }
 
     [Fact]

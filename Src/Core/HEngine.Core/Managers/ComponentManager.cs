@@ -108,17 +108,17 @@ public sealed class ComponentManager : IDisposable {
         }
     }
 
-    public Span<T> GetAllComponents<T>() where T : struct, IComponent
+    public ReadOnlySpan<T> GetAllComponents<T>() where T : struct, IComponent
     {
         lock (_lock)
         {
             if (_disposed)
-                return Span<T>.Empty;
+                return ReadOnlySpan<T>.Empty;
 
             var storage = GetStorage<T>();
             return storage != null ?
                 storage.GetAllComponents() :
-                Span<T>.Empty;
+                ReadOnlySpan<T>.Empty;
         }
     }
 
