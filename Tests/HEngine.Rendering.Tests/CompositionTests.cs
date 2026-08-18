@@ -152,11 +152,16 @@ namespace HEngine.Rendering.Tests
             Assert.Throws<InvalidOperationException>(() => provider.GetRequiredService<IRenderPipeline>());
         }
 
-        [Fact(DisplayName = "Shadows are enabled by default configuration but no IShadowRenderer is wired in production yet — tracks #19",
+        [Fact(DisplayName = "Shadows are enabled via configuration but no IShadowRenderer is wired in production yet — tracks #19",
             Skip = "Intentionally red until #19 wires a production IShadowRenderer; unskip as part of #19's Definition of Done")]
-        public void Composition_ShadowsEnabledByDefault_RequireAWiredShadowRenderer()
+        public void Composition_ShadowsEnabled_RequireAWiredShadowRenderer()
         {
-            using var provider = BuildProductionServiceCollection().BuildServiceProvider();
+            var configuration = new EngineConfiguration
+            {
+                Shadow = new ShadowSettings { Enabled = true }
+            };
+
+            using var provider = BuildProductionServiceCollection(configuration).BuildServiceProvider();
 
             var shadowSettings = provider.GetRequiredService<ShadowSettings>();
             var shadowRenderingSystem = provider.GetRequiredService<ShadowRenderingSystem>();
