@@ -1,5 +1,7 @@
-﻿using System.Numerics;
+﻿using System.Buffers;
+using System.Numerics;
 using HEngine.Core.Rendering.Contracts;
+using HEngine.Core.Rendering.Data;
 using HEngine.Rendering.Batches;
 using HEngine.Rendering.Data;
 using HEngine.Rendering.Devices;
@@ -25,8 +27,10 @@ public class SilkDirectX12Renderer : IRenderer
     private bool _frameInProgress;
     private bool _initialized;
 
-    private DirectX12BufferManager _meshBufferManager = null!;
-    private DirectX12PipelineStateManager _meshPipelineManager = null!;
+    private DirectX12MeshRenderer _meshRenderer = null!;
+    private MeshDrawContext _meshDrawContext = null!;
+
+    private const int MeshDrawStackAllocThreshold = 256;
 
     public SilkDirectX12Renderer(IGraphicsDevice device, IRenderBatch<SpriteData> spriteBatch,
         ISpriteRenderer spriteRenderer, IShaderManager shaderManager, ILogger<SilkDirectX12Renderer> logger,
@@ -77,11 +81,10 @@ public class SilkDirectX12Renderer : IRenderer
 
             var dx12Device = (DirectX12Device)_device;
             var d3dDevice = dx12Device.GetDevice();
-            _meshBufferManager = new DirectX12BufferManager();
-            _meshBufferManager.Initialize(d3dDevice, dx12Device.GetWindowSize());
-            var dx12ShaderManager = (DirectX12ShaderManager)_shaderManager;
-            _meshPipelineManager = new DirectX12PipelineStateManager();
-            _meshPipelineManager.Initialize(d3dDevice, dx12ShaderManager);
+            _meshRenderer = new DirectX12MeshRenderer();
+            _meshRenderer.Initialize(d3dDevice);
+            _meshRenderer.SetCommandQueue(dx12Device.GetDirectX12CommandQueue());
+            _meshDrawContext = new MeshDrawContext(this);
 
             _initialized = true;
             _logger.LogInformation("SilkDirectX12Renderer initialized successfully");
@@ -165,9 +168,7 @@ public class SilkDirectX12Renderer : IRenderer
                 dx12SpriteRenderer.InvalidateStateCache();
             }
 
-            var dx12Device = (DirectX12Device)_device;
-            var frameIndex = dx12Device.GetCurrentFrameIndex();
-            _meshBufferManager.SetFrameIndex(frameIndex);
+            _meshRenderer.BeginFrame();
 
             _frameInProgress = true;
         }
@@ -298,61 +299,79 @@ public class SilkDirectX12Renderer : IRenderer
             return;
         }
 
-        try
+        const int floatsPerVertex = 12;
+        if (vertices.Length % floatsPerVertex != 0)
         {
-            var dx12Device = (DirectX12Device)_device;
-            var commandList = dx12Device.GetDirectX12CommandQueue().CommandList;
-
-            _meshBufferManager.UpdateCameraConstants(_commandList.CurrentViewMatrix,
-                _commandList.CurrentProjectionMatrix);
-
-            var triangleVertexCount = indices.Length;
-            var temp = new SpriteVertex[triangleVertexCount];
-
-            var o = 0;
-            for (var i = 0; i < indices.Length; i++)
+            if (_logger.IsEnabled(LogLevel.Warning))
             {
-                var idx = (int)indices[i];
-                var baseFloat = idx * 12;
-                if (baseFloat + 11 >= vertices.Length)
+                _logger.LogWarning(
+                    "DrawMesh received {FloatCount} floats which is not a multiple of the {Stride}-float vertex stride; skipping draw",
+                    vertices.Length, floatsPerVertex);
+            }
+
+            return;
+        }
+
+        var vertexCount = vertices.Length / floatsPerVertex;
+        if (vertexCount == 0)
+        {
+            return;
+        }
+
+        foreach (var index in indices)
+        {
+            if (index >= (uint)vertexCount)
+            {
+                if (_logger.IsEnabled(LogLevel.Warning))
                 {
-                    break;
+                    _logger.LogWarning(
+                        "DrawMesh received index {Index} out of range for {VertexCount} vertices; skipping draw",
+                        index, vertexCount);
                 }
 
-                var pos = new Vector3(
+                return;
+            }
+        }
+
+        Vertex3D[]? rented = null;
+
+        try
+        {
+            Span<Vertex3D> meshVertices = vertexCount <= MeshDrawStackAllocThreshold
+                ? stackalloc Vertex3D[vertexCount]
+                : (rented = ArrayPool<Vertex3D>.Shared.Rent(vertexCount)).AsSpan(0, vertexCount);
+
+            for (var i = 0; i < vertexCount; i++)
+            {
+                var baseFloat = i * floatsPerVertex;
+
+                var position = new Vector3(
                     vertices[baseFloat + 0],
                     vertices[baseFloat + 1],
                     vertices[baseFloat + 2]);
 
-                var col = new Vector4(
+                var normal = new Vector3(
+                    vertices[baseFloat + 3],
+                    vertices[baseFloat + 4],
+                    vertices[baseFloat + 5]);
+
+                var texCoord = new Vector2(
+                    vertices[baseFloat + 6],
+                    vertices[baseFloat + 7]);
+
+                var color = new Vector4(
                     vertices[baseFloat + 8],
                     vertices[baseFloat + 9],
                     vertices[baseFloat + 10],
                     vertices[baseFloat + 11]);
 
-                var worldPos = Vector3.Transform(pos, transform);
-                temp[o++] = new SpriteVertex(worldPos, col);
+                meshVertices[i] = new Vertex3D(position, normal, texCoord, color);
             }
 
-            if (o == 0)
-            {
-                return;
-            }
+            _meshDrawContext.ViewMatrix = _commandList.CurrentViewMatrix;
+            _meshDrawContext.ProjectionMatrix = _commandList.CurrentProjectionMatrix;
 
-            if (o != temp.Length)
-            {
-                Array.Resize(ref temp, o);
-            }
-
-            var vertexSpan = new ReadOnlySpan<SpriteVertex>(temp);
-            var vertexOffset = _meshBufferManager.UpdateVertexBuffer(vertexSpan);
-
-            commandList.SetGraphicsRootSignature(_meshPipelineManager.RootSignature);
-            commandList.SetPipelineState(_meshPipelineManager.PipelineState);
-            commandList.SetGraphicsRootConstantBufferView(0, _meshBufferManager.ConstantBuffer.GetGPUVirtualAddress());
-            var vbv = _meshBufferManager.GetCurrentVertexBufferView();
-            commandList.IASetVertexBuffers(0, 1, in vbv);
-            commandList.DrawInstanced((uint)temp.Length, 1, vertexOffset, 0);
+            _meshRenderer.DrawMesh(transform, meshVertices, indices, _meshDrawContext);
         }
         catch (Exception ex)
         {
@@ -362,6 +381,13 @@ public class SilkDirectX12Renderer : IRenderer
             }
 
             throw;
+        }
+        finally
+        {
+            if (rented != null)
+            {
+                ArrayPool<Vertex3D>.Shared.Return(rented);
+            }
         }
     }
 
@@ -379,13 +405,25 @@ public class SilkDirectX12Renderer : IRenderer
 
         _initialized = false;
 
-        _meshBufferManager?.Dispose();
-        _meshPipelineManager?.Dispose();
+        _meshRenderer?.Dispose();
         _spriteBatch.Dispose();
         _spriteRenderer.Dispose();
         _commandList?.Dispose();
         _shaderManager.Dispose();
         _device.Dispose();
         _disposed = true;
+    }
+
+    private sealed class MeshDrawContext : IRenderContext
+    {
+        public MeshDrawContext(IRenderer renderer)
+        {
+            Renderer = renderer;
+        }
+
+        public IRenderer Renderer { get; }
+        public Matrix4x4 ViewMatrix { get; set; }
+        public Matrix4x4 ProjectionMatrix { get; set; }
+        public Vector4 ClearColor { get; set; }
     }
 }
