@@ -1,4 +1,5 @@
-﻿using System.Numerics;
+﻿using System.Buffers;
+using System.Numerics;
 using HEngine.Core.Rendering.Contracts;
 using HEngine.Core.Rendering.Data;
 using HEngine.Rendering.Batches;
@@ -28,6 +29,8 @@ public class SilkDirectX12Renderer : IRenderer
 
     private DirectX12MeshRenderer _meshRenderer = null!;
     private MeshDrawContext _meshDrawContext = null!;
+
+    private const int MeshDrawStackAllocThreshold = 256;
 
     public SilkDirectX12Renderer(IGraphicsDevice device, IRenderBatch<SpriteData> spriteBatch,
         ISpriteRenderer spriteRenderer, IShaderManager shaderManager, ILogger<SilkDirectX12Renderer> logger,
@@ -297,15 +300,47 @@ public class SilkDirectX12Renderer : IRenderer
         }
 
         const int floatsPerVertex = 12;
+        if (vertices.Length % floatsPerVertex != 0)
+        {
+            if (_logger.IsEnabled(LogLevel.Warning))
+            {
+                _logger.LogWarning(
+                    "DrawMesh received {FloatCount} floats which is not a multiple of the {Stride}-float vertex stride; skipping draw",
+                    vertices.Length, floatsPerVertex);
+            }
+
+            return;
+        }
+
         var vertexCount = vertices.Length / floatsPerVertex;
         if (vertexCount == 0)
         {
             return;
         }
 
+        foreach (var index in indices)
+        {
+            if (index >= (uint)vertexCount)
+            {
+                if (_logger.IsEnabled(LogLevel.Warning))
+                {
+                    _logger.LogWarning(
+                        "DrawMesh received index {Index} out of range for {VertexCount} vertices; skipping draw",
+                        index, vertexCount);
+                }
+
+                return;
+            }
+        }
+
+        Vertex3D[]? rented = null;
+
         try
         {
-            var meshVertices = new Vertex3D[vertexCount];
+            Span<Vertex3D> meshVertices = vertexCount <= MeshDrawStackAllocThreshold
+                ? stackalloc Vertex3D[vertexCount]
+                : (rented = ArrayPool<Vertex3D>.Shared.Rent(vertexCount)).AsSpan(0, vertexCount);
+
             for (var i = 0; i < vertexCount; i++)
             {
                 var baseFloat = i * floatsPerVertex;
@@ -346,6 +381,13 @@ public class SilkDirectX12Renderer : IRenderer
             }
 
             throw;
+        }
+        finally
+        {
+            if (rented != null)
+            {
+                ArrayPool<Vertex3D>.Shared.Return(rented);
+            }
         }
     }
 
