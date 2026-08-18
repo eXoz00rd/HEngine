@@ -1,10 +1,12 @@
-﻿using HEngine.Core.Components.Rendering;
+﻿using System.Numerics;
+using HEngine.Core.Components.Rendering;
 using HEngine.Core.Components.Transform;
 using HEngine.Core.Managers;
 using HEngine.Core.Queries;
 using HEngine.Core.Rendering.Contracts;
 using HEngine.Core.Rendering.Data;
 using HEngine.Rendering.Components;
+using HEngine.Rendering.Data;
 using HEngine.Rendering.Systems.Contracts;
 using Microsoft.Extensions.Logging;
 
@@ -53,22 +55,9 @@ public class MeshRenderingSystem : IMeshRenderingSystem
 
             var transformMatrix = transform.GetWorldMatrix(_world);
 
-            Vertex3D[] vertices;
-            uint[] indices;
-            switch (mesh.VertexArrayId)
-            {
-                case 1:
-                    (vertices, indices) = MeshPrimitives.CreateCube(1.0f, mesh.Color);
-                    break;
-                case 2:
-                    (vertices, indices) = MeshPrimitives.CreatePlane(1.0f, 1.0f, mesh.Color);
-                    break;
-                default:
-                    (vertices, indices) = MeshPrimitives.CreateCube(1.0f, mesh.Color);
-                    break;
-            }
+            var (vertices, indices) = PrimitiveGeometryCache.Get(mesh.VertexArrayId);
 
-            var flat = Flatten(vertices);
+            var flat = Flatten(vertices, mesh.Color);
             context.Renderer.DrawMesh(transformMatrix, flat, indices);
         }
 
@@ -79,7 +68,7 @@ public class MeshRenderingSystem : IMeshRenderingSystem
         }
     }
 
-    private static float[] Flatten(ReadOnlySpan<Vertex3D> vertices)
+    private static float[] Flatten(ReadOnlySpan<Vertex3D> vertices, Vector4 color)
     {
         var result = new float[vertices.Length * 12];
         var o = 0;
@@ -94,10 +83,10 @@ public class MeshRenderingSystem : IMeshRenderingSystem
             result[o++] = v.Normal.Z;
             result[o++] = v.TexCoord.X;
             result[o++] = v.TexCoord.Y;
-            result[o++] = v.Color.X;
-            result[o++] = v.Color.Y;
-            result[o++] = v.Color.Z;
-            result[o++] = v.Color.W;
+            result[o++] = color.X;
+            result[o++] = color.Y;
+            result[o++] = color.Z;
+            result[o++] = color.W;
         }
         return result;
     }

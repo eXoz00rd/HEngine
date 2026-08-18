@@ -130,12 +130,12 @@ public class MeshRenderingSystemTests
 
         var parent = world.CreateEntity();
         world.AddComponent(parent, new Transform(new Vector3(1, 0, 0)));
-        world.AddComponent(parent, new Mesh(10, 6));
+        world.AddComponent(parent, new Mesh(1, 6));
 
         var child = world.CreateEntity();
         var childTransform = new Transform(new Vector3(0, 2, 0)) { Parent = parent };
         world.AddComponent(child, childTransform);
-        world.AddComponent(child, new Mesh(11, 6));
+        world.AddComponent(child, new Mesh(2, 6));
 
         var expectedChildWorld = childTransform.GetWorldMatrix(world);
 
@@ -146,6 +146,23 @@ public class MeshRenderingSystemTests
 
         bool found = fakeRenderer.MeshDraws.Any(dc => MatricesEqual(dc.Transform, expectedChildWorld));
         Assert.True(found, "Expected a draw call with child's world matrix");
+    }
+
+    [Fact(DisplayName = "Render throws for an unsupported VertexArrayId instead of silently falling back to a cube")]
+    public void Render_Throws_ForUnsupportedVertexArrayId()
+    {
+        var world = new WorldManager(new SystemManager());
+        var system = new MeshRenderingSystem();
+        system.Initialize(world);
+
+        var entity = world.CreateEntity();
+        world.AddComponent(entity, new Transform(Vector3.Zero));
+        world.AddComponent(entity, new Mesh(999, 0));
+
+        var fakeRenderer = new FakeRenderer();
+        var context = new FakeRenderContext(fakeRenderer);
+
+        Assert.Throws<NotSupportedException>(() => system.Render(context));
     }
 
     private static bool MatricesEqual(Matrix4x4 a, Matrix4x4 b, float eps = 1e-5f)
