@@ -11,7 +11,6 @@ using HEngine.Core.Primitives;
 using HEngine.Core.Rendering.Contracts;
 using HEngine.Core.Systems;
 using HEngine.Rendering.Components;
-using HEngine.Rendering.Systems.Implementations;
 using Microsoft.Extensions.Logging;
 
 namespace HEngine;
@@ -135,11 +134,6 @@ public class GameEngine : IDisposable
                 _config.Window.Title);
 
             _renderingSystem.Initialize(_worldManager);
-
-            if (_renderManager.TryGetRenderContext(out var renderContext) && _renderingSystem is RenderingSystem rs)
-            {
-                rs.SetRenderContext(renderContext);
-            }
 
             var aspect = _config.Window.Height <= 0 ? 1.0f : (float)_config.Window.Width / _config.Window.Height;
             var camEntity = _worldManager.CreateEntity();
