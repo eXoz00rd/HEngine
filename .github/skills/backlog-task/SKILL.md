@@ -47,21 +47,21 @@ gh issue list --repo eXoz00rd/HEngine --state open --limit 30 --json number,titl
 ```
 
 - Prefer `bug` label over `enhancement`/`architecture`-only issues when both are available — correctness fixes first.
-- Read the full issue body (`gh issue view <number>`) before starting. Check `docs/ENGINE_STATE_ANALYSIS.md` if the issue touches a subsystem's runtime behavior — repo docs may be aspirational.
+- Read the full issue body (`gh issue view <number>`) before starting. `AGENTS.md` is the always-present entrypoint for repo conventions; if your checkout has a `docs/ENGINE_STATE_ANALYSIS.md` (it's gitignored, so not every checkout will), read it too when the issue touches a subsystem's runtime behavior — repo docs may be aspirational.
 - Pick one task that fits in **≤400 changed lines / ≤15 files** (see `CONTRIBUTING.md`). If an issue is bigger than that, scope down to a coherent slice and say so in the PR body, or ask the user before splitting.
-- If several issues are similarly ranked and it's not obvious which to do, ask the user with `ask_user` rather than guessing.
+- If several issues are similarly ranked and it's not obvious which to do, ask the user rather than guessing.
 - Once picked, move the issue's board status to **In progress** (see §0) before starting implementation.
 
 ## 3. Branch
 
 Per `CONTRIBUTING.md`: new branch from `master`, named `fix/...`, `feature/...`, or `SR/...` matching the change.
 
-- This is a local in-place session (no worktree) — `rename_branch` is unavailable. Create the branch manually:
-  ```bash
-  git checkout master
-  git pull --ff-only
-  git checkout -b fix/short-description
-  ```
+```bash
+git checkout master
+git pull --ff-only
+git checkout -b fix/short-description
+```
+
 - Never commit task work directly on `master` or leave it on a stale/merged branch from a previous task.
 
 ## 4. Implement
@@ -88,11 +88,11 @@ dotnet test Tests/HEngine.Core.Tests/HEngine.Core.Tests.csproj --filter "FullyQu
 
 ## 7. PR
 
+Push the branch, then open a PR against `master` (through the GitHub UI, `gh pr create`, or an equivalent tool) with a body following `CONTRIBUTING.md`'s structure:
+
 ```bash
 git push -u origin <branch>
 ```
-
-Then use the `create_pull_request` tool (not raw `gh pr create`) so it renders in the UI, with a body following `CONTRIBUTING.md`'s structure:
 
 ```
 ## Summary
