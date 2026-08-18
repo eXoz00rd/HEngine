@@ -113,11 +113,6 @@ public class DirectX12SwapChain : IDisposable
         BindMainRenderTarget(commandList, frameIndex);
     }
 
-    /// <summary>
-    /// Re-binds the back-buffer render target, main depth buffer, and full-window viewport/scissor.
-    /// Used to restore the main pass's render target after another pass (e.g. shadow map rendering)
-    /// has temporarily redirected the shared command list elsewhere within the same frame.
-    /// </summary>
     public void BindMainRenderTarget(ComPtr<ID3D12GraphicsCommandList> commandList, int frameIndex)
     {
         var rtvHandle = _rtvHeap.GetCPUDescriptorHandleForHeapStart();
