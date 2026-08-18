@@ -41,6 +41,13 @@ public class RenderPipeline : IRenderPipeline {
         _shadowSettings = shadowSettings ?? throw new ArgumentNullException(nameof(shadowSettings));
         _postProcessStack = postProcessStack ?? throw new ArgumentNullException(nameof(postProcessStack));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
+        if (_shadowSettings.Enabled && !_shadowRenderingSystem.HasShadowRenderer)
+        {
+            throw new InvalidOperationException(
+                "ShadowSettings.Enabled is true, but ShadowRenderingSystem has no IShadowRenderer wired (tracks #19). " +
+                "Either wire a production IShadowRenderer via ShadowRenderingSystem.SetShadowRenderer before constructing RenderPipeline, or set ShadowSettings.Enabled = false.");
+        }
     }
 
     public void RenderFrame()
@@ -61,37 +68,48 @@ public class RenderPipeline : IRenderPipeline {
             _logger.LogDebug(RenderLogEvents.PipelineStart, "RenderFrame start");
             _renderManager.BeginRender();
 
-            Camera activeCamera = default;
-            var hasCamera = false;
-
-            var qb = _world.QueryBuilder.With<Camera>();
-            if (qb.TryGetFirst(out _, out var cam))
+            try
             {
-                context.ViewMatrix = cam.GetViewMatrix();
-                context.ProjectionMatrix = cam.GetProjectionMatrix();
-                activeCamera = cam;
-                hasCamera = true;
+                Camera activeCamera = default;
+                var hasCamera = false;
+
+                var qb = _world.QueryBuilder.With<Camera>();
+                if (qb.TryGetFirst(out _, out var cam))
+                {
+                    context.ViewMatrix = cam.GetViewMatrix();
+                    context.ProjectionMatrix = cam.GetProjectionMatrix();
+                    activeCamera = cam;
+                    hasCamera = true;
+                }
+                else if (_renderManager.TryGetActiveCamera(out var camera))
+                {
+                    context.ViewMatrix = camera.ViewMatrix;
+                    context.ProjectionMatrix = camera.ProjectionMatrix;
+                }
+
+                context.Renderer.SetViewMatrix(context.ViewMatrix);
+                context.Renderer.SetProjectionMatrix(context.ProjectionMatrix);
+
+                if (_shadowSettings.Enabled && hasCamera && _shadowRenderingSystem.HasShadowRenderer)
+                {
+                    ExecuteShadowPass(activeCamera);
+                }
+
+                _renderingSystem.Render(context);
+
+                ExecutePostProcessPass();
             }
-            else if (_renderManager.TryGetActiveCamera(out var camera))
+            finally
             {
-                context.ViewMatrix = camera.ViewMatrix;
-                context.ProjectionMatrix = camera.ProjectionMatrix;
+                _renderManager.EndRender();
             }
 
-            context.Renderer.SetViewMatrix(context.ViewMatrix);
-            context.Renderer.SetProjectionMatrix(context.ProjectionMatrix);
-
-            if (_shadowSettings.Enabled && hasCamera && _shadowRenderingSystem.HasShadowRenderer)
-            {
-                ExecuteShadowPass(activeCamera);
-            }
-
-            _renderingSystem.Render(context);
-
-            ExecutePostProcessPass(context);
-
-            _renderManager.EndRender();
             _logger.LogDebug(RenderLogEvents.PipelineEnd, "RenderFrame end");
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogError(ex, "Critical error in render pipeline");
+            throw;
         }
         catch (Exception ex)
         {
@@ -130,14 +148,14 @@ public class RenderPipeline : IRenderPipeline {
         }
     }
 
-    private void ExecutePostProcessPass(IRenderContext context)
+    private void ExecutePostProcessPass()
     {
         if (_postProcessStack.EnabledEffectCount == 0)
             return;
 
-        _logger.LogDebug(RenderLogEvents.PipelineStart, "PostProcess pass: {Count} effects", _postProcessStack.EnabledEffectCount);
-
-        var ppContext = new NullPostProcessCommandContext(context);
-        _postProcessStack.Execute(ppContext);
+        throw new InvalidOperationException(
+            $"PostProcessStack has {_postProcessStack.EnabledEffectCount} enabled effect(s), but RenderPipeline has no " +
+            "production IPostProcessCommandContext to execute them (tracks #20). NullPostProcessCommandContext is a " +
+            "headless/test-only no-op and must not run real effects.");
     }
 }

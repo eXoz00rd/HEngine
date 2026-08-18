@@ -43,6 +43,18 @@ public class ShadowPassTests
         Up = Vector3.UnitY
     };
 
+    [Fact(DisplayName = "RenderShadows throws when called before Initialize")]
+    public void RenderShadows_Throws_When_Not_Initialized()
+    {
+        var system = new ShadowRenderingSystem();
+        system.SetShadowRenderer(new FakeShadowRenderer());
+
+        var camera = CreateCamera();
+
+        Assert.Throws<InvalidOperationException>(() =>
+            system.RenderShadows(camera, Vector3.UnitY, [100f], 2048));
+    }
+
     [Fact(DisplayName = "ShadowRenderingSystem skips entities with CastShadows=false")]
     public void ShadowPass_Skips_Entities_With_CastShadows_False()
     {

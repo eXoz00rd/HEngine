@@ -73,11 +73,12 @@ namespace HEngine.Rendering.Tests
         public bool ShouldClose => false;
         public bool CanRender => true;
         public bool IsInitialized => true;
+        public int EndRenderCallCount { get; private set; }
 
         public void Initialize(int width, int height, string title) { }
         public void UpdateInput() { }
         public void BeginRender() { }
-        public void EndRender() { }
+        public void EndRender() => EndRenderCallCount++;
         public void Clear(Vector4 clearColor) { }
         public void Present() { }
 
@@ -188,41 +189,46 @@ namespace HEngine.Rendering.Tests
             Assert.True(renderingSystem.RenderCalled);
         }
 
-        [Fact(DisplayName = "Shadow pass is skipped when no IShadowRenderer is wired, even with shadows enabled")]
-        public void Shadow_Pass_Skipped_Without_ShadowRenderer()
+        [Fact(DisplayName = "RenderPipeline throws at construction when shadows are enabled but no IShadowRenderer is wired")]
+        public void Construction_Throws_When_ShadowsEnabled_Without_ShadowRenderer()
         {
             var world = new WorldManager(new SystemManager());
-
-            var camEntity = world.CreateEntity();
-            world.AddComponent(camEntity, new Camera
-            {
-                FieldOfView = MathF.PI / 3f, NearPlane = 0.1f, FarPlane = 100f,
-                AspectRatio = 16f / 9f, IsOrthographic = false,
-                Position = new Vector3(0, 1, 5), Target = Vector3.Zero, Up = Vector3.UnitY
-            });
-
-            var lightEntity = world.CreateEntity();
-            world.AddComponent(lightEntity, new DirectionalLight
-            {
-                Direction = new Vector3(0, -1, 0), Color = Vector3.One, Intensity = 1f
-            });
 
             var lightingSystem = new LightingSystem();
             lightingSystem.Initialize(world);
             var shadowRenderingSystem = new ShadowRenderingSystem();
             shadowRenderingSystem.Initialize(world);
 
-            var pipeline = new RenderPipeline(
+            Assert.Throws<InvalidOperationException>(() => new RenderPipeline(
                 new FakeRenderManager(new FakeRenderContext(new FakeRenderer())),
                 new FakeRenderingSystem(), world,
                 lightingSystem, shadowRenderingSystem,
                 new ShadowSettings { Enabled = true },
-                new PostProcessStack(), new NullLogger<RenderPipeline>());
+                new PostProcessStack(), new NullLogger<RenderPipeline>()));
+        }
 
-            pipeline.RenderFrame();
+        [Fact(DisplayName = "RenderFrame throws when post-process effects are registered but no production IPostProcessCommandContext exists, and still balances EndRender")]
+        public void RenderFrame_Throws_When_PostProcessEffectsRegistered_Without_ProductionContext()
+        {
+            var world = new WorldManager(new SystemManager());
 
-            Assert.False(shadowRenderingSystem.HasShadowRenderer);
-            Assert.Equal(0, lightingSystem.LastLights.Length);
+            var lightingSystem = new LightingSystem();
+            lightingSystem.Initialize(world);
+            var shadowRenderingSystem = new ShadowRenderingSystem();
+            shadowRenderingSystem.Initialize(world);
+            var postProcessStack = new PostProcessStack();
+            postProcessStack.AddEffect(new ToneMappingEffect());
+            var renderManager = new FakeRenderManager(new FakeRenderContext(new FakeRenderer()));
+
+            var pipeline = new RenderPipeline(
+                renderManager,
+                new FakeRenderingSystem(), world,
+                lightingSystem, shadowRenderingSystem,
+                new ShadowSettings { Enabled = false },
+                postProcessStack, new NullLogger<RenderPipeline>());
+
+            Assert.Throws<InvalidOperationException>(() => pipeline.RenderFrame());
+            Assert.Equal(1, renderManager.EndRenderCallCount);
         }
 
         private static bool MatricesEqual(in Matrix4x4 a, in Matrix4x4 b, float eps = 1e-5f)

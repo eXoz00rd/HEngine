@@ -17,6 +17,7 @@ namespace HEngine.Rendering.Systems;
 public class ShadowRenderingSystem : ISystem
 {
     private bool _disposed;
+    private bool _isInitialized;
     private WorldManager _world = null!;
     private QueryBuilder _queryBuilder = null!;
     private IShadowRenderer? _shadowRenderer;
@@ -25,6 +26,7 @@ public class ShadowRenderingSystem : ISystem
     {
         _world = worldManager;
         _queryBuilder = new QueryBuilder(worldManager.ComponentManager, worldManager.EntityManager);
+        _isInitialized = true;
     }
 
     public void SetShadowRenderer(IShadowRenderer? renderer)
@@ -48,7 +50,14 @@ public class ShadowRenderingSystem : ISystem
         ReadOnlySpan<float> cascadeSplits,
         int resolution)
     {
-        if (_disposed || _shadowRenderer is null) return;
+        if (_disposed) return;
+
+        if (!_isInitialized)
+        {
+            throw new InvalidOperationException("ShadowRenderingSystem must be initialized before calling RenderShadows.");
+        }
+
+        if (_shadowRenderer is null) return;
 
         int cascadeCount = cascadeSplits.Length;
         var lightVPs = new Matrix4x4[cascadeCount];

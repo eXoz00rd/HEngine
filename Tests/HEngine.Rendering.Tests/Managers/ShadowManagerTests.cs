@@ -74,7 +74,7 @@ public class ShadowManagerTests
     public void ShadowSettings_DefaultValues()
     {
         var settings = new HEngine.Core.Configuration.ShadowSettings();
-        Assert.True(settings.Enabled);
+        Assert.False(settings.Enabled);
         Assert.Equal(2048, settings.Resolution);
         Assert.Equal(4, settings.CascadeCount);
         Assert.True(settings.LambdaSplit > 0f && settings.LambdaSplit < 1f);

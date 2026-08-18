@@ -17,6 +17,7 @@ public class LightingSystem : ISystem
     public const int MaxLights = 8;
 
     private bool _disposed;
+    private bool _isInitialized;
     private WorldManager _world = null!;
     private QueryBuilder _queryBuilder = null!;
 
@@ -27,16 +28,43 @@ public class LightingSystem : ISystem
     {
         _world = worldManager;
         _queryBuilder = new QueryBuilder(worldManager.ComponentManager, worldManager.EntityManager);
+        _isInitialized = true;
     }
 
     public void Update(float deltaTime)
     {
-        if (_disposed) return;
+        if (_disposed)
+        {
+            throw new ObjectDisposedException(nameof(LightingSystem));
+        }
+
+        if (!_isInitialized)
+        {
+            throw new InvalidOperationException("LightingSystem must be initialized before calling Update.");
+        }
+
         _lastLights = GatherLights(_world);
     }
 
     public LightData[] GatherLights(WorldManager world)
     {
+        if (_disposed)
+        {
+            throw new ObjectDisposedException(nameof(LightingSystem));
+        }
+
+        if (!_isInitialized)
+        {
+            throw new InvalidOperationException("LightingSystem must be initialized before calling GatherLights.");
+        }
+
+        if (!ReferenceEquals(world, _world))
+        {
+            throw new ArgumentException(
+                "The provided WorldManager does not match the instance LightingSystem was initialized with.",
+                nameof(world));
+        }
+
         var result = new List<LightData>(MaxLights);
         
         var dirQuery = _queryBuilder.With<DirectionalLight>();

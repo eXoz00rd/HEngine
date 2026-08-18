@@ -13,6 +13,7 @@ namespace HEngine.Rendering.Systems;
 public class MeshRenderingSystem : IMeshRenderingSystem
 {
     private bool _disposed;
+    private bool _isInitialized;
     private QueryBuilder _queryBuilder = null!;
     private WorldManager _world = null!;
     private readonly ILogger<MeshRenderingSystem>? _logger;
@@ -27,12 +28,18 @@ public class MeshRenderingSystem : IMeshRenderingSystem
     {
         _world = worldManager;
         _queryBuilder = new QueryBuilder(worldManager.ComponentManager, worldManager.EntityManager);
+        _isInitialized = true;
     }
 
     public void Render(IRenderContext context)
     {
         if (_disposed)
             return;
+
+        if (!_isInitialized)
+        {
+            throw new InvalidOperationException("MeshRenderingSystem must be initialized before calling Render.");
+        }
 
         var meshQuery = _queryBuilder.With<Transform, Mesh>();
         int meshCount = 0;

@@ -12,6 +12,45 @@ namespace HEngine.Rendering.Tests.Systems;
 
 public class LightingSystemTests
 {
+    [Fact(DisplayName = "Update throws when called before Initialize")]
+    public void Update_Throws_When_Not_Initialized()
+    {
+        var system = new LightingSystem();
+
+        Assert.Throws<InvalidOperationException>(() => system.Update(0f));
+    }
+
+    [Fact(DisplayName = "GatherLights throws when called before Initialize")]
+    public void GatherLights_Throws_When_Not_Initialized()
+    {
+        using var world = new WorldManager(new SystemManager());
+        var system = new LightingSystem();
+
+        Assert.Throws<InvalidOperationException>(() => system.GatherLights(world));
+    }
+
+    [Fact(DisplayName = "Update throws when called after Dispose")]
+    public void Update_Throws_When_Disposed()
+    {
+        using var world = new WorldManager(new SystemManager());
+        var system = new LightingSystem();
+        system.Initialize(world);
+        system.Dispose();
+
+        Assert.Throws<ObjectDisposedException>(() => system.Update(0f));
+    }
+
+    [Fact(DisplayName = "GatherLights throws when given a different WorldManager than Initialize used")]
+    public void GatherLights_Throws_When_WorldManager_Mismatched()
+    {
+        using var initWorld = new WorldManager(new SystemManager());
+        using var otherWorld = new WorldManager(new SystemManager());
+        var system = new LightingSystem();
+        system.Initialize(initWorld);
+
+        Assert.Throws<ArgumentException>(() => system.GatherLights(otherWorld));
+    }
+
     [Fact(DisplayName = "GatherLights collects directional and point lights with expected data")]
     public void GatherLights_CollectsLights()
     {

@@ -62,6 +62,16 @@ file sealed class FakeRenderContext : IRenderContext
 
 public class MeshRenderingSystemTests
 {
+    [Fact(DisplayName = "Render throws when called before Initialize")]
+    public void Render_Throws_When_Not_Initialized()
+    {
+        var system = new MeshRenderingSystem();
+        var fakeRenderer = new FakeRenderer();
+        var context = new FakeRenderContext(fakeRenderer);
+
+        Assert.Throws<InvalidOperationException>(() => system.Render(context));
+    }
+
     [Fact(DisplayName = "Render with two mesh entities should call DrawMesh twice")]
     public void Render_WithMeshEntities_CallsDrawMesh()
     {

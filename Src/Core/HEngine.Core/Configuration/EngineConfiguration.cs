@@ -49,7 +49,7 @@ public class PbrSettings {
 }
 
 public class ShadowSettings {
-    public bool Enabled { get; set; } = true;
+    public bool Enabled { get; set; } = false;
     public int Resolution { get; set; } = 2048;
     public int CascadeCount { get; set; } = 4;
     public float LambdaSplit { get; set; } = 0.75f;
