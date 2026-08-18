@@ -33,7 +33,10 @@ public class LightingSystem : ISystem
 
     public void Update(float deltaTime)
     {
-        if (_disposed) return;
+        if (_disposed)
+        {
+            throw new ObjectDisposedException(nameof(LightingSystem));
+        }
 
         if (!_isInitialized)
         {

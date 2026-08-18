@@ -29,6 +29,17 @@ public class LightingSystemTests
         Assert.Throws<InvalidOperationException>(() => system.GatherLights(world));
     }
 
+    [Fact(DisplayName = "Update throws when called after Dispose")]
+    public void Update_Throws_When_Disposed()
+    {
+        using var world = new WorldManager(new SystemManager());
+        var system = new LightingSystem();
+        system.Initialize(world);
+        system.Dispose();
+
+        Assert.Throws<ObjectDisposedException>(() => system.Update(0f));
+    }
+
     [Fact(DisplayName = "GatherLights throws when given a different WorldManager than Initialize used")]
     public void GatherLights_Throws_When_WorldManager_Mismatched()
     {
