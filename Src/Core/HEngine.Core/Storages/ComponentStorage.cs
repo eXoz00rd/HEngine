@@ -155,17 +155,17 @@ internal sealed class ComponentStorage<T> : IComponentStorage<T>, IDisposable wh
         }
     }
 
-    public Span<T> GetAllComponents()
+    public ReadOnlySpan<T> GetAllComponents()
     {
         _lock.EnterReadLock();
         try
         {
             if (_count == 0)
-                return Span<T>.Empty;
+                return ReadOnlySpan<T>.Empty;
 
             var result = new T[_count];
             CopyActiveComponentsUnsafe(result);
-            return result.AsSpan();
+            return result;
         }
         finally
         {

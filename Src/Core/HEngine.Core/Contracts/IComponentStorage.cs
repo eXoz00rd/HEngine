@@ -31,7 +31,7 @@ internal interface IComponentStorage<T> : IComponentStorage where T : struct, IC
 
    bool TryGetComponent(Entity entity, out T component);
 
-    Span<T> GetAllComponents();
+    ReadOnlySpan<T> GetAllComponents();
 
    void GetEntitiesWithComponent(List<Entity> entities);
 }

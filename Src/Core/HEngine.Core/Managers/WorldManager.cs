@@ -5,7 +5,9 @@ using HEngine.Core.Queries;
 namespace HEngine.Core.Managers;
 
 public class WorldManager : IDisposable {
-    private readonly List<IQuery> _queryCache = new();
+    private readonly Dictionary<Type, IQuery> _singleComponentQueryCache = new();
+    private readonly Dictionary<(Type, Type), IQuery> _twoComponentQueryCache = new();
+    private readonly Dictionary<(Type, Type, Type), IQuery> _threeComponentQueryCache = new();
     private readonly Dictionary<Type, ISystem> _systemCache = new();
     private readonly SystemManager _systemManager;
     private bool _disposed;
@@ -28,7 +30,9 @@ public class WorldManager : IDisposable {
             return;
 
         _systemCache.Clear();
-        _queryCache.Clear();
+        _singleComponentQueryCache.Clear();
+        _twoComponentQueryCache.Clear();
+        _threeComponentQueryCache.Clear();
         ComponentManager.Dispose();
         EntityManager.Dispose();
         _disposed = true;
@@ -42,8 +46,13 @@ public class WorldManager : IDisposable {
 
     public Query<T1> CreateQuery<T1>() where T1 : struct, IComponent
     {
+        ThrowIfDisposed();
+
+        if (_singleComponentQueryCache.TryGetValue(typeof(T1), out var cached))
+            return (Query<T1>)cached;
+
         var query = QueryBuilder.With<T1>();
-        _queryCache.Add(query);
+        _singleComponentQueryCache[typeof(T1)] = query;
         return query;
     }
 
@@ -51,8 +60,14 @@ public class WorldManager : IDisposable {
         where T1 : struct, IComponent
         where T2 : struct, IComponent
     {
+        ThrowIfDisposed();
+
+        var key = (typeof(T1), typeof(T2));
+        if (_twoComponentQueryCache.TryGetValue(key, out var cached))
+            return (Query<T1, T2>)cached;
+
         var query = QueryBuilder.With<T1, T2>();
-        _queryCache.Add(query);
+        _twoComponentQueryCache[key] = query;
         return query;
     }
 
@@ -61,14 +76,26 @@ public class WorldManager : IDisposable {
         where T2 : struct, IComponent
         where T3 : struct, IComponent
     {
+        ThrowIfDisposed();
+
+        var key = (typeof(T1), typeof(T2), typeof(T3));
+        if (_threeComponentQueryCache.TryGetValue(key, out var cached))
+            return (Query<T1, T2, T3>)cached;
+
         var query = QueryBuilder.With<T1, T2, T3>();
-        _queryCache.Add(query);
+        _threeComponentQueryCache[key] = query;
         return query;
     }
 
     private void InvalidateQueries()
     {
-        foreach (var query in _queryCache)
+        foreach (var query in _singleComponentQueryCache.Values)
+            query.Clear();
+
+        foreach (var query in _twoComponentQueryCache.Values)
+            query.Clear();
+
+        foreach (var query in _threeComponentQueryCache.Values)
             query.Clear();
     }
 
