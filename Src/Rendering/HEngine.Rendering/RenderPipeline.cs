@@ -68,37 +68,48 @@ public class RenderPipeline : IRenderPipeline {
             _logger.LogDebug(RenderLogEvents.PipelineStart, "RenderFrame start");
             _renderManager.BeginRender();
 
-            Camera activeCamera = default;
-            var hasCamera = false;
-
-            var qb = _world.QueryBuilder.With<Camera>();
-            if (qb.TryGetFirst(out _, out var cam))
+            try
             {
-                context.ViewMatrix = cam.GetViewMatrix();
-                context.ProjectionMatrix = cam.GetProjectionMatrix();
-                activeCamera = cam;
-                hasCamera = true;
+                Camera activeCamera = default;
+                var hasCamera = false;
+
+                var qb = _world.QueryBuilder.With<Camera>();
+                if (qb.TryGetFirst(out _, out var cam))
+                {
+                    context.ViewMatrix = cam.GetViewMatrix();
+                    context.ProjectionMatrix = cam.GetProjectionMatrix();
+                    activeCamera = cam;
+                    hasCamera = true;
+                }
+                else if (_renderManager.TryGetActiveCamera(out var camera))
+                {
+                    context.ViewMatrix = camera.ViewMatrix;
+                    context.ProjectionMatrix = camera.ProjectionMatrix;
+                }
+
+                context.Renderer.SetViewMatrix(context.ViewMatrix);
+                context.Renderer.SetProjectionMatrix(context.ProjectionMatrix);
+
+                if (_shadowSettings.Enabled && hasCamera && _shadowRenderingSystem.HasShadowRenderer)
+                {
+                    ExecuteShadowPass(activeCamera);
+                }
+
+                _renderingSystem.Render(context);
+
+                ExecutePostProcessPass();
             }
-            else if (_renderManager.TryGetActiveCamera(out var camera))
+            finally
             {
-                context.ViewMatrix = camera.ViewMatrix;
-                context.ProjectionMatrix = camera.ProjectionMatrix;
+                _renderManager.EndRender();
             }
 
-            context.Renderer.SetViewMatrix(context.ViewMatrix);
-            context.Renderer.SetProjectionMatrix(context.ProjectionMatrix);
-
-            if (_shadowSettings.Enabled && hasCamera && _shadowRenderingSystem.HasShadowRenderer)
-            {
-                ExecuteShadowPass(activeCamera);
-            }
-
-            _renderingSystem.Render(context);
-
-            ExecutePostProcessPass();
-
-            _renderManager.EndRender();
             _logger.LogDebug(RenderLogEvents.PipelineEnd, "RenderFrame end");
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogError(ex, "Critical error in render pipeline");
+            throw;
         }
         catch (Exception ex)
         {

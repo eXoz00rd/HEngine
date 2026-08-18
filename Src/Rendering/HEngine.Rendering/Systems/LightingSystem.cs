@@ -45,9 +45,21 @@ public class LightingSystem : ISystem
 
     public LightData[] GatherLights(WorldManager world)
     {
+        if (_disposed)
+        {
+            throw new ObjectDisposedException(nameof(LightingSystem));
+        }
+
         if (!_isInitialized)
         {
             throw new InvalidOperationException("LightingSystem must be initialized before calling GatherLights.");
+        }
+
+        if (!ReferenceEquals(world, _world))
+        {
+            throw new ArgumentException(
+                "The provided WorldManager does not match the instance LightingSystem was initialized with.",
+                nameof(world));
         }
 
         var result = new List<LightData>(MaxLights);

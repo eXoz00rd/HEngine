@@ -29,6 +29,17 @@ public class LightingSystemTests
         Assert.Throws<InvalidOperationException>(() => system.GatherLights(world));
     }
 
+    [Fact(DisplayName = "GatherLights throws when given a different WorldManager than Initialize used")]
+    public void GatherLights_Throws_When_WorldManager_Mismatched()
+    {
+        using var initWorld = new WorldManager(new SystemManager());
+        using var otherWorld = new WorldManager(new SystemManager());
+        var system = new LightingSystem();
+        system.Initialize(initWorld);
+
+        Assert.Throws<ArgumentException>(() => system.GatherLights(otherWorld));
+    }
+
     [Fact(DisplayName = "GatherLights collects directional and point lights with expected data")]
     public void GatherLights_CollectsLights()
     {

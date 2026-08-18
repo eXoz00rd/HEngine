@@ -73,11 +73,12 @@ namespace HEngine.Rendering.Tests
         public bool ShouldClose => false;
         public bool CanRender => true;
         public bool IsInitialized => true;
+        public int EndRenderCallCount { get; private set; }
 
         public void Initialize(int width, int height, string title) { }
         public void UpdateInput() { }
         public void BeginRender() { }
-        public void EndRender() { }
+        public void EndRender() => EndRenderCallCount++;
         public void Clear(Vector4 clearColor) { }
         public void Present() { }
 
@@ -206,7 +207,7 @@ namespace HEngine.Rendering.Tests
                 new PostProcessStack(), new NullLogger<RenderPipeline>()));
         }
 
-        [Fact(DisplayName = "RenderFrame throws when post-process effects are registered but no production IPostProcessCommandContext exists")]
+        [Fact(DisplayName = "RenderFrame throws when post-process effects are registered but no production IPostProcessCommandContext exists, and still balances EndRender")]
         public void RenderFrame_Throws_When_PostProcessEffectsRegistered_Without_ProductionContext()
         {
             var world = new WorldManager(new SystemManager());
@@ -217,15 +218,17 @@ namespace HEngine.Rendering.Tests
             shadowRenderingSystem.Initialize(world);
             var postProcessStack = new PostProcessStack();
             postProcessStack.AddEffect(new ToneMappingEffect());
+            var renderManager = new FakeRenderManager(new FakeRenderContext(new FakeRenderer()));
 
             var pipeline = new RenderPipeline(
-                new FakeRenderManager(new FakeRenderContext(new FakeRenderer())),
+                renderManager,
                 new FakeRenderingSystem(), world,
                 lightingSystem, shadowRenderingSystem,
                 new ShadowSettings { Enabled = false },
                 postProcessStack, new NullLogger<RenderPipeline>());
 
             Assert.Throws<InvalidOperationException>(() => pipeline.RenderFrame());
+            Assert.Equal(1, renderManager.EndRenderCallCount);
         }
 
         private static bool MatricesEqual(in Matrix4x4 a, in Matrix4x4 b, float eps = 1e-5f)
