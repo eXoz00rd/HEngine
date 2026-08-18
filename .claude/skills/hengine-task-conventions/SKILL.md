@@ -19,7 +19,17 @@ Issues live on the **HEngine** GitHub Projects (v2) board, owner `eXoz00rd`, pro
 gh project item-add 2 --owner eXoz00rd --url https://github.com/eXoz00rd/HEngine/issues/<number>
 ```
 
-## Creating a task via gh CLI
+## Creating a task
+
+**Default: a draft issue on the project board, not a repo Issue.** Per `CONVENTIONS.md`'s "Backlog items vs. issues" section — new backlog items (follow-up work discovered while doing something else, ideas, "we should do this eventually") go on the board as draft issues, not into the GitHub Issues tracker:
+
+```bash
+gh project item-create 2 --owner eXoz00rd --title "[System] ..." --body "..."
+```
+
+This creates a board-only card (no issue number, doesn't show up in `gh issue list` or the Issues tab). New draft items land wherever the board's default column is — explicitly set them to **Backlog** status if they don't (see the `backlog-task` skill for the `Status` field/option IDs).
+
+Only use `gh issue create` (a real repo Issue) when the task is being picked up for work right now, or when the user explicitly asks for an issue specifically:
 
 ```bash
 gh issue create --repo eXoz00rd/HEngine --title "[System] ..." --body "..."

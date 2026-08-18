@@ -10,6 +10,14 @@ Tasks/issues are written in **English** — title, description, and comments. Re
 
 Note: some planning documents in `docs/` are written in Polish. That's fine for internal working documents — the convention above applies to the issue tracker, commits and pull requests.
 
+## Backlog items vs. issues
+
+Not everything belongs in the GitHub Issues tracker. A **backlog item** (an idea, a piece of follow-up work discovered while doing something else, a "we should do this eventually") is filed as a **draft issue on the HEngine Projects (v2) board** (`gh project item-create`) — a board-only card, not a repo Issue. This keeps the Issues tab reserved for work that's actually being tracked/actioned, instead of accumulating speculative or not-yet-scoped items.
+
+A backlog item gets **promoted to a real GitHub Issue** (`gh issue create`, then added to the board) only when someone is about to pick it up — i.e. right before starting implementation, per the `backlog-task` skill's step 2. At that point the draft item's project card is normally converted/replaced by the real issue's card (the project UI supports converting a draft item to an issue directly).
+
+Rule of thumb: if you're not starting work on it right now, it's a draft backlog item, not an issue.
+
 ## Task title
 
 Format: `[System] Description of the problem/topic`
