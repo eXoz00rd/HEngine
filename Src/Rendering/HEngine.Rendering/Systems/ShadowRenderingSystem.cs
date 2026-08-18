@@ -8,6 +8,7 @@ using HEngine.Core.Queries;
 using HEngine.Core.Rendering.Contracts;
 using HEngine.Core.Rendering.Data;
 using HEngine.Rendering.Components;
+using HEngine.Rendering.Data;
 
 namespace HEngine.Rendering.Systems;
 
@@ -93,26 +94,13 @@ public class ShadowRenderingSystem : ISystem
 
             var worldMatrix = transform.GetWorldMatrix(_world);
 
-            Vertex3D[] vertices;
-            uint[] indices;
-            switch (mesh.VertexArrayId)
-            {
-                case 1:
-                    (vertices, indices) = MeshPrimitives.CreateCube(1.0f, mesh.Color);
-                    break;
-                case 2:
-                    (vertices, indices) = MeshPrimitives.CreatePlane(1.0f, 1.0f, mesh.Color);
-                    break;
-                default:
-                    (vertices, indices) = MeshPrimitives.CreateCube(1.0f, mesh.Color);
-                    break;
-            }
+            var (vertices, indices) = PrimitiveGeometryCache.Get(mesh.VertexArrayId);
 
-            _shadowRenderer!.RenderDepthOnlyMesh(worldMatrix, FlattenPositions(vertices), indices);
+            _shadowRenderer!.RenderDepthOnlyMesh(worldMatrix, FlattenPositions(vertices, mesh.Color), indices);
         }
     }
 
-    private static float[] FlattenPositions(ReadOnlySpan<Vertex3D> vertices)
+    private static float[] FlattenPositions(ReadOnlySpan<Vertex3D> vertices, Vector4 color)
     {
         var result = new float[vertices.Length * 12];
         var o = 0;
@@ -127,10 +115,10 @@ public class ShadowRenderingSystem : ISystem
             result[o++] = v.Normal.Z;
             result[o++] = v.TexCoord.X;
             result[o++] = v.TexCoord.Y;
-            result[o++] = v.Color.X;
-            result[o++] = v.Color.Y;
-            result[o++] = v.Color.Z;
-            result[o++] = v.Color.W;
+            result[o++] = color.X;
+            result[o++] = color.Y;
+            result[o++] = color.Z;
+            result[o++] = color.W;
         }
         return result;
     }
