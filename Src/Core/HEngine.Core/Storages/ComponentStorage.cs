@@ -156,7 +156,22 @@ internal sealed class ComponentStorage<T> : IComponentStorage<T>, IDisposable wh
     }
 
     public ReadOnlySpan<T> GetAllComponents()
-        => GetAllComponentsReadOnly();
+    {
+        _lock.EnterReadLock();
+        try
+        {
+            if (_count == 0)
+                return ReadOnlySpan<T>.Empty;
+
+            var result = new T[_count];
+            CopyActiveComponentsUnsafe(result);
+            return result;
+        }
+        finally
+        {
+            _lock.ExitReadLock();
+        }
+    }
 
     public void GetEntitiesWithComponent(List<Entity> entities)
     {
@@ -366,6 +381,16 @@ internal sealed class ComponentStorage<T> : IComponentStorage<T>, IDisposable wh
         }
 
         return new ReadOnlySpan<T>(_components, 0, endIndex);
+    }
+
+    private void CopyActiveComponentsUnsafe(Span<T> destination)
+    {
+        uint writeIndex = 0;
+        for (uint i = 0; i < _capacity && writeIndex < _count; i++)
+        {
+            if (_indexToEntity[i].IsValid)
+                destination[(int)writeIndex++] = _components[i];
+        }
     }
 
     [MethodImpl(MethodImplOptions.NoInlining)]

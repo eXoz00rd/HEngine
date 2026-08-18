@@ -982,6 +982,32 @@ public class WorldManagerTests : IDisposable {
     }
 
     [Fact]
+    public void ComponentManager_GetAllComponents_WithFragmentedStorage_ShouldReturnOnlyRemainingActiveValues()
+    {
+        using var worldManager = new WorldManager(new SystemManager());
+        var entity1 = worldManager.CreateEntity();
+        var entity2 = worldManager.CreateEntity();
+        var entity3 = worldManager.CreateEntity();
+
+        worldManager.AddComponent(entity1, new TestComponent { Value = 1 });
+        worldManager.AddComponent(entity2, new TestComponent { Value = 2 });
+        worldManager.AddComponent(entity3, new TestComponent { Value = 3 });
+
+        worldManager.RemoveComponent<TestComponent>(entity1);
+
+        var components = worldManager.ComponentManager.GetAllComponents<TestComponent>();
+
+        Assert.Equal(2, components.Length);
+        var values = new List<int>();
+        foreach (var component in components)
+            values.Add(component.Value);
+
+        Assert.Equal([2, 3], values.OrderBy(v => v));
+        Assert.DoesNotContain(0, values);
+        Assert.Contains(3, values);
+    }
+
+    [Fact]
     public void ComponentManager_GetAllComponents_DoesNotClaimWritability()
     {
         using var worldManager = new WorldManager(new SystemManager());

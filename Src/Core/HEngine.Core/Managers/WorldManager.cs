@@ -46,6 +46,8 @@ public class WorldManager : IDisposable {
 
     public Query<T1> CreateQuery<T1>() where T1 : struct, IComponent
     {
+        ThrowIfDisposed();
+
         if (_singleComponentQueryCache.TryGetValue(typeof(T1), out var cached))
             return (Query<T1>)cached;
 
@@ -58,6 +60,8 @@ public class WorldManager : IDisposable {
         where T1 : struct, IComponent
         where T2 : struct, IComponent
     {
+        ThrowIfDisposed();
+
         var key = (typeof(T1), typeof(T2));
         if (_twoComponentQueryCache.TryGetValue(key, out var cached))
             return (Query<T1, T2>)cached;
@@ -72,6 +76,8 @@ public class WorldManager : IDisposable {
         where T2 : struct, IComponent
         where T3 : struct, IComponent
     {
+        ThrowIfDisposed();
+
         var key = (typeof(T1), typeof(T2), typeof(T3));
         if (_threeComponentQueryCache.TryGetValue(key, out var cached))
             return (Query<T1, T2, T3>)cached;
