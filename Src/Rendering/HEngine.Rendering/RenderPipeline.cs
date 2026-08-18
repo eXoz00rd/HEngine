@@ -3,7 +3,7 @@ using HEngine.Core.Configuration;
 using HEngine.Core.Managers;
 using HEngine.Core.Mathematics;
 using HEngine.Core.Rendering.Contracts;
-using HEngine.Rendering.Data;
+using HEngine.Core.Rendering.Data;
 using HEngine.Rendering.Logging;
 using HEngine.Rendering.PostProcessing;
 using HEngine.Rendering.Systems;
@@ -90,9 +90,13 @@ public class RenderPipeline : IRenderPipeline {
                 context.Renderer.SetViewMatrix(context.ViewMatrix);
                 context.Renderer.SetProjectionMatrix(context.ProjectionMatrix);
 
+                _lightingSystem.Update(0f);
+                var lights = _lightingSystem.LastLights;
+                context.Renderer.SetLights(lights);
+
                 if (_shadowSettings.Enabled && hasCamera && _shadowRenderingSystem.HasShadowRenderer)
                 {
-                    ExecuteShadowPass(activeCamera);
+                    ExecuteShadowPass(activeCamera, lights);
                 }
 
                 _renderingSystem.Render(context);
@@ -118,11 +122,8 @@ public class RenderPipeline : IRenderPipeline {
         }
     }
 
-    private void ExecuteShadowPass(in Camera camera)
+    private void ExecuteShadowPass(in Camera camera, ReadOnlySpan<LightData> lights)
     {
-        _lightingSystem.Update(0f);
-        var lights = _lightingSystem.LastLights;
-
         for (var i = 0; i < lights.Length; i++)
         {
             if (lights[i].Type != LightType.Directional)

@@ -57,6 +57,10 @@ file sealed class NullRenderer : IRenderer
     {
     }
 
+    public void SetLights(ReadOnlySpan<LightData> lights)
+    {
+    }
+
     public void DrawSprite(Vector2 position, Vector2 size, Vector4 color)
     {
     }

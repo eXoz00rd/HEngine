@@ -1,14 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+using System;
 using System.Numerics;
 using HEngine.Core.Components.Rendering;
 using HEngine.Core.Components.Transform;
 using HEngine.Core.Contracts;
 using HEngine.Core.Managers;
 using HEngine.Core.Queries;
-using HEngine.Core.Rendering.Contracts;
-using HEngine.Rendering.Data;
+using HEngine.Core.Rendering.Data;
 
 namespace HEngine.Rendering.Systems;
 
@@ -21,8 +18,10 @@ public class LightingSystem : ISystem
     private WorldManager _world = null!;
     private QueryBuilder _queryBuilder = null!;
 
-    private LightData[] _lastLights = Array.Empty<LightData>();
-    public ReadOnlySpan<LightData> LastLights => _lastLights;
+    private readonly LightData[] _lightBuffer = new LightData[MaxLights];
+    private int _lightCount;
+
+    public ReadOnlySpan<LightData> LastLights => new(_lightBuffer, 0, _lightCount);
 
     public void Initialize(WorldManager worldManager)
     {
@@ -43,7 +42,7 @@ public class LightingSystem : ISystem
             throw new InvalidOperationException("LightingSystem must be initialized before calling Update.");
         }
 
-        _lastLights = GatherLights(_world);
+        _lightCount = GatherLightsInto(_world, _lightBuffer);
     }
 
     public LightData[] GatherLights(WorldManager world)
@@ -65,22 +64,28 @@ public class LightingSystem : ISystem
                 nameof(world));
         }
 
-        var result = new List<LightData>(MaxLights);
-        
+        Span<LightData> buffer = stackalloc LightData[MaxLights];
+        var count = GatherLightsInto(world, buffer);
+        return buffer[..count].ToArray();
+    }
+
+    private int GatherLightsInto(WorldManager world, Span<LightData> buffer)
+    {
+        var count = 0;
+
         var dirQuery = _queryBuilder.With<DirectionalLight>();
         foreach (var (_, d) in dirQuery)
         {
-            var ld = new LightData
+            buffer[count++] = new LightData
             {
                 Type = LightType.Directional,
                 Color = d.Color,
                 Intensity = d.Intensity,
                 Direction = SafeNormalize(d.Direction)
             };
-            result.Add(ld);
-            if (result.Count >= MaxLights) return result.ToArray();
+            if (count >= MaxLights) return count;
         }
-        
+
         var pointQuery = _queryBuilder.With<Transform, PointLight>();
         foreach (var (entity, t, p) in pointQuery)
         {
@@ -90,7 +95,7 @@ public class LightingSystem : ISystem
             var wm = t.GetWorldMatrix(world);
             var pos = new Vector3(wm.M41, wm.M42, wm.M43);
 
-            var ld = new LightData
+            buffer[count++] = new LightData
             {
                 Type = LightType.Point,
                 Color = p.Color,
@@ -99,8 +104,7 @@ public class LightingSystem : ISystem
                 Range = p.Range,
                 Attenuation = p.Attenuation
             };
-            result.Add(ld);
-            if (result.Count >= MaxLights) break;
+            if (count >= MaxLights) return count;
         }
 
         var spotQuery = _queryBuilder.With<Transform, SpotLight>();
@@ -112,7 +116,7 @@ public class LightingSystem : ISystem
             var wm = t.GetWorldMatrix(world);
             var pos = new Vector3(wm.M41, wm.M42, wm.M43);
 
-            var ld = new LightData
+            buffer[count++] = new LightData
             {
                 Type = LightType.Spot,
                 Color = s.Color,
@@ -123,11 +127,10 @@ public class LightingSystem : ISystem
                 InnerConeAngle = s.InnerConeAngle,
                 OuterConeAngle = s.OuterConeAngle
             };
-            result.Add(ld);
-            if (result.Count >= MaxLights) break;
+            if (count >= MaxLights) return count;
         }
 
-        return result.ToArray();
+        return count;
     }
 
     private static Vector3 SafeNormalize(in Vector3 v)
@@ -142,7 +145,7 @@ public class LightingSystem : ISystem
         if (_disposed) return;
         _queryBuilder = null!;
         _world = null!;
-        _lastLights = Array.Empty<LightData>();
+        _lightCount = 0;
         _disposed = true;
     }
 }

@@ -4,6 +4,7 @@ using HEngine.Core.Components.Rendering;
 using HEngine.Core.Configuration;
 using HEngine.Core.Managers;
 using HEngine.Core.Rendering.Contracts;
+using HEngine.Core.Rendering.Data;
 using HEngine.Rendering;
 using HEngine.Rendering.PostProcessing;
 using HEngine.Rendering.Systems;
@@ -18,6 +19,7 @@ namespace HEngine.Rendering.Tests
 
         public Matrix4x4? LastViewMatrix { get; private set; }
         public Matrix4x4? LastProjectionMatrix { get; private set; }
+        public LightData[]? LastLights { get; private set; }
 
         public void Initialize(int width, int height, string title)
         {
@@ -38,6 +40,11 @@ namespace HEngine.Rendering.Tests
         public void SetProjectionMatrix(Matrix4x4 projectionMatrix)
         {
             LastProjectionMatrix = projectionMatrix;
+        }
+
+        public void SetLights(ReadOnlySpan<LightData> lights)
+        {
+            LastLights = lights.ToArray();
         }
 
         public void DrawSprite(Vector2 position, Vector2 size, Vector4 color) { }
@@ -187,6 +194,45 @@ namespace HEngine.Rendering.Tests
             Assert.True(MatricesEqual(expectedProj, fakeRenderer.LastProjectionMatrix!.Value));
             
             Assert.True(renderingSystem.RenderCalled);
+        }
+
+        [Fact(DisplayName = "RenderFrame gathers ECS lights and forwards them to the renderer before rendering")]
+        public void RenderFrame_ForwardsGatheredLights_ToRenderer()
+        {
+            var world = new WorldManager(new SystemManager());
+            var lightEntity = world.CreateEntity();
+            var light = new DirectionalLight(new Vector3(0, -1, 0), new Vector3(1, 1, 1), intensity: 2f);
+            world.AddComponent(lightEntity, light);
+
+            var fakeRenderer = new FakeRenderer();
+            var context = new FakeRenderContext(fakeRenderer);
+            var renderManager = new FakeRenderManager(context);
+            var renderingSystem = new FakeRenderingSystem();
+            var logger = new NullLogger<RenderPipeline>();
+
+            var lightingSystem = new LightingSystem();
+            lightingSystem.Initialize(world);
+            var shadowRenderingSystem = new ShadowRenderingSystem();
+            shadowRenderingSystem.Initialize(world);
+            var shadowSettings = new ShadowSettings { Enabled = false };
+            var postProcessStack = new PostProcessStack();
+
+            var pipeline = new RenderPipeline(
+                renderManager,
+                renderingSystem,
+                world,
+                lightingSystem,
+                shadowRenderingSystem,
+                shadowSettings,
+                postProcessStack,
+                logger);
+
+            pipeline.RenderFrame();
+
+            Assert.NotNull(fakeRenderer.LastLights);
+            var forwardedLight = Assert.Single(fakeRenderer.LastLights!);
+            Assert.Equal(LightType.Directional, forwardedLight.Type);
+            Assert.Equal(2f, forwardedLight.Intensity);
         }
 
         [Fact(DisplayName = "RenderPipeline throws at construction when shadows are enabled but no IShadowRenderer is wired")]

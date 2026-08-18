@@ -1,6 +1,6 @@
 ﻿using System.Numerics;
 
-namespace HEngine.Rendering.Data;
+namespace HEngine.Core.Rendering.Data;
 
 public enum LightType
 {
