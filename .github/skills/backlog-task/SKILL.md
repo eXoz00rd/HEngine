@@ -47,8 +47,8 @@ Backlog work lives as **draft issues on the board** (see `hengine-task-conventio
 ```bash
 gh issue list --repo eXoz00rd/HEngine --state open --limit 30 --json number,title,labels,createdAt
 
-gh project item-list 2 --owner eXoz00rd --format json --limit 50 \
-  | jq -r '.items[] | select(.status == "Backlog" or .status == "Ready") | {title, status, type: .content.type}'
+gh project item-list 2 --owner eXoz00rd --format json --limit 50 --field Status \
+  | jq -r '.items[] | select(.fields.Status == "Backlog" or .fields.Status == "Ready") | {title, status: .fields.Status, type: .content.type}'
 ```
 
 - Prefer `bug` label over `enhancement`/`architecture`-only issues when both are available — correctness fixes first.
