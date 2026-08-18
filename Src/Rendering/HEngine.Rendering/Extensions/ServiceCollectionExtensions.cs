@@ -70,6 +70,10 @@ public static class ServiceCollectionExtensions
         services.AddSingleton(config.PBR);
         services.AddSingleton(config.PostProcessing);
 
+        services.AddSingleton<ShadowMapManager>();
+        services.AddSingleton<ShadowPipelineStateManager>();
+        services.AddSingleton<IShadowRenderer, DirectX12ShadowRenderer>();
+
         services.AddSingleton<LightingSystem>(provider =>
         {
             var lightingSystem = new LightingSystem();
@@ -81,6 +85,7 @@ public static class ServiceCollectionExtensions
         {
             var shadowRenderingSystem = new ShadowRenderingSystem();
             shadowRenderingSystem.Initialize(provider.GetRequiredService<WorldManager>());
+            shadowRenderingSystem.SetShadowRenderer(provider.GetRequiredService<IShadowRenderer>());
             return shadowRenderingSystem;
         });
 

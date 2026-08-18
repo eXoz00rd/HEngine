@@ -230,6 +230,7 @@ public class GameEngine : IDisposable
                     IndexCount = 36,
                     Color = color
                 });
+                _worldManager.AddComponent(cubeEntity, new Renderable());
             }
         }
 
@@ -247,6 +248,7 @@ public class GameEngine : IDisposable
             IndexCount = 36,
             Color = new Vector4(0.8f, 0.2f, 0.9f, 1.0f)
         });
+        _worldManager.AddComponent(sphereEntity, new Renderable());
 
         // Floating ring of cubes around the pyramid
         const int ringCount = 16;
@@ -281,6 +283,7 @@ public class GameEngine : IDisposable
                 IndexCount = 36,
                 Color = new Vector4(cosHue.X, cosHue.Y, cosHue.Z, 1.0f)
             });
+            _worldManager.AddComponent(ringEntity, new Renderable());
         }
 
         // Row of smaller cubes in front (color gradient arc)
@@ -316,6 +319,7 @@ public class GameEngine : IDisposable
                 IndexCount = 36,
                 Color = new Vector4(cosHue.X, cosHue.Y, cosHue.Z, 1.0f)
             });
+            _worldManager.AddComponent(arcEntity, new Renderable());
         }
 
         // 2D sprite badges floating above scene (pixel coordinates, Y=0 is screen top)

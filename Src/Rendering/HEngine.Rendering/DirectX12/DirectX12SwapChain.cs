@@ -110,6 +110,11 @@ public class DirectX12SwapChain : IDisposable
 
         commandList.ResourceBarrier(1, ref barrier);
 
+        BindMainRenderTarget(commandList, frameIndex);
+    }
+
+    public void BindMainRenderTarget(ComPtr<ID3D12GraphicsCommandList> commandList, int frameIndex)
+    {
         var rtvHandle = _rtvHeap.GetCPUDescriptorHandleForHeapStart();
         rtvHandle.Ptr += (nuint)(frameIndex * _rtvDescriptorSize);
         var dsvHandle = _dsvHeap.GetCPUDescriptorHandleForHeapStart();

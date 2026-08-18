@@ -279,6 +279,17 @@ public class DirectX12Device : IGraphicsDevice
         return _commandQueue;
     }
 
+    public void RestoreBackBufferTarget()
+    {
+        if (_disposed || !_initialized)
+        {
+            return;
+        }
+
+        var commandList = _commandQueue.CommandList;
+        _swapChain.BindMainRenderTarget(commandList, _frameIndex);
+    }
+
     private IWindow CreateWindow(int width, int height, string title)
     {
         var options = WindowOptions.Default;
