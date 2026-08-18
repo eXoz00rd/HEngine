@@ -139,7 +139,7 @@ namespace HEngine.Rendering.Tests
                 services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true }));
         }
 
-        [Fact(DisplayName = "Composition fails loudly when shadows are explicitly enabled but no IShadowRenderer is wired (tracks #19)")]
+        [Fact(DisplayName = "Composition fails loudly when shadows are explicitly enabled but ShadowRenderingSystem has no IShadowRenderer wired (tracks #19's defensive guard)")]
         public void Composition_Throws_When_ShadowsEnabled_Without_ShadowRenderer()
         {
             var configuration = new EngineConfiguration
@@ -147,13 +147,22 @@ namespace HEngine.Rendering.Tests
                 Shadow = new ShadowSettings { Enabled = true }
             };
 
-            using var provider = BuildProductionServiceCollection(configuration).BuildServiceProvider();
+            var services = BuildProductionServiceCollection(configuration);
+            var shadowRenderingSystemDescriptor = services.Single(d => d.ServiceType == typeof(ShadowRenderingSystem));
+            services.Remove(shadowRenderingSystemDescriptor);
+            services.AddSingleton<ShadowRenderingSystem>(provider =>
+            {
+                var shadowRenderingSystem = new ShadowRenderingSystem();
+                shadowRenderingSystem.Initialize(provider.GetRequiredService<WorldManager>());
+                return shadowRenderingSystem;
+            });
+
+            using var provider = services.BuildServiceProvider();
 
             Assert.Throws<InvalidOperationException>(() => provider.GetRequiredService<IRenderPipeline>());
         }
 
-        [Fact(DisplayName = "Shadows are enabled via configuration but no IShadowRenderer is wired in production yet — tracks #19",
-            Skip = "Intentionally red until #19 wires a production IShadowRenderer; unskip as part of #19's Definition of Done")]
+        [Fact(DisplayName = "Shadows are enabled via configuration and a production IShadowRenderer is wired through DI composition (tracks #19's Definition of Done)")]
         public void Composition_ShadowsEnabled_RequireAWiredShadowRenderer()
         {
             var configuration = new EngineConfiguration
@@ -165,9 +174,11 @@ namespace HEngine.Rendering.Tests
 
             var shadowSettings = provider.GetRequiredService<ShadowSettings>();
             var shadowRenderingSystem = provider.GetRequiredService<ShadowRenderingSystem>();
+            var shadowRenderer = provider.GetRequiredService<IShadowRenderer>();
 
             Assert.True(shadowSettings.Enabled);
             Assert.True(shadowRenderingSystem.HasShadowRenderer);
+            Assert.IsType<HEngine.Rendering.Renderers.DirectX12ShadowRenderer>(shadowRenderer);
         }
 
         [Fact(DisplayName = "Bloom is enabled by default configuration but no post-process effect is registered in production yet — tracks #20",
