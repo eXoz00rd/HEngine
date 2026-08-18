@@ -154,7 +154,7 @@ public class RenderPipeline : IRenderPipeline {
             return;
 
         throw new InvalidOperationException(
-            $"PostProcessStack has {_postProcessStack.EnabledEffectCount} registered effect(s), but RenderPipeline has no " +
+            $"PostProcessStack has {_postProcessStack.EnabledEffectCount} enabled effect(s), but RenderPipeline has no " +
             "production IPostProcessCommandContext to execute them (tracks #20). NullPostProcessCommandContext is a " +
             "headless/test-only no-op and must not run real effects.");
     }
