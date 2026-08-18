@@ -7,6 +7,34 @@ description: Pick up and implement the next backlog task for HEngine (repo eXoz0
 
 This skill turns "pick up next backlog task and follow our PR/branch/commit guidelines" into a repeatable checklist so it doesn't need to be spelled out in every chat message.
 
+## 0. Project board
+
+Issues are tracked on the **HEngine** GitHub Projects (v2) board, owner `eXoz00rd`, project number `2` (project ID `PVT_kwHOBpFBus4Bgi9N`). The `Status` field (`PVTSSF_lAHOBpFBus4Bgi9NzhfiHIg`) has these options:
+
+| Status | Option ID |
+|---|---|
+| Backlog | `f75ad846` |
+| Ready | `e18bf179` |
+| In progress | `47fc9ee4` |
+| In review | `aba860b9` |
+| Done | `98236657` |
+
+Move the issue's status as work progresses — don't leave it sitting in `Backlog`/`Ready` while you implement it, and don't leave it in `In progress` once a PR is up for review. Get the item ID for an issue with:
+
+```bash
+gh project item-list 2 --owner eXoz00rd --format json --limit 50 \
+  | jq -r '.items[] | select(.content.number == <issue-number>) | .id'
+```
+
+Then set the status with:
+
+```bash
+gh project item-edit --id <item-id> --project-id PVT_kwHOBpFBus4Bgi9N \
+  --field-id PVTSSF_lAHOBpFBus4Bgi9NzhfiHIg --single-select-option-id <option-id>
+```
+
+`Done` does not need to be set manually: the repo's default project workflow moves an item to `Done` automatically when its linked issue closes, and referencing `Closes #<n>` in the PR body auto-closes the issue on merge (verified — issue #17 flipped to `Done` on its own once PR #38 merged).
+
 ## 1. Check session state first
 
 - If the current branch already has commits ahead of `master` for a task that looks finished, check whether its PR is merged (`gh pr list --head <branch> --state all`). A merged PR means the branch is stale — do not keep committing to it.
@@ -22,6 +50,7 @@ gh issue list --repo eXoz00rd/HEngine --state open --limit 30 --json number,titl
 - Read the full issue body (`gh issue view <number>`) before starting. Check `docs/ENGINE_STATE_ANALYSIS.md` if the issue touches a subsystem's runtime behavior — repo docs may be aspirational.
 - Pick one task that fits in **≤400 changed lines / ≤15 files** (see `CONTRIBUTING.md`). If an issue is bigger than that, scope down to a coherent slice and say so in the PR body, or ask the user before splitting.
 - If several issues are similarly ranked and it's not obvious which to do, ask the user with `ask_user` rather than guessing.
+- Once picked, move the issue's board status to **In progress** (see §0) before starting implementation.
 
 ## 3. Branch
 
@@ -75,6 +104,7 @@ Bulleted checklist of what was actually run/observed.
 
 - Reference the issue with `Closes #<n>` when the PR fully resolves it.
 - No self-attribution in the PR body either.
+- Move the issue's board status to **In review** (see §0) right after the PR is opened.
 
 ## 8. Report back
 
