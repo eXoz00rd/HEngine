@@ -26,6 +26,12 @@ public class AssetManagerTests : IDisposable
     }
 
     [Fact]
+    public void Constructor_NullMeshLoader_ThrowsArgumentNullException()
+    {
+        Assert.Throws<ArgumentNullException>(() => new AssetManager(null!));
+    }
+
+    [Fact]
     public async Task LoadMeshAsync_ValidPath_LoadsSuccessfully()
     {
         var path = CreateTestMeshFile("test.mesh");

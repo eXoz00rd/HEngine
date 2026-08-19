@@ -1,6 +1,4 @@
 using System.Collections.Concurrent;
-using System.Reflection;
-using HEngine.Core.Rendering.Data;
 
 namespace HEngine.Core.Assets;
 
@@ -11,9 +9,9 @@ public class AssetManager : IDisposable
     private readonly Func<string, Task<object>> _meshLoader;
     private bool _disposed;
 
-    public AssetManager(Func<string, Task<object>>? meshLoader = null)
+    public AssetManager(Func<string, Task<object>> meshLoader)
     {
-        _meshLoader = meshLoader ?? DefaultMeshLoader;
+        _meshLoader = meshLoader ?? throw new ArgumentNullException(nameof(meshLoader));
     }
 
     public int LoadedAssetCount => _loadedAssets.Count;
@@ -137,46 +135,6 @@ public class AssetManager : IDisposable
         _loadedAssets[path] = cached;
 
         return asset;
-    }
-
-    private static async Task<object> DefaultMeshLoader(string path)
-    {
-        return await Task.Run(() =>
-        {
-            var type = Assembly.Load("HEngine.Rendering")
-                .GetType("HEngine.Rendering.Assets.SimpleMeshFormat");
-
-            if (type == null)
-            {
-                throw new InvalidOperationException("SimpleMeshFormat not found");
-            }
-
-            var method = type.GetMethod("Load", BindingFlags.Public | BindingFlags.Static);
-            if (method == null)
-            {
-                throw new InvalidOperationException("SimpleMeshFormat.Load method not found");
-            }
-
-            var result = method.Invoke(null, new object[] { path });
-            if (result == null)
-            {
-                throw new InvalidOperationException("Failed to load mesh");
-            }
-
-            var resultType = result.GetType();
-            var verticesField = resultType.GetField("Item1");
-            var indicesField = resultType.GetField("Item2");
-
-            if (verticesField == null || indicesField == null)
-            {
-                throw new InvalidOperationException("Invalid mesh data format");
-            }
-
-            var vertices = (Vertex3D[])verticesField.GetValue(result)!;
-            var indices = (uint[])indicesField.GetValue(result)!;
-
-            return new LoadedMesh(vertices, indices);
-        });
     }
 
     private static string NormalizePath(string path)
