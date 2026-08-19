@@ -95,6 +95,12 @@ public class DirectX12SwapChain : IDisposable
 
     public void BeginFrame(ComPtr<ID3D12GraphicsCommandList> commandList, int frameIndex)
     {
+        TransitionToRenderTarget(commandList, frameIndex);
+        BindMainRenderTarget(commandList, frameIndex);
+    }
+
+    public void TransitionToRenderTarget(ComPtr<ID3D12GraphicsCommandList> commandList, int frameIndex)
+    {
         var barrier = new ResourceBarrier
         {
             Type = ResourceBarrierType.Transition,
@@ -109,8 +115,13 @@ public class DirectX12SwapChain : IDisposable
         };
 
         commandList.ResourceBarrier(1, ref barrier);
+    }
 
-        BindMainRenderTarget(commandList, frameIndex);
+    public CpuDescriptorHandle GetCurrentBackBufferRtvHandle(int frameIndex)
+    {
+        var rtvHandle = _rtvHeap.GetCPUDescriptorHandleForHeapStart();
+        rtvHandle.Ptr += (nuint)(frameIndex * _rtvDescriptorSize);
+        return rtvHandle;
     }
 
     public void BindMainRenderTarget(ComPtr<ID3D12GraphicsCommandList> commandList, int frameIndex)

@@ -1,4 +1,5 @@
 ﻿using System.Numerics;
+using HEngine.Rendering.Devices;
 using Microsoft.Extensions.Logging;
 using Silk.NET.Core.Native;
 using Silk.NET.Direct3D12;
@@ -13,7 +14,10 @@ namespace HEngine.Rendering.Managers;
 /// </summary>
 public sealed class RenderTargetManager : IDisposable
 {
+    private const Format HdrFormat = Format.FormatR16G16B16A16Float;
+
     private readonly D3D12 _d3d12 = D3D12.GetApi();
+    private readonly DescriptorHeapManager _descriptorHeapManager;
     private readonly ILogger<RenderTargetManager>? _logger;
 
     private ComPtr<ID3D12Device> _device;
@@ -21,6 +25,8 @@ public sealed class RenderTargetManager : IDisposable
     private ComPtr<ID3D12DescriptorHeap> _dsvHeap;
     private ComPtr<ID3D12Resource> _hdrRenderTarget;
     private ComPtr<ID3D12Resource> _depthBuffer;
+    private DescriptorHandle _hdrSrvHandle = DescriptorHandle.Invalid;
+    private ResourceStates _hdrState = ResourceStates.RenderTarget;
 
     private uint _rtvDescriptorSize;
     private int _width;
@@ -32,19 +38,32 @@ public sealed class RenderTargetManager : IDisposable
     public int Width => _width;
     public int Height => _height;
 
-    public RenderTargetManager(ILogger<RenderTargetManager>? logger = null)
+    public RenderTargetManager(DescriptorHeapManager descriptorHeapManager, ILogger<RenderTargetManager>? logger = null)
     {
+        _descriptorHeapManager = descriptorHeapManager ?? throw new ArgumentNullException(nameof(descriptorHeapManager));
         _logger = logger;
     }
 
     public void Initialize(ComPtr<ID3D12Device> device, int width, int height)
     {
+        unsafe
+        {
+            if (device.Handle == null)
+            {
+                throw new ArgumentException(
+                    "RenderTargetManager.Initialize was called with a null ID3D12Device handle; GPU resource " +
+                    "creation would dereference a null device pointer.", nameof(device));
+            }
+        }
+
         if (_initialized)
             Dispose();
+        _disposed = false;
 
         _device = device;
         _width = width;
         _height = height;
+        _hdrState = ResourceStates.RenderTarget;
 
         CreateDescriptorHeaps();
         CreateHdrRenderTarget();
@@ -64,6 +83,7 @@ public sealed class RenderTargetManager : IDisposable
 
         _width = width;
         _height = height;
+        _hdrState = ResourceStates.RenderTarget;
 
         CreateHdrRenderTarget();
         CreateDepthBuffer();
@@ -81,8 +101,82 @@ public sealed class RenderTargetManager : IDisposable
         return _dsvHeap.GetCPUDescriptorHandleForHeapStart();
     }
 
+    public GpuDescriptorHandle GetHdrSrvGpuHandle()
+    {
+        return _hdrSrvHandle.GpuHandle;
+    }
+
     public ComPtr<ID3D12Resource> HdrRenderTarget => _hdrRenderTarget;
     public ComPtr<ID3D12Resource> DepthBuffer => _depthBuffer;
+
+    /// <summary>
+    /// Binds the HDR color target + depth buffer as the current render target, transitioning
+    /// the HDR resource to <see cref="ResourceStates.RenderTarget"/> first if needed.
+    /// </summary>
+    public unsafe void Bind(ComPtr<ID3D12GraphicsCommandList> commandList)
+    {
+        TransitionHdrTo(commandList, ResourceStates.RenderTarget);
+
+        var rtvHandle = GetHdrRtvHandle();
+        var dsvHandle = GetDsvHandle();
+        commandList.OMSetRenderTargets(1, &rtvHandle, false, &dsvHandle);
+
+        var viewport = new Viewport
+        {
+            TopLeftX = 0,
+            TopLeftY = 0,
+            Width = _width,
+            Height = _height,
+            MinDepth = 0.0f,
+            MaxDepth = 1.0f
+        };
+        commandList.RSSetViewports(1, ref viewport);
+
+        var scissorRect = new Silk.NET.Maths.Box2D<int>(0, 0, _width, _height);
+        commandList.RSSetScissorRects(1, in scissorRect);
+    }
+
+    public unsafe void Clear(ComPtr<ID3D12GraphicsCommandList> commandList, Vector4 clearColor)
+    {
+        var rtvHandle = GetHdrRtvHandle();
+        var dsvHandle = GetDsvHandle();
+
+        var color = stackalloc float[4];
+        color[0] = clearColor.X;
+        color[1] = clearColor.Y;
+        color[2] = clearColor.Z;
+        color[3] = clearColor.W;
+
+        commandList.ClearRenderTargetView(rtvHandle, color, 0, (Silk.NET.Maths.Box2D<int>*)null);
+        commandList.ClearDepthStencilView(dsvHandle, ClearFlags.Depth, 1.0f, 0, 0, (Silk.NET.Maths.Box2D<int>*)null);
+    }
+
+    /// <summary>
+    /// Transitions the HDR color target between being written to (RenderTarget, during the scene pass)
+    /// and being read from (PixelShaderResource, as the post-process chain's first source). No-op if
+    /// already in the requested state.
+    /// </summary>
+    public void TransitionHdrTo(ComPtr<ID3D12GraphicsCommandList> commandList, ResourceStates target)
+    {
+        if (_hdrState == target)
+            return;
+
+        var barrier = new ResourceBarrier
+        {
+            Type = ResourceBarrierType.Transition,
+            Flags = ResourceBarrierFlags.None,
+            Transition = new ResourceTransitionBarrier
+            {
+                PResource = _hdrRenderTarget,
+                StateBefore = _hdrState,
+                StateAfter = target,
+                Subresource = D3D12.ResourceBarrierAllSubresources
+            }
+        };
+
+        commandList.ResourceBarrier(1, ref barrier);
+        _hdrState = target;
+    }
 
     private unsafe void CreateDescriptorHeaps()
     {
@@ -154,6 +248,20 @@ public sealed class RenderTargetManager : IDisposable
         };
 
         _device.CreateRenderTargetView(_hdrRenderTarget, &rtvDesc, GetHdrRtvHandle());
+
+        if (!_hdrSrvHandle.IsValid)
+            _hdrSrvHandle = _descriptorHeapManager.AllocateSrv();
+
+        var srvDesc = new ShaderResourceViewDesc
+        {
+            Format = HdrFormat,
+            ViewDimension = SrvDimension.Texture2D,
+            Shader4ComponentMapping = 0x00001688u
+        };
+        srvDesc.Anonymous.Texture2D.MostDetailedMip = 0;
+        srvDesc.Anonymous.Texture2D.MipLevels = 1;
+
+        _device.CreateShaderResourceView(_hdrRenderTarget, &srvDesc, _hdrSrvHandle.CpuHandle);
     }
 
     private unsafe void CreateDepthBuffer()
@@ -210,6 +318,12 @@ public sealed class RenderTargetManager : IDisposable
         _dsvHeap.Dispose();
         _rtvHeap.Dispose();
         _d3d12.Dispose();
+
+        if (_hdrSrvHandle.IsValid)
+        {
+            _descriptorHeapManager.FreeSrv(_hdrSrvHandle);
+            _hdrSrvHandle = DescriptorHandle.Invalid;
+        }
 
         _initialized = false;
         _disposed = true;

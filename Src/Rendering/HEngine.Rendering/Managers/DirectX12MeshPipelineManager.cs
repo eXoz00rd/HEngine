@@ -11,17 +11,26 @@ public class DirectX12MeshPipelineManager : IDisposable
     private readonly object _rebuildLock = new();
     private bool _disposed;
     private ComPtr<ID3D12PipelineState> _pipelineState;
+    private ComPtr<ID3D12PipelineState> _hdrPipelineState;
     private ComPtr<ID3D12RootSignature> _rootSignature;
     private ComPtr<ID3D12Device> _device;
 
     public ComPtr<ID3D12RootSignature> RootSignature => _rootSignature;
     public ComPtr<ID3D12PipelineState> PipelineState => _pipelineState;
 
+    /// <summary>
+    /// PSO variant targeting <see cref="RenderTargetManager"/>'s HDR (R16G16B16A16_FLOAT) color target,
+    /// bound instead of <see cref="PipelineState"/> when the scene pass is redirected there for
+    /// post-processing (tracks #45).
+    /// </summary>
+    public ComPtr<ID3D12PipelineState> HdrPipelineState => _hdrPipelineState;
+
     public void Dispose()
     {
         if (_disposed) return;
 
         _pipelineState.Dispose();
+        _hdrPipelineState.Dispose();
         _rootSignature.Dispose();
         _d3d12.Dispose();
         _disposed = true;
@@ -31,7 +40,8 @@ public class DirectX12MeshPipelineManager : IDisposable
     {
         _device = device;
         CreateRootSignature(device);
-        CreatePipelineState(device, shaderManager);
+        CreatePipelineState(device, shaderManager, Format.FormatR8G8B8A8Unorm, out _pipelineState);
+        CreatePipelineState(device, shaderManager, Format.FormatR16G16B16A16Float, out _hdrPipelineState);
     }
 
     public void Rebuild(DirectX12MeshShaderManager shaderManager)
@@ -42,7 +52,9 @@ public class DirectX12MeshPipelineManager : IDisposable
         lock (_rebuildLock)
         {
             _pipelineState.Dispose();
-            CreatePipelineState(_device, shaderManager);
+            _hdrPipelineState.Dispose();
+            CreatePipelineState(_device, shaderManager, Format.FormatR8G8B8A8Unorm, out _pipelineState);
+            CreatePipelineState(_device, shaderManager, Format.FormatR16G16B16A16Float, out _hdrPipelineState);
         }
     }
 
@@ -199,7 +211,8 @@ public class DirectX12MeshPipelineManager : IDisposable
         }
     }
 
-    private void CreatePipelineState(ComPtr<ID3D12Device> device, DirectX12MeshShaderManager shaderManager)
+    private void CreatePipelineState(ComPtr<ID3D12Device> device, DirectX12MeshShaderManager shaderManager,
+        Format renderTargetFormat, out ComPtr<ID3D12PipelineState> pipelineState)
     {
         unsafe
         {
@@ -302,14 +315,14 @@ public class DirectX12MeshPipelineManager : IDisposable
                     DSVFormat = Format.FormatD32Float
                 };
 
-                psoDesc.RTVFormats[0] = Format.FormatR8G8B8A8Unorm;
+                psoDesc.RTVFormats[0] = renderTargetFormat;
                 psoDesc.BlendState.RenderTarget[0] = new RenderTargetBlendDesc
                 {
                     BlendEnable = 0,
                     RenderTargetWriteMask = (byte)ColorWriteEnable.All
                 };
 
-                var result = device.CreateGraphicsPipelineState(in psoDesc, out _pipelineState);
+                var result = device.CreateGraphicsPipelineState(in psoDesc, out pipelineState);
                 if (result < 0)
                     throw new Exception($"Failed to create mesh pipeline state. HRESULT: {result:X8}");
             }

@@ -13,6 +13,7 @@ using HEngine.Core.Systems;
 using HEngine.Rendering.Components;
 using HEngine.Rendering.Data;
 using HEngine.Rendering.Managers;
+using HEngine.Rendering.PostProcessing;
 using Microsoft.Extensions.Logging;
 
 namespace HEngine;
@@ -65,6 +66,7 @@ public class GameEngine : IDisposable
     private readonly IRenderManager _renderManager;
     private readonly WorldManager _worldManager;
     private readonly MaterialManager _materialManager;
+    private readonly PostProcessStack _postProcessStack;
     private bool _disposed;
 
     public GameEngine(
@@ -75,6 +77,7 @@ public class GameEngine : IDisposable
         EngineConfiguration config,
         ICameraInputProvider cameraInput,
         MaterialManager materialManager,
+        PostProcessStack postProcessStack,
         ILogger<GameEngine> logger)
     {
         _gameLoop = gameLoop ?? throw new ArgumentNullException(nameof(gameLoop));
@@ -84,6 +87,7 @@ public class GameEngine : IDisposable
         _config = config ?? throw new ArgumentNullException(nameof(config));
         _cameraInput = cameraInput ?? throw new ArgumentNullException(nameof(cameraInput));
         _materialManager = materialManager ?? throw new ArgumentNullException(nameof(materialManager));
+        _postProcessStack = postProcessStack ?? throw new ArgumentNullException(nameof(postProcessStack));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
         Initialize();
@@ -137,6 +141,8 @@ public class GameEngine : IDisposable
                 _config.Window.Width,
                 _config.Window.Height,
                 _config.Window.Title);
+
+            _postProcessStack.AddEffect(new ToneMappingEffect());
 
             _renderingSystem.Initialize(_worldManager);
 

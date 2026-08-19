@@ -21,6 +21,8 @@ public sealed class NullPostProcessCommandContext : IPostProcessCommandContext
     public int Width { get; set; } = 1280;
     public int Height { get; set; } = 720;
     public int DrawCallCount { get; private set; }
+    public int PrepareSceneSourceCallCount { get; private set; }
+    public int ResolveToBackBufferCallCount { get; private set; }
 
     public void DrawFullscreenTriangle()
     {
@@ -32,5 +34,8 @@ public sealed class NullPostProcessCommandContext : IPostProcessCommandContext
     public void SetConstantFloat(string name, float value) { }
     public void SetConstantInt(string name, int value) { }
     public void SetConstantFloat4(string name, float x, float y, float z, float w) { }
+
+    public void PrepareSceneSource() => PrepareSceneSourceCallCount++;
+    public void ResolveToBackBuffer() => ResolveToBackBufferCallCount++;
 }
 

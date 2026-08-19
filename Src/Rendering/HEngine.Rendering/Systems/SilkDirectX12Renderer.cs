@@ -8,8 +8,10 @@ using HEngine.Rendering.Data;
 using HEngine.Rendering.Devices;
 using HEngine.Rendering.DirectX12;
 using HEngine.Rendering.Managers;
+using HEngine.Rendering.PostProcessing;
 using HEngine.Rendering.Renderers;
 using Microsoft.Extensions.Logging;
+using Silk.NET.DXGI;
 using Silk.NET.Direct3D12;
 
 namespace HEngine.Rendering.Systems;
@@ -26,6 +28,10 @@ public class SilkDirectX12Renderer : IRenderer
     private readonly ShadowSettings _shadowSettings;
     private readonly TextureManager _textureManager;
     private readonly DescriptorHeapManager _descriptorHeapManager;
+    private readonly RenderTargetManager _renderTargetManager;
+    private readonly PostProcessStack _postProcessStack;
+    private readonly DirectX12PostProcessPipelineManager _postProcessPipelineManager;
+    private readonly DirectX12PostProcessCommandContext _postProcessCommandContext;
 
     private DirectX12CommandList _commandList;
     private bool _disposed;
@@ -42,6 +48,9 @@ public class SilkDirectX12Renderer : IRenderer
     public SilkDirectX12Renderer(IGraphicsDevice device, IRenderBatch<SpriteData> spriteBatch,
         ISpriteRenderer spriteRenderer, IShaderManager shaderManager, ShadowMapManager shadowMapManager,
         ShadowSettings shadowSettings, TextureManager textureManager, DescriptorHeapManager descriptorHeapManager,
+        RenderTargetManager renderTargetManager, PostProcessStack postProcessStack,
+        DirectX12PostProcessPipelineManager postProcessPipelineManager,
+        DirectX12PostProcessCommandContext postProcessCommandContext,
         ILogger<SilkDirectX12Renderer> logger, ILoggerFactory loggerFactory)
     {
         _device = device ?? throw new ArgumentNullException(nameof(device));
@@ -52,6 +61,10 @@ public class SilkDirectX12Renderer : IRenderer
         _shadowSettings = shadowSettings ?? throw new ArgumentNullException(nameof(shadowSettings));
         _textureManager = textureManager ?? throw new ArgumentNullException(nameof(textureManager));
         _descriptorHeapManager = descriptorHeapManager ?? throw new ArgumentNullException(nameof(descriptorHeapManager));
+        _renderTargetManager = renderTargetManager ?? throw new ArgumentNullException(nameof(renderTargetManager));
+        _postProcessStack = postProcessStack ?? throw new ArgumentNullException(nameof(postProcessStack));
+        _postProcessPipelineManager = postProcessPipelineManager ?? throw new ArgumentNullException(nameof(postProcessPipelineManager));
+        _postProcessCommandContext = postProcessCommandContext ?? throw new ArgumentNullException(nameof(postProcessCommandContext));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
         _commandList = null!;
@@ -99,6 +112,10 @@ public class SilkDirectX12Renderer : IRenderer
             _meshRenderer.Initialize(d3dDevice, _shadowMapManager, _shadowSettings.Enabled, _textureManager);
             _meshRenderer.SetCommandQueue(dx12Device.GetDirectX12CommandQueue());
             _meshDrawContext = new MeshDrawContext(this);
+
+            _renderTargetManager.Initialize(d3dDevice, width, height);
+            _postProcessPipelineManager.Initialize(d3dDevice, Format.FormatR16G16B16A16Float, Format.FormatR8G8B8A8Unorm);
+            _postProcessCommandContext.Initialize(d3dDevice, width, height);
 
             _initialized = true;
             _logger.LogInformation("SilkDirectX12Renderer initialized successfully");
@@ -160,6 +177,9 @@ public class SilkDirectX12Renderer : IRenderer
                 return;
             }
 
+            var postProcessActive = _postProcessStack.EnabledEffectCount > 0;
+            ((DirectX12Device)_device).SetRenderTargetOverride(postProcessActive ? _renderTargetManager : null);
+
             _device.BeginFrame();
 
             if (_device.ShouldClose)
@@ -180,9 +200,10 @@ public class SilkDirectX12Renderer : IRenderer
             if (_spriteRenderer is DirectX12SpriteRenderer dx12SpriteRenderer)
             {
                 dx12SpriteRenderer.InvalidateStateCache();
+                dx12SpriteRenderer.SetRenderTargetFormat(postProcessActive);
             }
 
-            _meshRenderer.BeginFrame();
+            _meshRenderer.BeginFrame(postProcessActive);
 
             _frameInProgress = true;
         }

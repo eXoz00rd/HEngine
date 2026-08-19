@@ -10,9 +10,14 @@ internal sealed class RecordingPostProcessContext : IPostProcessCommandContext
     public int Width { get; set; } = 1920;
     public int Height { get; set; } = 1080;
     public int DrawCallCount { get; private set; }
+    public int PrepareSceneSourceCallCount { get; private set; }
+    public int ResolveToBackBufferCallCount { get; private set; }
     public List<string> Constants { get; } = new();
 
     public void DrawFullscreenTriangle() => DrawCallCount++;
+
+    public void PrepareSceneSource() => PrepareSceneSourceCallCount++;
+    public void ResolveToBackBuffer() => ResolveToBackBufferCallCount++;
 
     public void SetConstantFloat(string name, float value) =>
         Constants.Add($"{name}={value.ToString(CultureInfo.InvariantCulture)}");

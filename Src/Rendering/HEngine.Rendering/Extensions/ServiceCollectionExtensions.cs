@@ -97,6 +97,11 @@ public static class ServiceCollectionExtensions
 
         services.AddSingleton<PostProcessStack>();
 
+        services.AddSingleton<RenderTargetManager>();
+        services.AddSingleton<DirectX12PostProcessPipelineManager>();
+        services.AddSingleton<DirectX12PostProcessCommandContext>();
+        services.AddSingleton<IPostProcessCommandContext>(provider => provider.GetRequiredService<DirectX12PostProcessCommandContext>());
+
         services.AddSingleton<IRenderPipeline, RenderPipeline>();
 
         return services;

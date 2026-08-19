@@ -20,6 +20,7 @@ public class RenderPipeline : IRenderPipeline {
     private readonly ShadowSettings _shadowSettings;
     private readonly WorldManager _world;
     private readonly PostProcessStack _postProcessStack;
+    private readonly IPostProcessCommandContext _postProcessCommandContext;
 
     public PostProcessStack PostProcessStack => _postProcessStack;
 
@@ -31,6 +32,7 @@ public class RenderPipeline : IRenderPipeline {
         ShadowRenderingSystem shadowRenderingSystem,
         ShadowSettings shadowSettings,
         PostProcessStack postProcessStack,
+        IPostProcessCommandContext postProcessCommandContext,
         ILogger<RenderPipeline> logger)
     {
         _renderManager = renderManager ?? throw new ArgumentNullException(nameof(renderManager));
@@ -40,6 +42,7 @@ public class RenderPipeline : IRenderPipeline {
         _shadowRenderingSystem = shadowRenderingSystem ?? throw new ArgumentNullException(nameof(shadowRenderingSystem));
         _shadowSettings = shadowSettings ?? throw new ArgumentNullException(nameof(shadowSettings));
         _postProcessStack = postProcessStack ?? throw new ArgumentNullException(nameof(postProcessStack));
+        _postProcessCommandContext = postProcessCommandContext ?? throw new ArgumentNullException(nameof(postProcessCommandContext));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
         if (_shadowSettings.Enabled && !_shadowRenderingSystem.HasShadowRenderer)
@@ -154,10 +157,8 @@ public class RenderPipeline : IRenderPipeline {
         if (_postProcessStack.EnabledEffectCount == 0)
             return;
 
-        throw new InvalidOperationException(
-            $"PostProcessStack has {_postProcessStack.EnabledEffectCount} enabled effect(s). A production " +
-            "IPostProcessCommandContext (DirectX12PostProcessCommandContext) now exists, but RenderPipeline still " +
-            "renders the main scene straight to the swap chain, so there is nowhere to redirect it from (tracks #45). " +
-            "NullPostProcessCommandContext is a headless/test-only no-op and must not run real effects.");
+        _postProcessCommandContext.PrepareSceneSource();
+        _postProcessStack.Execute(_postProcessCommandContext);
+        _postProcessCommandContext.ResolveToBackBuffer();
     }
 }

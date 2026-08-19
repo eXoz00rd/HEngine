@@ -25,11 +25,24 @@ public sealed class DirectX12PostProcessPipelineManager : IDisposable
     private ComPtr<ID3D10Blob> _vertexShader;
     private ComPtr<ID3D10Blob> _pixelShader;
 
+    private ComPtr<ID3D12PipelineState> _backBufferPipelineState;
+    private ComPtr<ID3D10Blob> _blitVertexShader;
+    private ComPtr<ID3D10Blob> _blitPixelShader;
+
     private bool _initialized;
     private bool _disposed;
 
     public ComPtr<ID3D12RootSignature> RootSignature => _rootSignature;
     public ComPtr<ID3D12PipelineState> PipelineState => _pipelineState;
+
+    /// <summary>
+    /// Tonemap-free passthrough PSO (<c>PostProcessBlit.hlsl</c>) targeting the swap chain's back-buffer
+    /// format. Used for the final resolve of the post-process chain's output into the back buffer, since
+    /// reusing <see cref="PipelineState"/> there would apply ToneMapping's exposure/gamma a second time
+    /// (tracks #45).
+    /// </summary>
+    public ComPtr<ID3D12PipelineState> BackBufferPipelineState => _backBufferPipelineState;
+
     public bool IsInitialized => _initialized;
 
     public const uint SourceTextureRootParameterIndex = 1;
@@ -43,16 +56,20 @@ public sealed class DirectX12PostProcessPipelineManager : IDisposable
         _logger = logger;
     }
 
-    public void Initialize(ComPtr<ID3D12Device> device, Format renderTargetFormat)
+    public void Initialize(ComPtr<ID3D12Device> device, Format renderTargetFormat, Format backBufferFormat)
     {
         if (_initialized) Dispose();
         _disposed = false;
 
         _device = device;
-        _vertexShader = CompileShader("VSMain", "vs_5_0");
-        _pixelShader = CompileShader("PSMain", "ps_5_0");
+        _vertexShader = CompileShader("ToneMapping.hlsl", "VSMain", "vs_5_0");
+        _pixelShader = CompileShader("ToneMapping.hlsl", "PSMain", "ps_5_0");
         CreateRootSignature();
-        CreatePipelineState(renderTargetFormat);
+        _pipelineState = CreatePipelineState(_vertexShader, _pixelShader, renderTargetFormat);
+
+        _blitVertexShader = CompileShader("PostProcessBlit.hlsl", "VSMain", "vs_5_0");
+        _blitPixelShader = CompileShader("PostProcessBlit.hlsl", "PSMain", "ps_5_0");
+        _backBufferPipelineState = CreatePipelineState(_blitVertexShader, _blitPixelShader, backBufferFormat);
 
         _initialized = true;
         _logger?.LogDebug("DirectX12PostProcessPipelineManager initialized.");
@@ -153,7 +170,8 @@ public sealed class DirectX12PostProcessPipelineManager : IDisposable
         }
     }
 
-    private unsafe void CreatePipelineState(Format renderTargetFormat)
+    private unsafe ComPtr<ID3D12PipelineState> CreatePipelineState(
+        ComPtr<ID3D10Blob> vertexShader, ComPtr<ID3D10Blob> pixelShader, Format renderTargetFormat)
     {
         var psoDesc = new GraphicsPipelineStateDesc
         {
@@ -165,13 +183,13 @@ public sealed class DirectX12PostProcessPipelineManager : IDisposable
             },
             VS = new ShaderBytecode
             {
-                PShaderBytecode = _vertexShader.GetBufferPointer(),
-                BytecodeLength = _vertexShader.GetBufferSize()
+                PShaderBytecode = vertexShader.GetBufferPointer(),
+                BytecodeLength = vertexShader.GetBufferSize()
             },
             PS = new ShaderBytecode
             {
-                PShaderBytecode = _pixelShader.GetBufferPointer(),
-                BytecodeLength = _pixelShader.GetBufferSize()
+                PShaderBytecode = pixelShader.GetBufferPointer(),
+                BytecodeLength = pixelShader.GetBufferSize()
             },
             RasterizerState = new RasterizerDesc
             {
@@ -211,15 +229,17 @@ public sealed class DirectX12PostProcessPipelineManager : IDisposable
             RenderTargetWriteMask = (byte)ColorWriteEnable.All
         };
 
-        var hr = _device.CreateGraphicsPipelineState(in psoDesc, out _pipelineState);
+        var hr = _device.CreateGraphicsPipelineState(in psoDesc, out ComPtr<ID3D12PipelineState> pipelineState);
         if (hr < 0)
             throw new InvalidOperationException($"PostProcess PSO creation failed. HRESULT: {hr:X8}");
+
+        return pipelineState;
     }
 
-    private ComPtr<ID3D10Blob> CompileShader(string entryPoint, string target)
+    private ComPtr<ID3D10Blob> CompileShader(string shaderFileName, string entryPoint, string target)
     {
-        var shaderCode = _fileLoader.LoadShaderCode("ToneMapping.hlsl");
-        return _shaderCompiler.CompileShader(shaderCode, entryPoint, target, "ToneMapping.hlsl");
+        var shaderCode = _fileLoader.LoadShaderCode(shaderFileName);
+        return _shaderCompiler.CompileShader(shaderCode, entryPoint, target, shaderFileName);
     }
 
     public void Dispose()
@@ -227,9 +247,12 @@ public sealed class DirectX12PostProcessPipelineManager : IDisposable
         if (_disposed) return;
 
         _pipelineState.Dispose();
+        _backBufferPipelineState.Dispose();
         _rootSignature.Dispose();
         _vertexShader.Dispose();
         _pixelShader.Dispose();
+        _blitVertexShader.Dispose();
+        _blitPixelShader.Dispose();
         _shaderCompiler.Dispose();
         _d3d12.Dispose();
 
