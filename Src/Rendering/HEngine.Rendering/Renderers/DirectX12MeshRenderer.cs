@@ -150,13 +150,23 @@ public sealed class DirectX12MeshRenderer : IDisposable
         commandList.SetGraphicsRootConstantBufferView(1, materialAddress);
         commandList.SetGraphicsRootConstantBufferView(2, lightAddress);
 
-        if (_useShadows && _shadowMapManager is { IsInitialized: true, HasShadowData: true })
+        if (_useShadows)
         {
-            var shadowAddress = UpdateShadowConstantBuffer();
-            var shadowSrvHeap = _shadowMapManager.SrvHeap;
-            commandList.SetDescriptorHeaps(1, ref shadowSrvHeap);
-            commandList.SetGraphicsRootDescriptorTable(3, _shadowMapManager.GetSrvGpuHandle());
-            commandList.SetGraphicsRootConstantBufferView(4, shadowAddress);
+            if (_shadowMapManager is { IsInitialized: true, HasShadowData: true })
+            {
+                var shadowAddress = UpdateShadowConstantBuffer();
+                var shadowSrvHeap = _shadowMapManager.SrvHeap;
+                commandList.SetDescriptorHeaps(1, ref shadowSrvHeap);
+                commandList.SetGraphicsRootDescriptorTable(3, _shadowMapManager.GetSrvGpuHandle());
+                commandList.SetGraphicsRootConstantBufferView(4, shadowAddress);
+            }
+            else if (HasDirectionalLight(lights))
+            {
+                throw new InvalidOperationException(
+                    "DirectX12MeshRenderer is compiled with the USE_SHADOWS variant and a directional light is present " +
+                    "this frame, but ShadowMapManager has no shadow data bound yet. The shadow pass must run before " +
+                    "the mesh pass whenever a directional light exists, or the pixel shader would read unbound t5/s1/b3.");
+            }
         }
 
         commandList.IASetPrimitiveTopology(D3DPrimitiveTopology.D3DPrimitiveTopologyTrianglelist);
@@ -385,6 +395,18 @@ public sealed class DirectX12MeshRenderer : IDisposable
         MemoryMarshal.Write(new Span<byte>(destPtr, sizeof(PBRMaterialConstants)), in constants);
 
         return _materialConstantBuffer.GetGPUVirtualAddress() + (ulong)offset;
+    }
+
+    private static bool HasDirectionalLight(LightData[]? lights)
+    {
+        if (lights is null) return false;
+
+        foreach (var light in lights)
+        {
+            if (light.Type == LightType.Directional) return true;
+        }
+
+        return false;
     }
 
     private unsafe ulong UpdateShadowConstantBuffer()
