@@ -16,8 +16,9 @@ namespace HEngine.Rendering.PostProcessing;
 /// PSO to run the ToneMapping fullscreen pass, actually touching the GPU instead of
 /// only recording call counts like <see cref="NullPostProcessCommandContext"/>.
 ///
-/// Not yet registered in DI or called from <see cref="RenderPipeline"/> — the main scene still
-/// renders straight to the swap chain, so there is nowhere to redirect it from yet (tracks #45).
+/// The first pass of the chain reads from <see cref="RenderTargetManager"/>'s HDR scene texture via
+/// <see cref="PrepareSceneSource"/> instead of its own ping-pong slots, and the final pass resolves
+/// into the swap-chain back buffer via <see cref="ResolveToBackBuffer"/> (tracks #45).
 /// Only supports the ToneMapping pass; other <see cref="IPostProcessEffect"/>s are not backed by
 /// a real shader here (see <see cref="SetConstantFloat"/>/<see cref="SetConstantInt"/>/<see cref="SetConstantFloat4"/>).
 /// </summary>
@@ -115,9 +116,9 @@ public sealed class DirectX12PostProcessCommandContext : IPostProcessCommandCont
     }
 
     /// <summary>
-    /// GPU resource backing one of the two logical render targets (<see cref="PingPongRenderTargets.RenderTargetA"/>
-    /// or <see cref="PingPongRenderTargets.RenderTargetB"/>). Exposed so the main scene pass can be redirected
-    /// to render into render target A before the post-process chain runs (tracked separately: #45).
+    /// GPU resource backing one of the two logical ping-pong render targets
+    /// (<see cref="PingPongRenderTargets.RenderTargetA"/> or <see cref="PingPongRenderTargets.RenderTargetB"/>)
+    /// used to chain multiple post-process effects.
     /// </summary>
     public ComPtr<ID3D12Resource> GetRenderTarget(int index) => _renderTargets[index];
 
