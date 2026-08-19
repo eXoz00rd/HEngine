@@ -82,7 +82,6 @@ public class DirectX12MeshPipelineManager : IDisposable
                 },
                 new()
                 {
-                    // t5: cascaded shadow map, sampled only when the USE_SHADOWS variant is bound (PBR.hlsl).
                     ParameterType = RootParameterType.TypeDescriptorTable,
                     ShaderVisibility = ShaderVisibility.Pixel,
                     DescriptorTable = new RootDescriptorTable { NumDescriptorRanges = 1, PDescriptorRanges = shadowSrvRangePtr }

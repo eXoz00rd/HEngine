@@ -53,6 +53,8 @@ public sealed class ShadowMapManager : IDisposable
         _device = device;
         _resolution = Math.Max(resolution, 64);
         _cascadeCount = Math.Clamp(cascadeCount, 1, 4);
+        ShadowConstants = default;
+        HasShadowData = false;
 
         CreateDescriptorHeaps();
         CreateShadowTextureArray();
@@ -96,6 +98,8 @@ public sealed class ShadowMapManager : IDisposable
 
         _resolution = Math.Max(resolution, 64);
         _cascadeCount = Math.Clamp(cascadeCount, 1, 4);
+        ShadowConstants = default;
+        HasShadowData = false;
 
         CreateShadowTextureArray();
         CreateDsvs();
@@ -208,6 +212,8 @@ public sealed class ShadowMapManager : IDisposable
         _srvHeap.Dispose();
         _d3d12.Dispose();
 
+        ShadowConstants = default;
+        HasShadowData = false;
         _initialized = false;
         _disposed = true;
     }
