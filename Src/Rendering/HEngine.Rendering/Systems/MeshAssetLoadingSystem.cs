@@ -4,6 +4,7 @@ using HEngine.Core.Contracts;
 using HEngine.Core.Managers;
 using HEngine.Core.Primitives;
 using HEngine.Core.Queries;
+using HEngine.Rendering.Assets;
 using HEngine.Rendering.Components;
 
 namespace HEngine.Rendering.Systems;
@@ -21,7 +22,13 @@ public class MeshAssetLoadingSystem : ISystem
     {
         _world = world ?? throw new ArgumentNullException(nameof(world));
         _queryBuilder = new QueryBuilder(world.ComponentManager, world.EntityManager);
-        _assetManager = new AssetManager();
+        _assetManager = new AssetManager(LoadMeshFile);
+    }
+
+    private static Task<LoadedMesh> LoadMeshFile(string path)
+    {
+        var (vertices, indices) = SimpleMeshFormat.Load(path);
+        return Task.FromResult(new LoadedMesh(vertices, indices));
     }
 
     public void Initialize(WorldManager world, AssetManager assetManager)

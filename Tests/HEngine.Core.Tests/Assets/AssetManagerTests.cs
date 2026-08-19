@@ -26,6 +26,12 @@ public class AssetManagerTests : IDisposable
     }
 
     [Fact]
+    public void Constructor_NullMeshLoader_ThrowsArgumentNullException()
+    {
+        Assert.Throws<ArgumentNullException>(() => new AssetManager(null!));
+    }
+
+    [Fact]
     public async Task LoadMeshAsync_ValidPath_LoadsSuccessfully()
     {
         var path = CreateTestMeshFile("test.mesh");
@@ -265,7 +271,7 @@ public class AssetManagerTests : IDisposable
         return Path.Combine(_testDirectory, filename);
     }
 
-    private Func<string, Task<object>> CreateMockLoader()
+    private Func<string, Task<LoadedMesh>> CreateMockLoader()
     {
         return async path =>
         {
