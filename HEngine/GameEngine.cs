@@ -142,9 +142,6 @@ public class GameEngine : IDisposable
                 _config.Window.Height,
                 _config.Window.Title);
 
-            // Manual visual verification for #45's HDR-redirect DoD. Which effects register by default
-            // in production is #20's scope, not this one's — this is intentionally just enough to exercise
-            // the redirect end-to-end.
             _postProcessStack.AddEffect(new ToneMappingEffect());
 
             _renderingSystem.Initialize(_worldManager);
