@@ -39,7 +39,8 @@ public sealed class DirectX12MeshRenderer : IDisposable
     private const int MaxVertices = 65536;
     private const int MaxIndices = 65536 * 3;
     private const int MaxDrawCalls = 1024;
-    private const int MeshSrvHeapSize = MaxDrawCalls + 1; // slot 0 = shadow map, 1..MaxDrawCalls = per-draw diffuse texture
+    private const int MaterialTextureSlotCount = 5;
+    private const int MeshSrvHeapSize = MaxDrawCalls * MaterialTextureSlotCount + 1;
     private int _currentDrawCallIndex;
     private bool _disposed;
     private bool _gpuResourcesCreated;
@@ -128,7 +129,11 @@ public sealed class DirectX12MeshRenderer : IDisposable
                          IRenderContext context,
                          Material? material = null,
                          LightData[]? lights = null,
-                         int diffuseTextureHandle = -1)
+                         int diffuseTextureHandle = -1,
+                         int normalTextureHandle = -1,
+                         int metallicRoughnessTextureHandle = -1,
+                         int emissiveTextureHandle = -1,
+                         int aoTextureHandle = -1)
     {
         ArgumentNullException.ThrowIfNull(context);
 
@@ -166,13 +171,23 @@ public sealed class DirectX12MeshRenderer : IDisposable
         commandList.SetGraphicsRootConstantBufferView(1, materialAddress);
         commandList.SetGraphicsRootConstantBufferView(2, lightAddress);
 
-        var diffuseSlot = 1 + _currentDrawCallIndex;
+        var materialSlotBase = 1 + _currentDrawCallIndex * MaterialTextureSlotCount;
+
         var resolvedDiffuseHandle = diffuseTextureHandle >= 0 ? diffuseTextureHandle : _textureManager!.DefaultWhiteTexture;
-        _textureManager!.WriteSrvTo(resolvedDiffuseHandle, GetMeshSrvCpuHandle(diffuseSlot));
+        var resolvedNormalHandle = normalTextureHandle >= 0 ? normalTextureHandle : _textureManager!.DefaultNormalTexture;
+        var resolvedMetallicRoughnessHandle = metallicRoughnessTextureHandle >= 0 ? metallicRoughnessTextureHandle : _textureManager!.DefaultBlackTexture;
+        var resolvedEmissiveHandle = emissiveTextureHandle >= 0 ? emissiveTextureHandle : _textureManager!.DefaultBlackTexture;
+        var resolvedAoHandle = aoTextureHandle >= 0 ? aoTextureHandle : _textureManager!.DefaultBlackTexture;
+
+        _textureManager!.WriteSrvTo(resolvedDiffuseHandle, GetMeshSrvCpuHandle(materialSlotBase));
+        _textureManager!.WriteSrvTo(resolvedNormalHandle, GetMeshSrvCpuHandle(materialSlotBase + 1));
+        _textureManager!.WriteSrvTo(resolvedMetallicRoughnessHandle, GetMeshSrvCpuHandle(materialSlotBase + 2));
+        _textureManager!.WriteSrvTo(resolvedEmissiveHandle, GetMeshSrvCpuHandle(materialSlotBase + 3));
+        _textureManager!.WriteSrvTo(resolvedAoHandle, GetMeshSrvCpuHandle(materialSlotBase + 4));
 
         var meshSrvHeap = _meshSrvHeap;
         commandList.SetDescriptorHeaps(1, ref meshSrvHeap);
-        commandList.SetGraphicsRootDescriptorTable(5, GetMeshSrvGpuHandle(diffuseSlot));
+        commandList.SetGraphicsRootDescriptorTable(5, GetMeshSrvGpuHandle(materialSlotBase));
 
         if (_useShadows)
         {

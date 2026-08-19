@@ -94,6 +94,10 @@ public class MeshRenderingSystem : IMeshRenderingSystem
             return null;
 
         var diffuseHandle = _materialManager.GetTextureHandleForSlot(name, TextureSlot.DiffuseMap, _textureManager);
+        var normalHandle = _materialManager.GetTextureHandleForSlot(name, TextureSlot.NormalMap, _textureManager);
+        var metallicRoughnessHandle = _materialManager.GetTextureHandleForSlot(name, TextureSlot.MetallicRoughnessMap, _textureManager);
+        var emissiveHandle = _materialManager.GetTextureHandleForSlot(name, TextureSlot.EmissiveMap, _textureManager);
+        var aoHandle = _materialManager.GetTextureHandleForSlot(name, TextureSlot.AOMap, _textureManager);
 
         return new MaterialData
         {
@@ -103,7 +107,11 @@ public class MeshRenderingSystem : IMeshRenderingSystem
             AO = material.GetFloat("_AO", 1.0f),
             EmissiveColor = material.GetVector4("_EmissiveColor"),
             EmissiveIntensity = material.GetFloat("_EmissiveIntensity", 0.0f),
-            DiffuseTextureHandle = diffuseHandle
+            DiffuseTextureHandle = diffuseHandle,
+            NormalTextureHandle = normalHandle,
+            MetallicRoughnessTextureHandle = metallicRoughnessHandle,
+            EmissiveTextureHandle = emissiveHandle,
+            AOTextureHandle = aoHandle
         };
     }
 

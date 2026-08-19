@@ -35,6 +35,7 @@ public class SilkDirectX12Renderer : IRenderer
     private DirectX12MeshRenderer _meshRenderer = null!;
     private MeshDrawContext _meshDrawContext = null!;
     private LightData[] _lights = Array.Empty<LightData>();
+    private readonly Material _meshDrawMaterial = new();
 
     private const int MeshDrawStackAllocThreshold = 256;
 
@@ -407,22 +408,29 @@ public class SilkDirectX12Renderer : IRenderer
 
             Material? meshMaterial = null;
             var diffuseTextureHandle = -1;
+            var normalTextureHandle = -1;
+            var metallicRoughnessTextureHandle = -1;
+            var emissiveTextureHandle = -1;
+            var aoTextureHandle = -1;
             if (material.HasValue)
             {
                 var m = material.Value;
-                meshMaterial = new Material
-                {
-                    DiffuseColor = m.DiffuseColor,
-                    Metallic = m.Metallic,
-                    Roughness = m.Roughness
-                };
-                meshMaterial.SetProperty("_AO", m.AO);
-                meshMaterial.SetProperty("_EmissiveColor", m.EmissiveColor);
-                meshMaterial.SetProperty("_EmissiveIntensity", m.EmissiveIntensity);
+                _meshDrawMaterial.DiffuseColor = m.DiffuseColor;
+                _meshDrawMaterial.Metallic = m.Metallic;
+                _meshDrawMaterial.Roughness = m.Roughness;
+                _meshDrawMaterial.SetProperty("_AO", m.AO);
+                _meshDrawMaterial.SetProperty("_EmissiveColor", m.EmissiveColor);
+                _meshDrawMaterial.SetProperty("_EmissiveIntensity", m.EmissiveIntensity);
+                meshMaterial = _meshDrawMaterial;
                 diffuseTextureHandle = m.DiffuseTextureHandle;
+                normalTextureHandle = m.NormalTextureHandle;
+                metallicRoughnessTextureHandle = m.MetallicRoughnessTextureHandle;
+                emissiveTextureHandle = m.EmissiveTextureHandle;
+                aoTextureHandle = m.AOTextureHandle;
             }
 
-            _meshRenderer.DrawMesh(transform, meshVertices, indices, _meshDrawContext, meshMaterial, _lights, diffuseTextureHandle);
+            _meshRenderer.DrawMesh(transform, meshVertices, indices, _meshDrawContext, meshMaterial, _lights,
+                diffuseTextureHandle, normalTextureHandle, metallicRoughnessTextureHandle, emissiveTextureHandle, aoTextureHandle);
         }
         catch (Exception ex)
         {
