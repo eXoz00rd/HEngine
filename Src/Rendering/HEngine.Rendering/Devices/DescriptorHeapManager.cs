@@ -37,13 +37,13 @@ public sealed class DescriptorHeapManager : IDisposable
             throw new InvalidOperationException("DescriptorHeapManager is already initialized.");
 
         _srvHeap = CreateHeap(device, DescriptorHeapType.CbvSrvUav, srvHeapSize, shaderVisible: true);
-        _srvAllocator = new DescriptorAllocator(device, _srvHeap, DescriptorHeapType.CbvSrvUav, srvHeapSize);
+        _srvAllocator = new DescriptorAllocator(device, _srvHeap, DescriptorHeapType.CbvSrvUav, srvHeapSize, shaderVisible: true);
 
         _samplerHeap = CreateHeap(device, DescriptorHeapType.Sampler, samplerHeapSize, shaderVisible: true);
-        _samplerAllocator = new DescriptorAllocator(device, _samplerHeap, DescriptorHeapType.Sampler, samplerHeapSize);
+        _samplerAllocator = new DescriptorAllocator(device, _samplerHeap, DescriptorHeapType.Sampler, samplerHeapSize, shaderVisible: true);
 
         _stagingHeap = CreateHeap(device, DescriptorHeapType.CbvSrvUav, stagingHeapSize, shaderVisible: false);
-        _stagingAllocator = new DescriptorAllocator(device, _stagingHeap, DescriptorHeapType.CbvSrvUav, stagingHeapSize);
+        _stagingAllocator = new DescriptorAllocator(device, _stagingHeap, DescriptorHeapType.CbvSrvUav, stagingHeapSize, shaderVisible: false);
 
         _initialized = true;
     }
@@ -188,13 +188,16 @@ internal sealed class DescriptorAllocator
         ComPtr<ID3D12Device> device,
         ComPtr<ID3D12DescriptorHeap> heap,
         DescriptorHeapType type,
-        int capacity)
+        int capacity,
+        bool shaderVisible)
     {
         _capacity = capacity;
         _incrementSize = device.GetDescriptorHandleIncrementSize(type);
 
         _cpuStart = heap.GetCPUDescriptorHandleForHeapStart();
-        _gpuStart = heap.GetGPUDescriptorHandleForHeapStart();
+        // GetGPUDescriptorHandleForHeapStart is only valid to call on a shader-visible heap;
+        // calling it on the (CPU-only) staging heap throws under the D3D12 debug layer.
+        _gpuStart = shaderVisible ? heap.GetGPUDescriptorHandleForHeapStart() : default;
 
         _freeList = new Stack<int>(capacity);
 

@@ -119,6 +119,21 @@ namespace HEngine.Rendering.Tests
             Assert.Same(stackA, stackB);
         }
 
+        [Fact(DisplayName = "MaterialManager and ITextureManager are registered in DI as shared singletons (tracks #21's infrastructure step)")]
+        public void Composition_Resolves_MaterialManager_And_TextureManager_As_Singletons()
+        {
+            using var provider = BuildProductionServiceCollection().BuildServiceProvider();
+
+            var materialManagerA = provider.GetRequiredService<HEngine.Rendering.Managers.MaterialManager>();
+            var materialManagerB = provider.GetRequiredService<HEngine.Rendering.Managers.MaterialManager>();
+            var textureManagerA = provider.GetRequiredService<ITextureManager>();
+            var textureManagerB = provider.GetRequiredService<ITextureManager>();
+
+            Assert.Same(materialManagerA, materialManagerB);
+            Assert.Same(textureManagerA, textureManagerB);
+            Assert.IsType<HEngine.Rendering.Managers.TextureManager>(textureManagerA);
+        }
+
         [Fact(DisplayName = "Production composition resolves the real RenderPipeline/RenderingSystem implementations, not a test double")]
         public void Composition_Resolves_RenderPipeline_And_RenderingSystem_As_Concrete_Production_Types()
         {

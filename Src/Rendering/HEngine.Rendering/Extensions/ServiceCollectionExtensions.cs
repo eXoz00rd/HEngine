@@ -74,6 +74,12 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ShadowPipelineStateManager>();
         services.AddSingleton<IShadowRenderer, DirectX12ShadowRenderer>();
 
+        services.AddSingleton<DescriptorHeapManager>();
+        services.AddSingleton<TextureManager>();
+        services.AddSingleton<ITextureManager>(provider => provider.GetRequiredService<TextureManager>());
+        services.AddSingleton<MaterialManager>();
+        services.AddSingleton<MaterialLibrary>();
+
         services.AddSingleton<LightingSystem>(provider =>
         {
             var lightingSystem = new LightingSystem();

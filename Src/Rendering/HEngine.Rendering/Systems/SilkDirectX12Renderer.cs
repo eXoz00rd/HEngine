@@ -24,6 +24,8 @@ public class SilkDirectX12Renderer : IRenderer
     private readonly ISpriteRenderer _spriteRenderer;
     private readonly ShadowMapManager _shadowMapManager;
     private readonly ShadowSettings _shadowSettings;
+    private readonly TextureManager _textureManager;
+    private readonly DescriptorHeapManager _descriptorHeapManager;
 
     private DirectX12CommandList _commandList;
     private bool _disposed;
@@ -38,7 +40,8 @@ public class SilkDirectX12Renderer : IRenderer
 
     public SilkDirectX12Renderer(IGraphicsDevice device, IRenderBatch<SpriteData> spriteBatch,
         ISpriteRenderer spriteRenderer, IShaderManager shaderManager, ShadowMapManager shadowMapManager,
-        ShadowSettings shadowSettings, ILogger<SilkDirectX12Renderer> logger, ILoggerFactory loggerFactory)
+        ShadowSettings shadowSettings, TextureManager textureManager, DescriptorHeapManager descriptorHeapManager,
+        ILogger<SilkDirectX12Renderer> logger, ILoggerFactory loggerFactory)
     {
         _device = device ?? throw new ArgumentNullException(nameof(device));
         _spriteBatch = spriteBatch ?? throw new ArgumentNullException(nameof(spriteBatch));
@@ -46,6 +49,8 @@ public class SilkDirectX12Renderer : IRenderer
         _shaderManager = shaderManager ?? throw new ArgumentNullException(nameof(shaderManager));
         _shadowMapManager = shadowMapManager ?? throw new ArgumentNullException(nameof(shadowMapManager));
         _shadowSettings = shadowSettings ?? throw new ArgumentNullException(nameof(shadowSettings));
+        _textureManager = textureManager ?? throw new ArgumentNullException(nameof(textureManager));
+        _descriptorHeapManager = descriptorHeapManager ?? throw new ArgumentNullException(nameof(descriptorHeapManager));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
         _commandList = null!;
@@ -87,6 +92,8 @@ public class SilkDirectX12Renderer : IRenderer
 
             var dx12Device = (DirectX12Device)_device;
             var d3dDevice = dx12Device.GetDevice();
+            _descriptorHeapManager.Initialize(d3dDevice);
+            _textureManager.SetDevice(d3dDevice);
             _meshRenderer = new DirectX12MeshRenderer();
             _meshRenderer.Initialize(d3dDevice, _shadowMapManager, _shadowSettings.Enabled);
             _meshRenderer.SetCommandQueue(dx12Device.GetDirectX12CommandQueue());
