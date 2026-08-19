@@ -5,6 +5,6 @@ description: Pick up and implement the next backlog task for HEngine (repo eXoz0
 
 # Backlog task workflow — HEngine
 
-This is a mirror of `.github/skills/backlog-task/SKILL.md` (originally authored for GitHub Copilot's coding agent) so the same workflow triggers for Claude Code sessions too.
+This file points Claude Code to the canonical `.github/skills/backlog-task/SKILL.md` workflow so both agents follow the same process without duplicating its instructions.
 
 Read `.github/skills/backlog-task/SKILL.md` now and follow it exactly. Do not duplicate its content here — if the two ever disagree, the `.github/skills/backlog-task/SKILL.md` copy is canonical; update that file and this pointer stays a pointer.
