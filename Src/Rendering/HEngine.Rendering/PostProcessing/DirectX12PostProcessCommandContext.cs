@@ -1,4 +1,5 @@
 using HEngine.Rendering.Data;
+using HEngine.Rendering.Devices;
 using HEngine.Rendering.DirectX12;
 using HEngine.Rendering.Managers;
 using Microsoft.Extensions.Logging;
@@ -13,24 +14,30 @@ namespace HEngine.Rendering.PostProcessing;
 /// HDR (R16G16B16A16_FLOAT) render targets and drives <see cref="DirectX12PostProcessPipelineManager"/>'s
 /// PSO to run the ToneMapping fullscreen pass, actually touching the GPU instead of
 /// only recording call counts like <see cref="NullPostProcessCommandContext"/>.
+///
+/// Not yet registered in DI or called from <see cref="RenderPipeline"/> — the main scene still
+/// renders straight to the swap chain, so there is nowhere to redirect it from yet (tracks #45).
+/// Only supports the ToneMapping pass; other <see cref="IPostProcessEffect"/>s are not backed by
+/// a real shader here (see <see cref="SetConstantFloat"/>/<see cref="SetConstantInt"/>/<see cref="SetConstantFloat4"/>).
 /// </summary>
 public sealed class DirectX12PostProcessCommandContext : IPostProcessCommandContext, IDisposable
 {
     private const Format RenderTargetFormat = Format.FormatR16G16B16A16Float;
+    private const int RenderTargetCount = 2;
 
     private readonly D3D12 _d3d12 = D3D12.GetApi();
     private readonly DirectX12PostProcessPipelineManager _pipelineManager;
     private readonly DirectX12CommandQueue _commandQueue;
+    private readonly DescriptorHeapManager _descriptorHeapManager;
     private readonly ILogger<DirectX12PostProcessCommandContext>? _logger;
     private readonly PingPongRenderTargets _pingPong = new();
 
     private ComPtr<ID3D12Device> _device;
-    private readonly ComPtr<ID3D12Resource>[] _renderTargets = new ComPtr<ID3D12Resource>[2];
-    private readonly ResourceStates[] _renderTargetStates = new ResourceStates[2];
+    private readonly ComPtr<ID3D12Resource>[] _renderTargets = new ComPtr<ID3D12Resource>[RenderTargetCount];
+    private readonly ResourceStates[] _renderTargetStates = new ResourceStates[RenderTargetCount];
+    private readonly DescriptorHandle[] _srvHandles = new DescriptorHandle[RenderTargetCount];
     private ComPtr<ID3D12DescriptorHeap> _rtvHeap;
-    private ComPtr<ID3D12DescriptorHeap> _srvHeap;
     private uint _rtvDescriptorSize;
-    private uint _srvDescriptorSize;
 
     private ToneMappingCbuffer _pendingConstants = ToneMappingCbuffer.Create(0, 1.0f, 2.2f);
     private bool _initialized;
@@ -45,27 +52,28 @@ public sealed class DirectX12PostProcessCommandContext : IPostProcessCommandCont
     public DirectX12PostProcessCommandContext(
         DirectX12PostProcessPipelineManager pipelineManager,
         DirectX12CommandQueue commandQueue,
+        DescriptorHeapManager descriptorHeapManager,
         ILogger<DirectX12PostProcessCommandContext>? logger = null)
     {
         _pipelineManager = pipelineManager ?? throw new ArgumentNullException(nameof(pipelineManager));
         _commandQueue = commandQueue ?? throw new ArgumentNullException(nameof(commandQueue));
+        _descriptorHeapManager = descriptorHeapManager ?? throw new ArgumentNullException(nameof(descriptorHeapManager));
         _logger = logger;
+
+        Array.Fill(_srvHandles, DescriptorHandle.Invalid);
     }
 
     public void Initialize(ComPtr<ID3D12Device> device, int width, int height)
     {
         if (_initialized) Dispose();
+        _disposed = false;
 
         _device = device;
         Width = Math.Max(width, 1);
         Height = Math.Max(height, 1);
 
-        CreateDescriptorHeaps();
-        for (var i = 0; i < 2; i++)
-        {
-            CreateRenderTarget(i);
-            _renderTargetStates[i] = ResourceStates.RenderTarget;
-        }
+        CreateRtvHeap();
+        CreateRenderTargets();
 
         _pingPong.Reset();
         _initialized = true;
@@ -76,14 +84,24 @@ public sealed class DirectX12PostProcessCommandContext : IPostProcessCommandCont
     {
         if (!_initialized) return;
 
-        for (var i = 0; i < 2; i++)
+        _commandQueue.WaitForGpuIdle();
+
+        for (var i = 0; i < RenderTargetCount; i++)
             _renderTargets[i].Dispose();
 
         Width = Math.Max(width, 1);
         Height = Math.Max(height, 1);
 
-        for (var i = 0; i < 2; i++)
+        CreateRenderTargets();
+    }
+
+    private void CreateRenderTargets()
+    {
+        for (var i = 0; i < RenderTargetCount; i++)
         {
+            if (!_srvHandles[i].IsValid)
+                _srvHandles[i] = _descriptorHeapManager.AllocateSrv();
+
             CreateRenderTarget(i);
             _renderTargetStates[i] = ResourceStates.RenderTarget;
         }
@@ -98,6 +116,9 @@ public sealed class DirectX12PostProcessCommandContext : IPostProcessCommandCont
 
     public CpuDescriptorHandle GetRenderTargetRtvHandle(int index)
     {
+        if (index < 0 || index >= RenderTargetCount)
+            throw new ArgumentOutOfRangeException(nameof(index));
+
         var start = _rtvHeap.GetCPUDescriptorHandleForHeapStart();
         return new CpuDescriptorHandle { Ptr = start.Ptr + (nuint)(index * _rtvDescriptorSize) };
     }
@@ -113,8 +134,9 @@ public sealed class DirectX12PostProcessCommandContext : IPostProcessCommandCont
                 _pendingConstants.Gamma = value;
                 break;
             default:
-                _logger?.LogDebug("Ignoring unknown post-process float constant '{Name}'", name);
-                break;
+                throw new NotSupportedException(
+                    $"DirectX12PostProcessCommandContext only backs the ToneMapping pass; " +
+                    $"'{name}' is not a supported float constant.");
         }
     }
 
@@ -123,18 +145,24 @@ public sealed class DirectX12PostProcessCommandContext : IPostProcessCommandCont
         if (name == "ToneMappingMode")
             _pendingConstants.ToneMappingMode = value;
         else
-            _logger?.LogDebug("Ignoring unknown post-process int constant '{Name}'", name);
+            throw new NotSupportedException(
+                $"DirectX12PostProcessCommandContext only backs the ToneMapping pass; " +
+                $"'{name}' is not a supported int constant.");
     }
 
     public void SetConstantFloat4(string name, float x, float y, float z, float w)
     {
-        _logger?.LogDebug("Ignoring unsupported post-process float4 constant '{Name}'", name);
+        throw new NotSupportedException(
+            $"DirectX12PostProcessCommandContext only backs the ToneMapping pass; " +
+            $"'{name}' is not a supported float4 constant.");
     }
 
     public unsafe void DrawFullscreenTriangle()
     {
         if (!_initialized)
             throw new InvalidOperationException("DirectX12PostProcessCommandContext must be initialized before drawing.");
+        if (!_pipelineManager.IsInitialized)
+            throw new InvalidOperationException("DirectX12PostProcessPipelineManager must be initialized before drawing.");
 
         var sourceIndex = SourceRenderTargetIndex;
         var destIndex = DestinationRenderTargetIndex;
@@ -162,7 +190,7 @@ public sealed class DirectX12PostProcessCommandContext : IPostProcessCommandCont
         var scissorRect = new Silk.NET.Maths.Box2D<int>(0, 0, Width, Height);
         commandList.RSSetScissorRects(1, in scissorRect);
 
-        var heap = _srvHeap;
+        var heap = _descriptorHeapManager.SrvHeap;
         commandList.SetDescriptorHeaps(1, ref heap);
 
         commandList.SetPipelineState(_pipelineManager.PipelineState);
@@ -170,7 +198,7 @@ public sealed class DirectX12PostProcessCommandContext : IPostProcessCommandCont
         commandList.SetGraphicsRoot32BitConstants(
             DirectX12PostProcessPipelineManager.ConstantsRootParameterIndex, 4, ref _pendingConstants, 0);
         commandList.SetGraphicsRootDescriptorTable(
-            DirectX12PostProcessPipelineManager.SourceTextureRootParameterIndex, GetSrvGpuHandle(sourceIndex));
+            DirectX12PostProcessPipelineManager.SourceTextureRootParameterIndex, _srvHandles[sourceIndex].GpuHandle);
 
         commandList.IASetPrimitiveTopology(D3DPrimitiveTopology.D3DPrimitiveTopologyTrianglelist);
         commandList.DrawInstanced(3, 1, 0, 0);
@@ -203,17 +231,11 @@ public sealed class DirectX12PostProcessCommandContext : IPostProcessCommandCont
         _renderTargetStates[index] = target;
     }
 
-    private GpuDescriptorHandle GetSrvGpuHandle(int index)
-    {
-        var start = _srvHeap.GetGPUDescriptorHandleForHeapStart();
-        return new GpuDescriptorHandle { Ptr = start.Ptr + (ulong)(index * _srvDescriptorSize) };
-    }
-
-    private unsafe void CreateDescriptorHeaps()
+    private unsafe void CreateRtvHeap()
     {
         var rtvDesc = new DescriptorHeapDesc
         {
-            NumDescriptors = 2,
+            NumDescriptors = RenderTargetCount,
             Type = DescriptorHeapType.Rtv,
             Flags = DescriptorHeapFlags.None
         };
@@ -221,18 +243,7 @@ public sealed class DirectX12PostProcessCommandContext : IPostProcessCommandCont
         if (hr < 0)
             throw new InvalidOperationException($"PostProcess RTV heap creation failed. HRESULT: {hr:X8}");
 
-        var srvDesc = new DescriptorHeapDesc
-        {
-            NumDescriptors = 2,
-            Type = DescriptorHeapType.CbvSrvUav,
-            Flags = DescriptorHeapFlags.ShaderVisible
-        };
-        hr = _device.CreateDescriptorHeap(in srvDesc, out _srvHeap);
-        if (hr < 0)
-            throw new InvalidOperationException($"PostProcess SRV heap creation failed. HRESULT: {hr:X8}");
-
         _rtvDescriptorSize = _device.GetDescriptorHandleIncrementSize(DescriptorHeapType.Rtv);
-        _srvDescriptorSize = _device.GetDescriptorHandleIncrementSize(DescriptorHeapType.CbvSrvUav);
     }
 
     private unsafe void CreateRenderTarget(int index)
@@ -286,20 +297,24 @@ public sealed class DirectX12PostProcessCommandContext : IPostProcessCommandCont
         srvDesc.Anonymous.Texture2D.MostDetailedMip = 0;
         srvDesc.Anonymous.Texture2D.MipLevels = 1;
 
-        var srvCpuHandle = _srvHeap.GetCPUDescriptorHandleForHeapStart();
-        srvCpuHandle.Ptr += (nuint)(index * _srvDescriptorSize);
-        _device.CreateShaderResourceView(_renderTargets[index], &srvDesc, srvCpuHandle);
+        _device.CreateShaderResourceView(_renderTargets[index], &srvDesc, _srvHandles[index].CpuHandle);
     }
 
     public void Dispose()
     {
         if (_disposed) return;
 
-        for (var i = 0; i < 2; i++)
+        for (var i = 0; i < RenderTargetCount; i++)
+        {
             _renderTargets[i].Dispose();
+            if (_srvHandles[i].IsValid)
+            {
+                _descriptorHeapManager.FreeSrv(_srvHandles[i]);
+                _srvHandles[i] = DescriptorHandle.Invalid;
+            }
+        }
 
         _rtvHeap.Dispose();
-        _srvHeap.Dispose();
         _d3d12.Dispose();
 
         _initialized = false;

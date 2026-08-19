@@ -1,5 +1,4 @@
 using System.Runtime.InteropServices;
-using System.Text;
 using Microsoft.Extensions.Logging;
 using Silk.NET.Core.Native;
 using Silk.NET.Direct3D.Compilers;
@@ -16,7 +15,7 @@ namespace HEngine.Rendering.Managers;
 public sealed class DirectX12PostProcessPipelineManager : IDisposable
 {
     private readonly D3D12 _d3d12 = D3D12.GetApi();
-    private readonly D3DCompiler _compiler = D3DCompiler.GetApi();
+    private readonly ShaderVariantCompiler _shaderCompiler = new();
     private readonly ShaderFileLoader _fileLoader;
     private readonly ILogger<DirectX12PostProcessPipelineManager>? _logger;
 
@@ -47,6 +46,7 @@ public sealed class DirectX12PostProcessPipelineManager : IDisposable
     public void Initialize(ComPtr<ID3D12Device> device, Format renderTargetFormat)
     {
         if (_initialized) Dispose();
+        _disposed = false;
 
         _device = device;
         _vertexShader = CompileShader("VSMain", "vs_5_0");
@@ -141,6 +141,8 @@ public sealed class DirectX12PostProcessPipelineManager : IDisposable
                     $"PostProcess root signature serialization failed: {msg} (HRESULT {hr:X8})");
             }
 
+            if (err != null) err->Release();
+
             var sigBlob = new ComPtr<ID3D10Blob>(sig);
             hr = _device.CreateRootSignature(
                 0, sigBlob.GetBufferPointer(), sigBlob.GetBufferSize(), out _rootSignature);
@@ -214,42 +216,10 @@ public sealed class DirectX12PostProcessPipelineManager : IDisposable
             throw new InvalidOperationException($"PostProcess PSO creation failed. HRESULT: {hr:X8}");
     }
 
-    private unsafe ComPtr<ID3D10Blob> CompileShader(string entryPoint, string target)
+    private ComPtr<ID3D10Blob> CompileShader(string entryPoint, string target)
     {
         var shaderCode = _fileLoader.LoadShaderCode("ToneMapping.hlsl");
-        var codeBytes = Encoding.UTF8.GetBytes(shaderCode);
-        var entryBytes = Encoding.UTF8.GetBytes(entryPoint);
-        var targetBytes = Encoding.UTF8.GetBytes(target);
-
-        fixed (byte* codePtr = codeBytes)
-        fixed (byte* entryPtr = entryBytes)
-        fixed (byte* targetPtr = targetBytes)
-        {
-            ID3D10Blob* blob = null;
-            ID3D10Blob* error = null;
-
-            var hr = _compiler.Compile(
-                codePtr, (nuint)codeBytes.Length,
-                (byte*)null, null, null,
-                entryPtr, targetPtr,
-                0u, 0u, ref blob, ref error);
-
-            if (hr < 0)
-            {
-                string? msg = null;
-                if (error != null)
-                {
-                    msg = Marshal.PtrToStringAnsi((nint)error->GetBufferPointer(), (int)error->GetBufferSize());
-                    error->Release();
-                }
-
-                throw new InvalidOperationException(
-                    $"PostProcess shader compilation failed (entry={entryPoint}): {msg}");
-            }
-
-            if (error != null) error->Release();
-            return new ComPtr<ID3D10Blob>(blob);
-        }
+        return _shaderCompiler.CompileShader(shaderCode, entryPoint, target, "ToneMapping.hlsl");
     }
 
     public void Dispose()
@@ -260,7 +230,7 @@ public sealed class DirectX12PostProcessPipelineManager : IDisposable
         _rootSignature.Dispose();
         _vertexShader.Dispose();
         _pixelShader.Dispose();
-        _compiler.Dispose();
+        _shaderCompiler.Dispose();
         _d3d12.Dispose();
 
         _initialized = false;
