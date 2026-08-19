@@ -1,3 +1,4 @@
+using HEngine.Core.Rendering.Contracts;
 using HEngine.Rendering.Data;
 using HEngine.Rendering.Devices;
 using HEngine.Rendering.DirectX12;
@@ -27,11 +28,13 @@ public sealed class DirectX12PostProcessCommandContext : IPostProcessCommandCont
 
     private readonly D3D12 _d3d12 = D3D12.GetApi();
     private readonly DirectX12PostProcessPipelineManager _pipelineManager;
-    private readonly DirectX12CommandQueue _commandQueue;
+    private readonly IGraphicsDevice _graphicsDevice;
+    private readonly RenderTargetManager _renderTargetManager;
     private readonly DescriptorHeapManager _descriptorHeapManager;
     private readonly ILogger<DirectX12PostProcessCommandContext>? _logger;
     private readonly PingPongRenderTargets _pingPong = new();
 
+    private DirectX12CommandQueue _commandQueue = null!;
     private ComPtr<ID3D12Device> _device;
     private readonly ComPtr<ID3D12Resource>[] _renderTargets = new ComPtr<ID3D12Resource>[RenderTargetCount];
     private readonly ResourceStates[] _renderTargetStates = new ResourceStates[RenderTargetCount];
@@ -42,6 +45,7 @@ public sealed class DirectX12PostProcessCommandContext : IPostProcessCommandCont
     private ToneMappingCbuffer _pendingConstants = ToneMappingCbuffer.Create(0, 1.0f, 2.2f);
     private bool _initialized;
     private bool _disposed;
+    private bool _usePendingSceneSource;
 
     public int SourceRenderTargetIndex => _pingPong.CurrentSource;
     public int DestinationRenderTargetIndex => _pingPong.CurrentDestination;
@@ -51,12 +55,14 @@ public sealed class DirectX12PostProcessCommandContext : IPostProcessCommandCont
 
     public DirectX12PostProcessCommandContext(
         DirectX12PostProcessPipelineManager pipelineManager,
-        DirectX12CommandQueue commandQueue,
+        IGraphicsDevice graphicsDevice,
+        RenderTargetManager renderTargetManager,
         DescriptorHeapManager descriptorHeapManager,
         ILogger<DirectX12PostProcessCommandContext>? logger = null)
     {
         _pipelineManager = pipelineManager ?? throw new ArgumentNullException(nameof(pipelineManager));
-        _commandQueue = commandQueue ?? throw new ArgumentNullException(nameof(commandQueue));
+        _graphicsDevice = graphicsDevice ?? throw new ArgumentNullException(nameof(graphicsDevice));
+        _renderTargetManager = renderTargetManager ?? throw new ArgumentNullException(nameof(renderTargetManager));
         _descriptorHeapManager = descriptorHeapManager ?? throw new ArgumentNullException(nameof(descriptorHeapManager));
         _logger = logger;
 
@@ -71,6 +77,7 @@ public sealed class DirectX12PostProcessCommandContext : IPostProcessCommandCont
         _device = device;
         Width = Math.Max(width, 1);
         Height = Math.Max(height, 1);
+        _commandQueue = ((DirectX12Device)_graphicsDevice).GetDirectX12CommandQueue();
 
         CreateRtvHeap();
         CreateRenderTargets();
@@ -157,6 +164,20 @@ public sealed class DirectX12PostProcessCommandContext : IPostProcessCommandCont
             $"'{name}' is not a supported float4 constant.");
     }
 
+    /// <summary>
+    /// Transitions <see cref="RenderTargetManager"/>'s HDR scene texture to a readable state and flags the
+    /// next <see cref="DrawFullscreenTriangle"/> call to sample it directly, instead of this context's own
+    /// ping-pong source slot, as the first pass's input (tracks #45).
+    /// </summary>
+    public void PrepareSceneSource()
+    {
+        if (!_initialized)
+            throw new InvalidOperationException("DirectX12PostProcessCommandContext must be initialized before preparing the scene source.");
+
+        _renderTargetManager.TransitionHdrTo(_commandQueue.CommandList, ResourceStates.PixelShaderResource);
+        _usePendingSceneSource = true;
+    }
+
     public unsafe void DrawFullscreenTriangle()
     {
         if (!_initialized)
@@ -166,10 +187,13 @@ public sealed class DirectX12PostProcessCommandContext : IPostProcessCommandCont
 
         var sourceIndex = SourceRenderTargetIndex;
         var destIndex = DestinationRenderTargetIndex;
+        var useSceneSource = _usePendingSceneSource;
+        _usePendingSceneSource = false;
 
         var commandList = _commandQueue.CommandList;
 
-        TransitionTo(commandList, sourceIndex, ResourceStates.PixelShaderResource);
+        if (!useSceneSource)
+            TransitionTo(commandList, sourceIndex, ResourceStates.PixelShaderResource);
         TransitionTo(commandList, destIndex, ResourceStates.RenderTarget);
 
         var rtvHandle = GetRenderTargetRtvHandle(destIndex);
@@ -197,8 +221,10 @@ public sealed class DirectX12PostProcessCommandContext : IPostProcessCommandCont
         commandList.SetGraphicsRootSignature(_pipelineManager.RootSignature);
         commandList.SetGraphicsRoot32BitConstants(
             DirectX12PostProcessPipelineManager.ConstantsRootParameterIndex, 4, ref _pendingConstants, 0);
+
+        var sourceSrvHandle = useSceneSource ? _renderTargetManager.GetHdrSrvGpuHandle() : _srvHandles[sourceIndex].GpuHandle;
         commandList.SetGraphicsRootDescriptorTable(
-            DirectX12PostProcessPipelineManager.SourceTextureRootParameterIndex, _srvHandles[sourceIndex].GpuHandle);
+            DirectX12PostProcessPipelineManager.SourceTextureRootParameterIndex, sourceSrvHandle);
 
         commandList.IASetPrimitiveTopology(D3DPrimitiveTopology.D3DPrimitiveTopologyTrianglelist);
         commandList.DrawInstanced(3, 1, 0, 0);
@@ -207,6 +233,52 @@ public sealed class DirectX12PostProcessCommandContext : IPostProcessCommandCont
 
         DrawCallCount++;
         _pingPong.Flip();
+    }
+
+    /// <summary>
+    /// Draws the post-process chain's final output (this context's current
+    /// <see cref="SourceRenderTargetIndex"/>, left in PixelShaderResource state by the last
+    /// <see cref="DrawFullscreenTriangle"/> call) into the swap-chain back buffer, using a tonemap-free
+    /// passthrough PSO so the LDR result isn't re-processed (tracks #45).
+    /// </summary>
+    public unsafe void ResolveToBackBuffer()
+    {
+        if (!_initialized)
+            throw new InvalidOperationException("DirectX12PostProcessCommandContext must be initialized before resolving.");
+        if (!_pipelineManager.IsInitialized)
+            throw new InvalidOperationException("DirectX12PostProcessPipelineManager must be initialized before resolving.");
+
+        var sourceIndex = SourceRenderTargetIndex;
+        var commandList = _commandQueue.CommandList;
+        var backBufferRtv = ((DirectX12Device)_graphicsDevice).GetBackBufferRtvHandle();
+
+        CpuDescriptorHandle* rtvHandlePtr = &backBufferRtv;
+        commandList.OMSetRenderTargets(1, rtvHandlePtr, false, (CpuDescriptorHandle*)null);
+
+        var viewport = new Viewport
+        {
+            TopLeftX = 0,
+            TopLeftY = 0,
+            Width = Width,
+            Height = Height,
+            MinDepth = 0.0f,
+            MaxDepth = 1.0f
+        };
+        commandList.RSSetViewports(1, ref viewport);
+
+        var scissorRect = new Silk.NET.Maths.Box2D<int>(0, 0, Width, Height);
+        commandList.RSSetScissorRects(1, in scissorRect);
+
+        var heap = _descriptorHeapManager.SrvHeap;
+        commandList.SetDescriptorHeaps(1, ref heap);
+
+        commandList.SetPipelineState(_pipelineManager.BackBufferPipelineState);
+        commandList.SetGraphicsRootSignature(_pipelineManager.RootSignature);
+        commandList.SetGraphicsRootDescriptorTable(
+            DirectX12PostProcessPipelineManager.SourceTextureRootParameterIndex, _srvHandles[sourceIndex].GpuHandle);
+
+        commandList.IASetPrimitiveTopology(D3DPrimitiveTopology.D3DPrimitiveTopologyTrianglelist);
+        commandList.DrawInstanced(3, 1, 0, 0);
     }
 
     private void TransitionTo(ComPtr<ID3D12GraphicsCommandList> commandList, int index, ResourceStates target)

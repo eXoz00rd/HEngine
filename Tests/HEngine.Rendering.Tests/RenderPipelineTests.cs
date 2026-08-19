@@ -171,6 +171,7 @@ namespace HEngine.Rendering.Tests
             shadowRenderingSystem.Initialize(world);
             var shadowSettings = new ShadowSettings { Enabled = false };
             var postProcessStack = new PostProcessStack();
+            var postProcessContext = new NullPostProcessCommandContext(context);
 
             var pipeline = new RenderPipeline(
                 renderManager,
@@ -180,10 +181,11 @@ namespace HEngine.Rendering.Tests
                 shadowRenderingSystem,
                 shadowSettings,
                 postProcessStack,
+                postProcessContext,
                 logger);
-            
+
             pipeline.RenderFrame();
-            
+
             var expectedView = cam.GetViewMatrix();
             var expectedProj = cam.GetProjectionMatrix();
 
@@ -216,6 +218,7 @@ namespace HEngine.Rendering.Tests
             shadowRenderingSystem.Initialize(world);
             var shadowSettings = new ShadowSettings { Enabled = false };
             var postProcessStack = new PostProcessStack();
+            var postProcessContext = new NullPostProcessCommandContext(context);
 
             var pipeline = new RenderPipeline(
                 renderManager,
@@ -225,6 +228,7 @@ namespace HEngine.Rendering.Tests
                 shadowRenderingSystem,
                 shadowSettings,
                 postProcessStack,
+                postProcessContext,
                 logger);
 
             pipeline.RenderFrame();
@@ -245,16 +249,19 @@ namespace HEngine.Rendering.Tests
             var shadowRenderingSystem = new ShadowRenderingSystem();
             shadowRenderingSystem.Initialize(world);
 
+            var fakeRenderContext = new FakeRenderContext(new FakeRenderer());
+
             Assert.Throws<InvalidOperationException>(() => new RenderPipeline(
-                new FakeRenderManager(new FakeRenderContext(new FakeRenderer())),
+                new FakeRenderManager(fakeRenderContext),
                 new FakeRenderingSystem(), world,
                 lightingSystem, shadowRenderingSystem,
                 new ShadowSettings { Enabled = true },
-                new PostProcessStack(), new NullLogger<RenderPipeline>()));
+                new PostProcessStack(), new NullPostProcessCommandContext(fakeRenderContext),
+                new NullLogger<RenderPipeline>()));
         }
 
-        [Fact(DisplayName = "RenderFrame throws when post-process effects are registered but no production IPostProcessCommandContext exists, and still balances EndRender")]
-        public void RenderFrame_Throws_When_PostProcessEffectsRegistered_Without_ProductionContext()
+        [Fact(DisplayName = "RenderFrame runs the post-process pass through IPostProcessCommandContext when effects are enabled, and still balances EndRender")]
+        public void RenderFrame_RunsPostProcessPass_When_EffectsEnabled_UsingHeadlessContext()
         {
             var world = new WorldManager(new SystemManager());
 
@@ -265,15 +272,20 @@ namespace HEngine.Rendering.Tests
             var postProcessStack = new PostProcessStack();
             postProcessStack.AddEffect(new ToneMappingEffect());
             var renderManager = new FakeRenderManager(new FakeRenderContext(new FakeRenderer()));
+            var postProcessContext = new NullPostProcessCommandContext(new FakeRenderContext(new FakeRenderer()));
 
             var pipeline = new RenderPipeline(
                 renderManager,
                 new FakeRenderingSystem(), world,
                 lightingSystem, shadowRenderingSystem,
                 new ShadowSettings { Enabled = false },
-                postProcessStack, new NullLogger<RenderPipeline>());
+                postProcessStack, postProcessContext, new NullLogger<RenderPipeline>());
 
-            Assert.Throws<InvalidOperationException>(() => pipeline.RenderFrame());
+            pipeline.RenderFrame();
+
+            Assert.Equal(1, postProcessContext.PrepareSceneSourceCallCount);
+            Assert.Equal(1, postProcessContext.DrawCallCount);
+            Assert.Equal(1, postProcessContext.ResolveToBackBufferCallCount);
             Assert.Equal(1, renderManager.EndRenderCallCount);
         }
 

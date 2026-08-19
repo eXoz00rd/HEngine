@@ -2,6 +2,7 @@
 using HEngine.Core.Rendering.Contracts;
 using HEngine.Rendering.DirectX12;
 using HEngine.Rendering.Input;
+using HEngine.Rendering.Managers;
 using Microsoft.Extensions.Logging;
 using Silk.NET.Core.Native;
 using Silk.NET.Direct3D12;
@@ -31,6 +32,8 @@ public class DirectX12Device : IGraphicsDevice
 
     private Action<IMouse, MouseButton> _onMouseDown = null!;
     private Action<IMouse, MouseButton> _onMouseUp = null!;
+
+    private RenderTargetManager? _renderTargetOverride;
 
     public DirectX12Device(InputState inputState, ILogger<DirectX12Device> logger)
     {
@@ -103,7 +106,13 @@ public class DirectX12Device : IGraphicsDevice
         {
             _commandQueue.BeginFrame(_frameIndex);
             var commandList = _commandQueue.CommandList;
-            _swapChain.BeginFrame(commandList, _frameIndex);
+
+            _swapChain.TransitionToRenderTarget(commandList, _frameIndex);
+
+            if (_renderTargetOverride is not null)
+                _renderTargetOverride.Bind(commandList);
+            else
+                _swapChain.BindMainRenderTarget(commandList, _frameIndex);
         }
         catch (Exception ex)
         {
@@ -124,7 +133,11 @@ public class DirectX12Device : IGraphicsDevice
         }
 
         var commandList = _commandQueue.CommandList;
-        _swapChain.Clear(commandList, clearColor, _frameIndex);
+
+        if (_renderTargetOverride is not null)
+            _renderTargetOverride.Clear(commandList, clearColor);
+        else
+            _swapChain.Clear(commandList, clearColor, _frameIndex);
     }
 
     public void EndFrame()
@@ -287,7 +300,31 @@ public class DirectX12Device : IGraphicsDevice
         }
 
         var commandList = _commandQueue.CommandList;
-        _swapChain.BindMainRenderTarget(commandList, _frameIndex);
+
+        if (_renderTargetOverride is not null)
+            _renderTargetOverride.Bind(commandList);
+        else
+            _swapChain.BindMainRenderTarget(commandList, _frameIndex);
+    }
+
+    /// <summary>
+    /// When set, redirects <see cref="BeginFrame"/>/<see cref="Clear"/>/<see cref="RestoreBackBufferTarget"/>
+    /// to bind the given HDR target instead of the swap-chain back buffer, for the duration of the frame(s)
+    /// this is set. Pass null to restore the direct-to-back-buffer path.
+    /// </summary>
+    public void SetRenderTargetOverride(RenderTargetManager? renderTargetManager)
+    {
+        _renderTargetOverride = renderTargetManager;
+    }
+
+    public CpuDescriptorHandle GetBackBufferRtvHandle()
+    {
+        if (!_initialized)
+        {
+            throw new InvalidOperationException(DeviceIsNotReady);
+        }
+
+        return _swapChain.GetCurrentBackBufferRtvHandle(_frameIndex);
     }
 
     private IWindow CreateWindow(int width, int height, string title)

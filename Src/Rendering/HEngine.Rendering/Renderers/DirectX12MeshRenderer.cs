@@ -44,6 +44,7 @@ public sealed class DirectX12MeshRenderer : IDisposable
     private int _currentDrawCallIndex;
     private bool _disposed;
     private bool _gpuResourcesCreated;
+    private bool _useHdrRenderTarget;
 
     public bool IsInitialized { get; private set; }
     public bool DepthTestEnabled { get; private set; } = true;
@@ -165,7 +166,7 @@ public sealed class DirectX12MeshRenderer : IDisposable
 
         var commandList = _commandQueue.CommandList;
 
-        commandList.SetPipelineState(_pipelineManager!.PipelineState);
+        commandList.SetPipelineState(_useHdrRenderTarget ? _pipelineManager!.HdrPipelineState : _pipelineManager!.PipelineState);
         commandList.SetGraphicsRootSignature(_pipelineManager.RootSignature);
         commandList.SetGraphicsRootConstantBufferView(0, sceneAddress);
         commandList.SetGraphicsRootConstantBufferView(1, materialAddress);
@@ -234,9 +235,10 @@ public sealed class DirectX12MeshRenderer : IDisposable
             throw new InvalidOperationException($"Exceeded maximum draw calls per frame ({MaxDrawCalls})");
     }
 
-    public void BeginFrame()
+    public void BeginFrame(bool useHdrRenderTarget = false)
     {
         _currentDrawCallIndex = 0;
+        _useHdrRenderTarget = useHdrRenderTarget;
     }
 
     private void CreateVertexBuffer()

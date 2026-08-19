@@ -134,6 +134,25 @@ namespace HEngine.Rendering.Tests
             Assert.IsType<HEngine.Rendering.Managers.TextureManager>(textureManagerA);
         }
 
+        [Fact(DisplayName = "RenderTargetManager, DirectX12PostProcessPipelineManager and IPostProcessCommandContext are registered in DI as shared singletons (tracks #45)")]
+        public void Composition_Resolves_PostProcessRedirect_Types_As_Singletons()
+        {
+            using var provider = BuildProductionServiceCollection().BuildServiceProvider();
+
+            var renderTargetManagerA = provider.GetRequiredService<HEngine.Rendering.Managers.RenderTargetManager>();
+            var renderTargetManagerB = provider.GetRequiredService<HEngine.Rendering.Managers.RenderTargetManager>();
+            var pipelineManagerA = provider.GetRequiredService<HEngine.Rendering.Managers.DirectX12PostProcessPipelineManager>();
+            var pipelineManagerB = provider.GetRequiredService<HEngine.Rendering.Managers.DirectX12PostProcessPipelineManager>();
+            var postProcessContextA = provider.GetRequiredService<IPostProcessCommandContext>();
+            var postProcessContextB = provider.GetRequiredService<IPostProcessCommandContext>();
+
+            Assert.Same(renderTargetManagerA, renderTargetManagerB);
+            Assert.Same(pipelineManagerA, pipelineManagerB);
+            Assert.Same(postProcessContextA, postProcessContextB);
+            Assert.IsType<DirectX12PostProcessCommandContext>(postProcessContextA);
+            Assert.Same(postProcessContextA, provider.GetRequiredService<DirectX12PostProcessCommandContext>());
+        }
+
         [Fact(DisplayName = "Production composition resolves the real RenderPipeline/RenderingSystem implementations, not a test double")]
         public void Composition_Resolves_RenderPipeline_And_RenderingSystem_As_Concrete_Production_Types()
         {

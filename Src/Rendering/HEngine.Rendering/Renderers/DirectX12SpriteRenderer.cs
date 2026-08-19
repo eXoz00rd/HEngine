@@ -34,6 +34,7 @@ public class DirectX12SpriteRenderer : ISpriteRenderer
     private ComPtr<ID3D12RootSignature> _lastBoundRootSig;
     private ulong _lastBoundConstantBufferAddress;
     private bool _stateValid;
+    private bool _useHdrRenderTarget;
 
     public DirectX12SpriteRenderer(
         ILogger<DirectX12SpriteRenderer> logger,
@@ -119,6 +120,16 @@ public class DirectX12SpriteRenderer : ISpriteRenderer
         _bufferManager.UpdateCameraConstants(view, projection);
     }
 
+    /// <summary>
+    /// Selects the PSO variant used by subsequent <see cref="FlushBatch"/> calls: the swap-chain-format
+    /// PSO by default, or <see cref="DirectX12PipelineStateManager.HdrPipelineState"/> when the sprite
+    /// pass is redirected to <see cref="RenderTargetManager"/>'s HDR target for post-processing (tracks #45).
+    /// </summary>
+    public void SetRenderTargetFormat(bool useHdrRenderTarget)
+    {
+        _useHdrRenderTarget = useHdrRenderTarget;
+    }
+
     public void InvalidateStateCache()
     {
         unsafe
@@ -178,7 +189,7 @@ public class DirectX12SpriteRenderer : ISpriteRenderer
                     _lastBoundRootSig = currentRootSig;
                 }
 
-                var currentPipeline = _pipelineManager.PipelineState;
+                var currentPipeline = _useHdrRenderTarget ? _pipelineManager.HdrPipelineState : _pipelineManager.PipelineState;
                 if (!_stateValid || _lastBoundPipeline.Handle != currentPipeline.Handle)
                 {
                     commandList.SetPipelineState(currentPipeline);
