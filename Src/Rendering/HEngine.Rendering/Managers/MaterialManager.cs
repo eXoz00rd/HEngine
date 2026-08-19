@@ -9,6 +9,9 @@ public class MaterialManager
 {
     private readonly Dictionary<string, Material> _materials = new();
     private readonly Dictionary<string, MaterialTextureBindings> _textureBindings = new();
+    private readonly Dictionary<string, uint> _nameToId = new();
+    private readonly Dictionary<uint, string> _idToName = new();
+    private uint _nextId = 1;
     private readonly object _lock = new();
 
     // ...existing GetOrCreate, Register, TryGet, Remove, Clear, Count...
@@ -48,6 +51,51 @@ public class MaterialManager
         {
             _materials.Remove(name);
             _textureBindings.Remove(name);
+
+            if (_nameToId.Remove(name, out var id))
+                _idToName.Remove(id);
+        }
+    }
+
+    /// <summary>
+    /// Registers a material under a name and returns a stable numeric id for it,
+    /// reusing the existing id if the name was already registered.
+    /// </summary>
+    public uint RegisterWithId(string name, Material material)
+    {
+        lock (_lock)
+        {
+            _materials[name] = material;
+
+            if (_nameToId.TryGetValue(name, out var existingId))
+                return existingId;
+
+            var id = _nextId++;
+            _nameToId[name] = id;
+            _idToName[id] = name;
+            return id;
+        }
+    }
+
+    /// <summary>
+    /// Resolves a numeric material id (as assigned by RegisterWithId) back to its name and material.
+    /// Id 0 is reserved for "no material" and always fails.
+    /// </summary>
+    public bool TryGetById(uint materialId, out string? name, out Material? material)
+    {
+        lock (_lock)
+        {
+            if (materialId != 0 && _idToName.TryGetValue(materialId, out var foundName) &&
+                _materials.TryGetValue(foundName, out var foundMaterial))
+            {
+                name = foundName;
+                material = foundMaterial;
+                return true;
+            }
+
+            name = null;
+            material = null;
+            return false;
         }
     }
 
@@ -57,6 +105,8 @@ public class MaterialManager
         {
             _materials.Clear();
             _textureBindings.Clear();
+            _nameToId.Clear();
+            _idToName.Clear();
         }
     }
 

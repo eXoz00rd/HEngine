@@ -59,6 +59,9 @@ public readonly struct ShaderVariant : IEquatable<ShaderVariant>
         if (HasFeature(ShaderFeatureFlags.UseParallaxMapping))
             defines["USE_PARALLAX_MAPPING"] = "1";
 
+        if (HasFeature(ShaderFeatureFlags.UseAlbedoMap))
+            defines["USE_ALBEDO_MAP"] = "1";
+
         return defines;
     }
 

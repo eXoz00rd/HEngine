@@ -24,6 +24,8 @@ public class SilkDirectX12Renderer : IRenderer
     private readonly ISpriteRenderer _spriteRenderer;
     private readonly ShadowMapManager _shadowMapManager;
     private readonly ShadowSettings _shadowSettings;
+    private readonly TextureManager _textureManager;
+    private readonly DescriptorHeapManager _descriptorHeapManager;
 
     private DirectX12CommandList _commandList;
     private bool _disposed;
@@ -33,12 +35,14 @@ public class SilkDirectX12Renderer : IRenderer
     private DirectX12MeshRenderer _meshRenderer = null!;
     private MeshDrawContext _meshDrawContext = null!;
     private LightData[] _lights = Array.Empty<LightData>();
+    private readonly Material _meshDrawMaterial = new();
 
     private const int MeshDrawStackAllocThreshold = 256;
 
     public SilkDirectX12Renderer(IGraphicsDevice device, IRenderBatch<SpriteData> spriteBatch,
         ISpriteRenderer spriteRenderer, IShaderManager shaderManager, ShadowMapManager shadowMapManager,
-        ShadowSettings shadowSettings, ILogger<SilkDirectX12Renderer> logger, ILoggerFactory loggerFactory)
+        ShadowSettings shadowSettings, TextureManager textureManager, DescriptorHeapManager descriptorHeapManager,
+        ILogger<SilkDirectX12Renderer> logger, ILoggerFactory loggerFactory)
     {
         _device = device ?? throw new ArgumentNullException(nameof(device));
         _spriteBatch = spriteBatch ?? throw new ArgumentNullException(nameof(spriteBatch));
@@ -46,6 +50,8 @@ public class SilkDirectX12Renderer : IRenderer
         _shaderManager = shaderManager ?? throw new ArgumentNullException(nameof(shaderManager));
         _shadowMapManager = shadowMapManager ?? throw new ArgumentNullException(nameof(shadowMapManager));
         _shadowSettings = shadowSettings ?? throw new ArgumentNullException(nameof(shadowSettings));
+        _textureManager = textureManager ?? throw new ArgumentNullException(nameof(textureManager));
+        _descriptorHeapManager = descriptorHeapManager ?? throw new ArgumentNullException(nameof(descriptorHeapManager));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
         _commandList = null!;
@@ -87,8 +93,10 @@ public class SilkDirectX12Renderer : IRenderer
 
             var dx12Device = (DirectX12Device)_device;
             var d3dDevice = dx12Device.GetDevice();
+            _descriptorHeapManager.Initialize(d3dDevice);
+            _textureManager.SetDevice(d3dDevice);
             _meshRenderer = new DirectX12MeshRenderer();
-            _meshRenderer.Initialize(d3dDevice, _shadowMapManager, _shadowSettings.Enabled);
+            _meshRenderer.Initialize(d3dDevice, _shadowMapManager, _shadowSettings.Enabled, _textureManager);
             _meshRenderer.SetCommandQueue(dx12Device.GetDirectX12CommandQueue());
             _meshDrawContext = new MeshDrawContext(this);
 
@@ -309,7 +317,7 @@ public class SilkDirectX12Renderer : IRenderer
         _spriteBatch.Render(_commandList);
     }
 
-    public void DrawMesh(Matrix4x4 transform, ReadOnlySpan<float> vertices, ReadOnlySpan<uint> indices)
+    public void DrawMesh(Matrix4x4 transform, ReadOnlySpan<float> vertices, ReadOnlySpan<uint> indices, MaterialData? material = null)
     {
         if (_disposed || !IsInitialized)
         {
@@ -398,7 +406,31 @@ public class SilkDirectX12Renderer : IRenderer
             _meshDrawContext.ViewMatrix = _commandList.CurrentViewMatrix;
             _meshDrawContext.ProjectionMatrix = _commandList.CurrentProjectionMatrix;
 
-            _meshRenderer.DrawMesh(transform, meshVertices, indices, _meshDrawContext, lights: _lights);
+            Material? meshMaterial = null;
+            var diffuseTextureHandle = -1;
+            var normalTextureHandle = -1;
+            var metallicRoughnessTextureHandle = -1;
+            var emissiveTextureHandle = -1;
+            var aoTextureHandle = -1;
+            if (material.HasValue)
+            {
+                var m = material.Value;
+                _meshDrawMaterial.DiffuseColor = m.DiffuseColor;
+                _meshDrawMaterial.Metallic = m.Metallic;
+                _meshDrawMaterial.Roughness = m.Roughness;
+                _meshDrawMaterial.SetProperty("_AO", m.AO);
+                _meshDrawMaterial.SetProperty("_EmissiveColor", m.EmissiveColor);
+                _meshDrawMaterial.SetProperty("_EmissiveIntensity", m.EmissiveIntensity);
+                meshMaterial = _meshDrawMaterial;
+                diffuseTextureHandle = m.DiffuseTextureHandle;
+                normalTextureHandle = m.NormalTextureHandle;
+                metallicRoughnessTextureHandle = m.MetallicRoughnessTextureHandle;
+                emissiveTextureHandle = m.EmissiveTextureHandle;
+                aoTextureHandle = m.AOTextureHandle;
+            }
+
+            _meshRenderer.DrawMesh(transform, meshVertices, indices, _meshDrawContext, meshMaterial, _lights,
+                diffuseTextureHandle, normalTextureHandle, metallicRoughnessTextureHandle, emissiveTextureHandle, aoTextureHandle);
         }
         catch (Exception ex)
         {

@@ -25,6 +25,19 @@ public sealed class ShaderVariantCompiler : IDisposable
         return CompileShaderWithDefines(shaderCode, entryPoint, target, defines, shaderFileName, variant.GetVariantName());
     }
 
+    /// <summary>
+    /// Compiles a shader with no feature-flag defines, for shaders that aren't mesh-variant-driven
+    /// (e.g. fullscreen post-process passes).
+    /// </summary>
+    public ComPtr<ID3D10Blob> CompileShader(
+        string shaderCode,
+        string entryPoint,
+        string target,
+        string shaderFileName = "unknown")
+    {
+        return CompileShaderWithDefines(shaderCode, entryPoint, target, new Dictionary<string, string>(), shaderFileName, "NoVariant");
+    }
+
     private ComPtr<ID3D10Blob> CompileShaderWithDefines(
         string shaderCode,
         string entryPoint,
@@ -34,8 +47,8 @@ public sealed class ShaderVariantCompiler : IDisposable
         string variantName)
     {
         var shaderBytes = Encoding.UTF8.GetBytes(shaderCode);
-        var entryPointBytes = Encoding.UTF8.GetBytes(entryPoint);
-        var targetBytes = Encoding.UTF8.GetBytes(target);
+        var entryPointBytes = Encoding.UTF8.GetBytes(entryPoint + "\0");
+        var targetBytes = Encoding.UTF8.GetBytes(target + "\0");
 
         unsafe
         {

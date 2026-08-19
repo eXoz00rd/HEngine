@@ -123,7 +123,7 @@ public class DirectX12CommandQueue : ICommandQueue
         }
     }
 
-    private void WaitForGpuIdle()
+    public void WaitForGpuIdle()
     {
         var finalFenceValue = _fenceValue;
         _commandQueue.Signal(_fence, finalFenceValue);
