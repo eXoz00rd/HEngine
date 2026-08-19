@@ -198,6 +198,33 @@ public sealed class TextureManager : ITextureManager
         return DescriptorHandle.Invalid;
     }
 
+    /// <summary>
+    /// Writes an SRV for a loaded texture directly into a caller-owned descriptor slot
+    /// (e.g. a per-draw-call slot in another heap's own descriptor table). No-op if the
+    /// texture has no GPU resource (headless mode or an unknown handle).
+    /// </summary>
+    public unsafe void WriteSrvTo(int textureHandle, CpuDescriptorHandle destination)
+    {
+        if (!_textures.TryGetValue(textureHandle, out var entry) || !entry.HasGpuResource)
+            return;
+
+        var loadResult = entry.LoadResult;
+        var mipLevels = loadResult.IsCompressed
+            ? loadResult.MipLevels
+            : CalculateMipLevels(loadResult.Width, loadResult.Height);
+
+        var srvDesc = new ShaderResourceViewDesc
+        {
+            Format = loadResult.DxgiFormat,
+            ViewDimension = SrvDimension.Texture2D,
+            Shader4ComponentMapping = 0x00001688, // D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING
+        };
+        srvDesc.Texture2D.MipLevels = (uint)mipLevels;
+        srvDesc.Texture2D.MostDetailedMip = 0;
+
+        _device.CreateShaderResourceView(entry.GpuResource, in srvDesc, destination);
+    }
+
     public void Dispose()
     {
         if (_disposed)

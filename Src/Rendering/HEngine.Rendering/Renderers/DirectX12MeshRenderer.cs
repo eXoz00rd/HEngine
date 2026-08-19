@@ -168,11 +168,7 @@ public sealed class DirectX12MeshRenderer : IDisposable
 
         var diffuseSlot = 1 + _currentDrawCallIndex;
         var resolvedDiffuseHandle = diffuseTextureHandle >= 0 ? diffuseTextureHandle : _textureManager!.DefaultWhiteTexture;
-        var diffuseSrvHandle = _textureManager!.GetSrvHandle(resolvedDiffuseHandle);
-        if (diffuseSrvHandle.IsValid)
-        {
-            _device.CopyDescriptorsSimple(1, GetMeshSrvCpuHandle(diffuseSlot), diffuseSrvHandle.CpuHandle, DescriptorHeapType.CbvSrvUav);
-        }
+        _textureManager!.WriteSrvTo(resolvedDiffuseHandle, GetMeshSrvCpuHandle(diffuseSlot));
 
         var meshSrvHeap = _meshSrvHeap;
         commandList.SetDescriptorHeaps(1, ref meshSrvHeap);
@@ -183,7 +179,7 @@ public sealed class DirectX12MeshRenderer : IDisposable
             if (_shadowMapManager is { IsInitialized: true, HasShadowData: true })
             {
                 var shadowAddress = UpdateShadowConstantBuffer();
-                _device.CopyDescriptorsSimple(1, GetMeshSrvCpuHandle(0), _shadowMapManager.GetSrvCpuHandle(), DescriptorHeapType.CbvSrvUav);
+                _shadowMapManager.WriteSrvTo(GetMeshSrvCpuHandle(0));
                 commandList.SetGraphicsRootDescriptorTable(3, GetMeshSrvGpuHandle(0));
                 commandList.SetGraphicsRootConstantBufferView(4, shadowAddress);
             }

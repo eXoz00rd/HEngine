@@ -86,6 +86,26 @@ public sealed class ShadowMapManager : IDisposable
         return _srvHeap.GetGPUDescriptorHandleForHeapStart();
     }
 
+    /// <summary>
+    /// Writes the shadow map SRV directly into a caller-owned descriptor slot
+    /// (e.g. a per-frame slot shared with other resources in a unified heap).
+    /// </summary>
+    public unsafe void WriteSrvTo(CpuDescriptorHandle destination)
+    {
+        var srvDesc = new ShaderResourceViewDesc
+        {
+            Format = Format.FormatR32Float,
+            ViewDimension = SrvDimension.Texture2Darray,
+            Shader4ComponentMapping = 0x00001688u
+        };
+        srvDesc.Anonymous.Texture2DArray.MostDetailedMip = 0;
+        srvDesc.Anonymous.Texture2DArray.MipLevels = 1;
+        srvDesc.Anonymous.Texture2DArray.FirstArraySlice = 0;
+        srvDesc.Anonymous.Texture2DArray.ArraySize = (uint)_cascadeCount;
+
+        _device.CreateShaderResourceView(_shadowTexture, &srvDesc, destination);
+    }
+
     public ComPtr<ID3D12Resource> ShadowTexture => _shadowTexture;
 
     public ComPtr<ID3D12DescriptorHeap> SrvHeap => _srvHeap;
