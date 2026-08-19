@@ -48,7 +48,13 @@ public sealed class ShadowMapManager : IDisposable
 
     public void Initialize(ComPtr<ID3D12Device> device, int resolution, int cascadeCount)
     {
-        if (_initialized) ReleaseGpuResources();
+        ObjectDisposedException.ThrowIf(_disposed, this);
+
+        if (_initialized)
+        {
+            ReleaseGpuResources();
+            _initialized = false;
+        }
 
         _device = device;
         _resolution = Math.Max(resolution, 64);

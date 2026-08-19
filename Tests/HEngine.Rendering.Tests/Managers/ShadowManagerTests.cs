@@ -87,6 +87,16 @@ public class ShadowManagerTests
         Assert.Equal(50f, manager.ShadowConstants.CascadeSplits.X, 3);
     }
 
+    [Fact(DisplayName = "ShadowMapManager Initialize after Dispose throws ObjectDisposedException")]
+    public void ShadowMapManager_Initialize_AfterDispose_Throws()
+    {
+        var manager = new ShadowMapManager();
+        manager.Dispose();
+
+        Assert.Throws<ObjectDisposedException>(
+            () => manager.Initialize(default, resolution: 1024, cascadeCount: 4));
+    }
+
     [Fact(DisplayName = "SamplerManager registers ShadowComparison sampler by default")]
     public void SamplerManager_RegistersShadowComparisonSampler()
     {
