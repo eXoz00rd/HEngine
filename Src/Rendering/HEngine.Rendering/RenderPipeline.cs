@@ -155,8 +155,9 @@ public class RenderPipeline : IRenderPipeline {
             return;
 
         throw new InvalidOperationException(
-            $"PostProcessStack has {_postProcessStack.EnabledEffectCount} enabled effect(s), but RenderPipeline has no " +
-            "production IPostProcessCommandContext to execute them (tracks #20). NullPostProcessCommandContext is a " +
-            "headless/test-only no-op and must not run real effects.");
+            $"PostProcessStack has {_postProcessStack.EnabledEffectCount} enabled effect(s). A production " +
+            "IPostProcessCommandContext (DirectX12PostProcessCommandContext) now exists, but RenderPipeline still " +
+            "renders the main scene straight to the swap chain, so there is nowhere to redirect it from (tracks #45). " +
+            "NullPostProcessCommandContext is a headless/test-only no-op and must not run real effects.");
     }
 }
