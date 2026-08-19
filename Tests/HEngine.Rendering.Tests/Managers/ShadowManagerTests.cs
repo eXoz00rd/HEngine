@@ -97,6 +97,25 @@ public class ShadowManagerTests
             () => manager.Initialize(default, resolution: 1024, cascadeCount: 4));
     }
 
+    [Fact(DisplayName = "ShadowMapManager Initialize with a null device handle throws ArgumentException")]
+    public void ShadowMapManager_Initialize_WithNullDeviceHandle_Throws()
+    {
+        var manager = new ShadowMapManager();
+
+        Assert.Throws<ArgumentException>(
+            () => manager.Initialize(default, resolution: 1024, cascadeCount: 4));
+    }
+
+    [Fact(DisplayName = "ShadowMapManager SetShadowConstants rejects a ShadowCbuffer with zero cascades")]
+    public void ShadowMapManager_SetShadowConstants_WithZeroCascades_Throws()
+    {
+        var manager = new ShadowMapManager();
+        var constants = ShadowCbuffer.Create(ReadOnlySpan<Matrix4x4>.Empty, ReadOnlySpan<float>.Empty);
+
+        Assert.Throws<ArgumentException>(() => manager.SetShadowConstants(constants));
+        Assert.False(manager.HasShadowData);
+    }
+
     [Fact(DisplayName = "SamplerManager registers ShadowComparison sampler by default")]
     public void SamplerManager_RegistersShadowComparisonSampler()
     {
