@@ -165,7 +165,7 @@ public sealed class DirectX12ShadowRenderer : IShadowRenderer, IDisposable
 
         ((DirectX12Device)_device).RestoreBackBufferTarget();
 
-        _shadowMapManager.SetShadowConstants(ShadowCbuffer.Create(lightVPs, cascadeSplits));
+        _shadowMapManager.SetShadowConstants(ShadowCbuffer.Create(lightVPs, cascadeSplits, _shadowMapManager.Resolution));
 
         if (_logger?.IsEnabled(LogLevel.Debug) == true)
         {

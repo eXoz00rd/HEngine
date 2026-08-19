@@ -58,7 +58,7 @@ cbuffer ShadowConstants : register(b3)
     row_major float4x4 LightVP[4];
     float4 CascadeSplits;
     int CascadeCount;
-    float _shadowPad0;
+    float InvShadowMapResolution;
     float _shadowPad1;
     float _shadowPad2;
 };
@@ -77,7 +77,7 @@ float SampleShadowPCF(float3 worldPos, int cascade)
     float shadowBias = 0.001;
 
     float shadow = 0.0;
-    float texelSize = 1.0 / 2048.0;
+    float texelSize = InvShadowMapResolution;
 
     [unroll]
     for (int x = -1; x <= 1; x++)
