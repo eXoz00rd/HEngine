@@ -33,7 +33,6 @@ public sealed class DemoScene
     {
         _logger.LogInformation("Creating presentation scene...");
 
-        // Ground plane
         var groundEntity = _worldManager.CreateEntity();
         _worldManager.AddComponent(groundEntity, new Transform
         {
@@ -48,7 +47,6 @@ public sealed class DemoScene
             Color = new Vector4(0.2f, 0.4f, 0.2f, 1.0f)
         });
 
-        // Central pyramid of cubes (5x5 base)
         const int pyramidRows = 4;
         const float cubeSize = 1.5f;
         const float cubeGap = 0.15f;
@@ -110,7 +108,6 @@ public sealed class DemoScene
         });
         _worldManager.AddComponent(sphereEntity, new Renderable { MaterialId = checkerMaterialId });
 
-        // Floating ring of cubes around the pyramid
         const int ringCount = 16;
         const float ringRadius = 8f;
         const float ringHeight = pyramidRows * cubeSpacing + 3f;
@@ -146,7 +143,6 @@ public sealed class DemoScene
             _worldManager.AddComponent(ringEntity, new Renderable());
         }
 
-        // Row of smaller cubes in front (color gradient arc)
         const int arcCount = 12;
         const float arcRadius = 12f;
 
@@ -182,12 +178,10 @@ public sealed class DemoScene
             _worldManager.AddComponent(arcEntity, new Renderable());
         }
 
-        // 2D sprite badges floating above scene (pixel coordinates, Y=0 is screen top)
         var badgeSize = new Vector2(120f, 36f);
         var badgeY = 16f;
         var halfWidth = (_config.Window.Width / 2f) - (badgeSize.X / 2f);
 
-        // Left badge - centered horizontally in the left half
         var badgeLeftEntity = _worldManager.CreateEntity();
         _worldManager.AddComponent(badgeLeftEntity, new Transform2D
         {
@@ -200,7 +194,6 @@ public sealed class DemoScene
             Origin = new Vector2(0.5f, 0.5f)
         });
 
-        // Right badge - centered horizontally in the right half
         var badgeRightEntity = _worldManager.CreateEntity();
         _worldManager.AddComponent(badgeRightEntity, new Transform2D
         {
@@ -213,7 +206,6 @@ public sealed class DemoScene
             Origin = new Vector2(0.5f, 0.5f)
         });
 
-        // Corner decorative sprites (actual corners of the screen)
         var cornerSize = new Vector2(40f, 40f);
         var corners = new[]
         {
@@ -237,7 +229,6 @@ public sealed class DemoScene
             });
         }
 
-        // Directional light (sun)
         var dirLightEntity = _worldManager.CreateEntity();
         _worldManager.AddComponent(dirLightEntity, new Transform
         {
@@ -250,7 +241,6 @@ public sealed class DemoScene
             new Vector3(1.0f, 0.95f, 0.8f)
         ));
 
-        // Point lights (colored glowing orbs with actual PointLight components)
         var pointLightConfigs = new[]
         {
             (new Vector3(-6, 3, -4), new Vector3(1.0f, 0.2f, 0.2f), new Vector4(1.0f, 0.3f, 0.3f, 1.0f)),
@@ -276,7 +266,6 @@ public sealed class DemoScene
             _worldManager.AddComponent(lightEntity, new PointLight(lightColor, intensity: 3.0f, range: 15f));
         }
 
-        // Background sky plane (flat on ground at high Y, no rotation needed)
         var skyEntity = _worldManager.CreateEntity();
         _worldManager.AddComponent(skyEntity, new Transform
         {
@@ -291,9 +280,6 @@ public sealed class DemoScene
             Color = new Vector4(0.15f, 0.2f, 0.4f, 1.0f)
         });
 
-        // Background back wall (standing vertical, rotated X by 90 degrees from flat plane)
-        // Note: VA0=2 is a flat Y-up plane. To make it stand vertically facing -Z,
-        // we rotate it -90 degrees around X axis so the normal points toward -Z
         var backWallEntity = _worldManager.CreateEntity();
         _worldManager.AddComponent(backWallEntity, new Transform
         {
@@ -308,7 +294,6 @@ public sealed class DemoScene
             Color = new Vector4(0.1f, 0.12f, 0.2f, 1.0f)
         });
 
-        // Side wall planes for depth (standing vertical)
         var leftWallEntity = _worldManager.CreateEntity();
         _worldManager.AddComponent(leftWallEntity, new Transform
         {
