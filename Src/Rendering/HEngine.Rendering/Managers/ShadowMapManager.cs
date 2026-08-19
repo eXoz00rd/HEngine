@@ -42,13 +42,37 @@ public sealed class ShadowMapManager : IDisposable
 
     public void SetShadowConstants(ShadowCbuffer constants)
     {
+        if (constants.CascadeCount <= 0)
+        {
+            throw new ArgumentException(
+                $"ShadowCbuffer.CascadeCount must be positive, but was {constants.CascadeCount}. Binding " +
+                "shadow data with zero cascades would make the USE_SHADOWS shader compute a negative cascade " +
+                "index and read out of bounds.", nameof(constants));
+        }
+
         ShadowConstants = constants;
         HasShadowData = true;
     }
 
     public void Initialize(ComPtr<ID3D12Device> device, int resolution, int cascadeCount)
     {
-        if (_initialized) ReleaseGpuResources();
+        ObjectDisposedException.ThrowIf(_disposed, this);
+
+        unsafe
+        {
+            if (device.Handle == null)
+            {
+                throw new ArgumentException(
+                    "ShadowMapManager.Initialize was called with a null ID3D12Device handle; GPU resource " +
+                    "creation would dereference a null device pointer.", nameof(device));
+            }
+        }
+
+        if (_initialized)
+        {
+            ReleaseGpuResources();
+            _initialized = false;
+        }
 
         _device = device;
         _resolution = Math.Max(resolution, 64);
