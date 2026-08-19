@@ -3,7 +3,10 @@ using HEngine.Core.Rendering.Contracts;
 using HEngine.Core.Rendering.Data;
 using HEngine.Rendering.Devices;
 using HEngine.Rendering.Input;
+using HEngine.Rendering.Managers;
 using HEngine.Rendering.Renderers;
+using Silk.NET.Core.Native;
+using Silk.NET.Direct3D12;
 
 namespace HEngine.Rendering.Tests.Renderers;
 
@@ -99,6 +102,26 @@ public class DirectX12MeshRendererTests
 
         Assert.False(renderer.DepthTestEnabled);
         Assert.False(renderer.BackFaceCullingEnabled);
+    }
+
+    [Fact(DisplayName = "DirectX12MeshRenderer initializes headlessly with shadow parameters without creating GPU resources")]
+    public void Initialize_Headless_With_Shadows_Does_Not_Throw()
+    {
+        var renderer = new DirectX12MeshRenderer();
+        var shadowMapManager = new ShadowMapManager();
+
+        renderer.Initialize(device: null, shadowMapManager: shadowMapManager, useShadows: true);
+
+        Assert.True(renderer.IsInitialized);
+    }
+
+    [Fact(DisplayName = "Initialize throws when useShadows is true, a device is provided, but no ShadowMapManager is given")]
+    public void Initialize_Throws_When_UseShadows_True_Without_ShadowMapManager()
+    {
+        var renderer = new DirectX12MeshRenderer();
+
+        Assert.Throws<InvalidOperationException>(
+            () => renderer.Initialize(default(ComPtr<ID3D12Device>), shadowMapManager: null, useShadows: true));
     }
 
     [Fact(DisplayName = "DrawMesh computes MVP and records vertex/index counts for cube")]

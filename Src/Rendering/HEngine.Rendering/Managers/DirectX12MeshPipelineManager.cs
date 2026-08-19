@@ -50,6 +50,16 @@ public class DirectX12MeshPipelineManager : IDisposable
     {
         unsafe
         {
+            var shadowSrvRange = new DescriptorRange
+            {
+                RangeType = DescriptorRangeType.Srv,
+                NumDescriptors = 1,
+                BaseShaderRegister = 5,
+                RegisterSpace = 0,
+                OffsetInDescriptorsFromTableStart = 0
+            };
+
+            var shadowSrvRangePtr = &shadowSrvRange;
             var rootParameters = new RootParameter[]
             {
                 new()
@@ -69,17 +79,47 @@ public class DirectX12MeshPipelineManager : IDisposable
                     ParameterType = RootParameterType.TypeCbv,
                     ShaderVisibility = ShaderVisibility.All,
                     Descriptor = new RootDescriptor { ShaderRegister = 2, RegisterSpace = 0 }
+                },
+                new()
+                {
+                    ParameterType = RootParameterType.TypeDescriptorTable,
+                    ShaderVisibility = ShaderVisibility.Pixel,
+                    DescriptorTable = new RootDescriptorTable { NumDescriptorRanges = 1, PDescriptorRanges = shadowSrvRangePtr }
+                },
+                new()
+                {
+                    ParameterType = RootParameterType.TypeCbv,
+                    ShaderVisibility = ShaderVisibility.Pixel,
+                    Descriptor = new RootDescriptor { ShaderRegister = 3, RegisterSpace = 0 }
                 }
             };
 
+            var shadowSampler = new StaticSamplerDesc
+            {
+                Filter = Filter.ComparisonMinMagMipLinear,
+                AddressU = Silk.NET.Direct3D12.TextureAddressMode.Clamp,
+                AddressV = Silk.NET.Direct3D12.TextureAddressMode.Clamp,
+                AddressW = Silk.NET.Direct3D12.TextureAddressMode.Clamp,
+                MipLODBias = 0f,
+                MaxAnisotropy = 0,
+                ComparisonFunc = ComparisonFunc.LessEqual,
+                BorderColor = StaticBorderColor.OpaqueWhite,
+                MinLOD = 0f,
+                MaxLOD = float.MaxValue,
+                ShaderRegister = 1,
+                RegisterSpace = 0,
+                ShaderVisibility = ShaderVisibility.Pixel
+            };
+
+            var staticSamplersPtr = &shadowSampler;
             fixed (RootParameter* rootParametersPtr = rootParameters)
             {
             var rootSignatureDesc = new RootSignatureDesc
             {
                 NumParameters = (uint)rootParameters.Length,
                 PParameters = rootParametersPtr,
-                NumStaticSamplers = 0,
-                PStaticSamplers = null,
+                NumStaticSamplers = 1,
+                PStaticSamplers = staticSamplersPtr,
                 Flags = RootSignatureFlags.AllowInputAssemblerInputLayout
             };
 

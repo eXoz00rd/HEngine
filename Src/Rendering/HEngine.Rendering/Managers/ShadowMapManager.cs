@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using HEngine.Rendering.Data;
+using Microsoft.Extensions.Logging;
 using Silk.NET.Core.Native;
 using Silk.NET.Direct3D12;
 using Silk.NET.DXGI;
@@ -30,18 +31,30 @@ public sealed class ShadowMapManager : IDisposable
     public int Resolution => _resolution;
     public int CascadeCount => _cascadeCount;
 
+    public ShadowCbuffer ShadowConstants { get; private set; }
+
+    public bool HasShadowData { get; private set; }
+
     public ShadowMapManager(ILogger<ShadowMapManager>? logger = null)
     {
         _logger = logger;
     }
 
+    public void SetShadowConstants(ShadowCbuffer constants)
+    {
+        ShadowConstants = constants;
+        HasShadowData = true;
+    }
+
     public void Initialize(ComPtr<ID3D12Device> device, int resolution, int cascadeCount)
     {
-        if (_initialized) Dispose();
+        if (_initialized) ReleaseGpuResources();
 
         _device = device;
         _resolution = Math.Max(resolution, 64);
         _cascadeCount = Math.Clamp(cascadeCount, 1, 4);
+        ShadowConstants = default;
+        HasShadowData = false;
 
         CreateDescriptorHeaps();
         CreateShadowTextureArray();
@@ -81,14 +94,7 @@ public sealed class ShadowMapManager : IDisposable
     {
         if (!_initialized) return;
 
-        _shadowTexture.Dispose();
-
-        _resolution = Math.Max(resolution, 64);
-        _cascadeCount = Math.Clamp(cascadeCount, 1, 4);
-
-        CreateShadowTextureArray();
-        CreateDsvs();
-        CreateSrv();
+        Initialize(_device, resolution, cascadeCount);
     }
 
     private unsafe void CreateDescriptorHeaps()
@@ -188,15 +194,22 @@ public sealed class ShadowMapManager : IDisposable
             GetSrvCpuHandle());
     }
 
+    private void ReleaseGpuResources()
+    {
+        _shadowTexture.Dispose();
+        _dsvHeap.Dispose();
+        _srvHeap.Dispose();
+    }
+
     public void Dispose()
     {
         if (_disposed) return;
 
-        _shadowTexture.Dispose();
-        _dsvHeap.Dispose();
-        _srvHeap.Dispose();
+        ReleaseGpuResources();
         _d3d12.Dispose();
 
+        ShadowConstants = default;
+        HasShadowData = false;
         _initialized = false;
         _disposed = true;
     }

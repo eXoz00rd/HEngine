@@ -18,16 +18,18 @@ public struct ShadowCbuffer
     public Vector4 CascadeSplits;
 
     public int CascadeCount;
-    public float Pad0;
+    public float InvShadowMapResolution;
     public float Pad1;
     public float Pad2;
 
     public static ShadowCbuffer Create(
         ReadOnlySpan<Matrix4x4> lightVPs,
-        ReadOnlySpan<float> splits)
+        ReadOnlySpan<float> splits,
+        int shadowMapResolution = 2048)
     {
         var cb = new ShadowCbuffer();
         cb.CascadeCount = Math.Min(lightVPs.Length, 4);
+        cb.InvShadowMapResolution = shadowMapResolution > 0 ? 1f / shadowMapResolution : 0f;
 
         if (cb.CascadeCount > 0) cb.LightVP0 = lightVPs[0];
         if (cb.CascadeCount > 1) cb.LightVP1 = lightVPs[1];
