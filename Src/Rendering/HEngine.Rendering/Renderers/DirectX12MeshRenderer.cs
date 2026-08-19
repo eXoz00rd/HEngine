@@ -55,6 +55,13 @@ public sealed class DirectX12MeshRenderer : IDisposable
 
         if (device is ComPtr<ID3D12Device> d3dDevice)
         {
+            if (useShadows && shadowMapManager is null)
+            {
+                throw new InvalidOperationException(
+                    "DirectX12MeshRenderer.Initialize was called with useShadows=true but no ShadowMapManager was " +
+                    "provided; the USE_SHADOWS shader variant would compile but its shadow resources would never be bound.");
+            }
+
             _device = d3dDevice;
 
             var basePath = AppDomain.CurrentDomain.BaseDirectory;
@@ -143,7 +150,7 @@ public sealed class DirectX12MeshRenderer : IDisposable
         commandList.SetGraphicsRootConstantBufferView(1, materialAddress);
         commandList.SetGraphicsRootConstantBufferView(2, lightAddress);
 
-        if (_useShadows && _shadowMapManager is { IsInitialized: true })
+        if (_useShadows && _shadowMapManager is { IsInitialized: true, HasShadowData: true })
         {
             var shadowAddress = UpdateShadowConstantBuffer();
             var shadowSrvHeap = _shadowMapManager.SrvHeap;

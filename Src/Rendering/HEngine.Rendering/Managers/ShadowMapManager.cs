@@ -31,13 +31,8 @@ public sealed class ShadowMapManager : IDisposable
     public int Resolution => _resolution;
     public int CascadeCount => _cascadeCount;
 
-    /// <summary>
-    /// Cascade light-VP matrices and split distances from the most recent shadow pass,
-    /// for the main mesh pass to bind as the USE_SHADOWS variant's b3 cbuffer.
-    /// </summary>
     public ShadowCbuffer ShadowConstants { get; private set; }
 
-    /// <summary>Whether <see cref="ShadowConstants"/> has been populated by a completed shadow pass.</summary>
     public bool HasShadowData { get; private set; }
 
     public ShadowMapManager(ILogger<ShadowMapManager>? logger = null)
