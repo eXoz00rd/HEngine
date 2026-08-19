@@ -60,11 +60,12 @@ public class DirectX12MeshPipelineManager : IDisposable
                     OffsetInDescriptorsFromTableStart = 0
                 };
 
-                // Descriptor range for all material textures (t0-t7)
+                // Descriptor range for the material textures PBR.hlsl declares (t0-t4);
+                // t5 is reserved for the shadow map range above and must not overlap it.
                 var materialSrvRange = new DescriptorRange
                 {
                     RangeType = DescriptorRangeType.Srv,
-                    NumDescriptors = 8, // t0-t7
+                    NumDescriptors = 5, // t0-t4
                     BaseShaderRegister = 0,
                     RegisterSpace = 0,
                     OffsetInDescriptorsFromTableStart = 0
