@@ -17,5 +17,6 @@ public enum ShaderFeatureFlags : uint
     UseShadows = 1 << 8,
     UseAmbientOcclusion = 1 << 9,
     UseMetallicRoughness = 1 << 10,
-    UseParallaxMapping = 1 << 11
+    UseParallaxMapping = 1 << 11,
+    UseAlbedoMap = 1 << 12
 }

@@ -72,7 +72,7 @@ file sealed class NullRenderer : IRenderer
     {
     }
 
-    public void DrawMesh(Matrix4x4 transform, ReadOnlySpan<float> vertices, ReadOnlySpan<uint> indices)
+    public void DrawMesh(Matrix4x4 transform, ReadOnlySpan<float> vertices, ReadOnlySpan<uint> indices, MaterialData? material = null)
     {
     }
 

@@ -11,6 +11,8 @@ using HEngine.Core.Primitives;
 using HEngine.Core.Rendering.Contracts;
 using HEngine.Core.Systems;
 using HEngine.Rendering.Components;
+using HEngine.Rendering.Data;
+using HEngine.Rendering.Managers;
 using Microsoft.Extensions.Logging;
 
 namespace HEngine;
@@ -62,6 +64,7 @@ public class GameEngine : IDisposable
     private readonly IRenderingSystem _renderingSystem;
     private readonly IRenderManager _renderManager;
     private readonly WorldManager _worldManager;
+    private readonly MaterialManager _materialManager;
     private bool _disposed;
 
     public GameEngine(
@@ -71,6 +74,7 @@ public class GameEngine : IDisposable
         IRenderingSystem renderingSystem,
         EngineConfiguration config,
         ICameraInputProvider cameraInput,
+        MaterialManager materialManager,
         ILogger<GameEngine> logger)
     {
         _gameLoop = gameLoop ?? throw new ArgumentNullException(nameof(gameLoop));
@@ -79,6 +83,7 @@ public class GameEngine : IDisposable
         _renderingSystem = renderingSystem ?? throw new ArgumentNullException(nameof(renderingSystem));
         _config = config ?? throw new ArgumentNullException(nameof(config));
         _cameraInput = cameraInput ?? throw new ArgumentNullException(nameof(cameraInput));
+        _materialManager = materialManager ?? throw new ArgumentNullException(nameof(materialManager));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
         Initialize();
@@ -234,7 +239,10 @@ public class GameEngine : IDisposable
             }
         }
 
-        // Sphere at center top
+        var checkerTexturePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Textures", "demo_checker.png");
+        var checkerMaterial = new Material { DiffuseTexture = checkerTexturePath };
+        var checkerMaterialId = _materialManager.RegisterWithId("DemoChecker", checkerMaterial);
+
         var sphereEntity = _worldManager.CreateEntity();
         _worldManager.AddComponent(sphereEntity, new Transform
         {
@@ -248,7 +256,7 @@ public class GameEngine : IDisposable
             IndexCount = 36,
             Color = new Vector4(0.8f, 0.2f, 0.9f, 1.0f)
         });
-        _worldManager.AddComponent(sphereEntity, new Renderable());
+        _worldManager.AddComponent(sphereEntity, new Renderable { MaterialId = checkerMaterialId });
 
         // Floating ring of cubes around the pyramid
         const int ringCount = 16;

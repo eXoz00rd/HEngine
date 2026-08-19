@@ -85,10 +85,11 @@ public class MaterialManager
     {
         lock (_lock)
         {
-            if (materialId != 0 && _idToName.TryGetValue(materialId, out var foundName))
+            if (materialId != 0 && _idToName.TryGetValue(materialId, out var foundName) &&
+                _materials.TryGetValue(foundName, out var foundMaterial))
             {
                 name = foundName;
-                material = _materials[foundName];
+                material = foundMaterial;
                 return true;
             }
 
@@ -104,6 +105,8 @@ public class MaterialManager
         {
             _materials.Clear();
             _textureBindings.Clear();
+            _nameToId.Clear();
+            _idToName.Clear();
         }
     }
 

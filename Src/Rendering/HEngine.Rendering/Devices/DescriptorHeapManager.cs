@@ -195,8 +195,6 @@ internal sealed class DescriptorAllocator
         _incrementSize = device.GetDescriptorHandleIncrementSize(type);
 
         _cpuStart = heap.GetCPUDescriptorHandleForHeapStart();
-        // GetGPUDescriptorHandleForHeapStart is only valid to call on a shader-visible heap;
-        // calling it on the (CPU-only) staging heap throws under the D3D12 debug layer.
         _gpuStart = shaderVisible ? heap.GetGPUDescriptorHandleForHeapStart() : default;
 
         _freeList = new Stack<int>(capacity);

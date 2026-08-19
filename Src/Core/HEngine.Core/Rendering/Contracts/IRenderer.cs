@@ -21,7 +21,7 @@ public interface IRenderer : IDisposable
 
     void DrawSprite(Vector2 position, Vector2 size, Vector4 color);
     void FlushBatch();
-    void DrawMesh(Matrix4x4 transform, ReadOnlySpan<float> vertices, ReadOnlySpan<uint> indices);
+    void DrawMesh(Matrix4x4 transform, ReadOnlySpan<float> vertices, ReadOnlySpan<uint> indices, MaterialData? material = null);
 
     void Run();
 }
