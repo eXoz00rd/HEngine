@@ -239,7 +239,6 @@ public class GameEngine : IDisposable
             }
         }
 
-        // Sphere at center top - carries the demo checker material/texture (tracks #21)
         var checkerTexturePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Textures", "demo_checker.png");
         var checkerMaterial = new Material { DiffuseTexture = checkerTexturePath };
         var checkerMaterialId = _materialManager.RegisterWithId("DemoChecker", checkerMaterial);

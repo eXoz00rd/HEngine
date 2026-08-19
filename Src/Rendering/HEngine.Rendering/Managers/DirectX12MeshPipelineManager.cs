@@ -50,7 +50,6 @@ public class DirectX12MeshPipelineManager : IDisposable
     {
         unsafe
         {
-                // Descriptor range for shadow map (t5)
                 var shadowSrvRange = new DescriptorRange
                 {
                     RangeType = DescriptorRangeType.Srv,
@@ -60,12 +59,10 @@ public class DirectX12MeshPipelineManager : IDisposable
                     OffsetInDescriptorsFromTableStart = 0
                 };
 
-                // Descriptor range for the material textures PBR.hlsl declares (t0-t4);
-                // t5 is reserved for the shadow map range above and must not overlap it.
                 var materialSrvRange = new DescriptorRange
                 {
                     RangeType = DescriptorRangeType.Srv,
-                    NumDescriptors = 5, // t0-t4
+                    NumDescriptors = 5,
                     BaseShaderRegister = 0,
                     RegisterSpace = 0,
                     OffsetInDescriptorsFromTableStart = 0

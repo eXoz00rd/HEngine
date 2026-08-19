@@ -57,9 +57,6 @@ public sealed class TextureManager : ITextureManager
         _hasGpuDevice = true;
         _logger?.LogInformation("TextureManager: GPU device set, GPU texture creation enabled.");
 
-        // Textures (including the defaults created in the constructor) registered before the device
-        // was available were created headless; back-fill their GPU resources now so binding them later
-        // doesn't hand out an empty descriptor.
         if (_descriptorHeapManager is { IsInitialized: true })
         {
             foreach (var entry in _textures.Values)
@@ -198,11 +195,6 @@ public sealed class TextureManager : ITextureManager
         return DescriptorHandle.Invalid;
     }
 
-    /// <summary>
-    /// Writes an SRV for a loaded texture directly into a caller-owned descriptor slot
-    /// (e.g. a per-draw-call slot in another heap's own descriptor table). No-op if the
-    /// texture has no GPU resource (headless mode or an unknown handle).
-    /// </summary>
     public unsafe void WriteSrvTo(int textureHandle, CpuDescriptorHandle destination)
     {
         if (!_textures.TryGetValue(textureHandle, out var entry) || !entry.HasGpuResource)
@@ -217,7 +209,7 @@ public sealed class TextureManager : ITextureManager
         {
             Format = loadResult.DxgiFormat,
             ViewDimension = SrvDimension.Texture2D,
-            Shader4ComponentMapping = 0x00001688, // D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING
+            Shader4ComponentMapping = 0x00001688,
         };
         srvDesc.Texture2D.MipLevels = (uint)mipLevels;
         srvDesc.Texture2D.MostDetailedMip = 0;
