@@ -95,7 +95,7 @@ public class SilkDirectX12Renderer : IRenderer
             _descriptorHeapManager.Initialize(d3dDevice);
             _textureManager.SetDevice(d3dDevice);
             _meshRenderer = new DirectX12MeshRenderer();
-            _meshRenderer.Initialize(d3dDevice, _shadowMapManager, _shadowSettings.Enabled);
+            _meshRenderer.Initialize(d3dDevice, _shadowMapManager, _shadowSettings.Enabled, _textureManager);
             _meshRenderer.SetCommandQueue(dx12Device.GetDirectX12CommandQueue());
             _meshDrawContext = new MeshDrawContext(this);
 
@@ -316,7 +316,7 @@ public class SilkDirectX12Renderer : IRenderer
         _spriteBatch.Render(_commandList);
     }
 
-    public void DrawMesh(Matrix4x4 transform, ReadOnlySpan<float> vertices, ReadOnlySpan<uint> indices)
+    public void DrawMesh(Matrix4x4 transform, ReadOnlySpan<float> vertices, ReadOnlySpan<uint> indices, MaterialData? material = null)
     {
         if (_disposed || !IsInitialized)
         {
@@ -405,7 +405,24 @@ public class SilkDirectX12Renderer : IRenderer
             _meshDrawContext.ViewMatrix = _commandList.CurrentViewMatrix;
             _meshDrawContext.ProjectionMatrix = _commandList.CurrentProjectionMatrix;
 
-            _meshRenderer.DrawMesh(transform, meshVertices, indices, _meshDrawContext, lights: _lights);
+            Material? meshMaterial = null;
+            var diffuseTextureHandle = -1;
+            if (material.HasValue)
+            {
+                var m = material.Value;
+                meshMaterial = new Material
+                {
+                    DiffuseColor = m.DiffuseColor,
+                    Metallic = m.Metallic,
+                    Roughness = m.Roughness
+                };
+                meshMaterial.SetProperty("_AO", m.AO);
+                meshMaterial.SetProperty("_EmissiveColor", m.EmissiveColor);
+                meshMaterial.SetProperty("_EmissiveIntensity", m.EmissiveIntensity);
+                diffuseTextureHandle = m.DiffuseTextureHandle;
+            }
+
+            _meshRenderer.DrawMesh(transform, meshVertices, indices, _meshDrawContext, meshMaterial, _lights, diffuseTextureHandle);
         }
         catch (Exception ex)
         {

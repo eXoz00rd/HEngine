@@ -14,4 +14,8 @@
       <ProjectReference Include="..\Src\Rendering\HEngine.Rendering\HEngine.Rendering.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+      <None Include="Assets\Textures\*.png" CopyToOutputDirectory="PreserveNewest" />
+    </ItemGroup>
+
 </Project>

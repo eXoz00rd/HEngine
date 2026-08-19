@@ -56,6 +56,22 @@ public sealed class TextureManager : ITextureManager
         _device = device;
         _hasGpuDevice = true;
         _logger?.LogInformation("TextureManager: GPU device set, GPU texture creation enabled.");
+
+        // Textures (including the defaults created in the constructor) registered before the device
+        // was available were created headless; back-fill their GPU resources now so binding them later
+        // doesn't hand out an empty descriptor.
+        if (_descriptorHeapManager is { IsInitialized: true })
+        {
+            foreach (var entry in _textures.Values)
+            {
+                if (entry.HasGpuResource)
+                    continue;
+
+                var srvHandle = _descriptorHeapManager.AllocateSrv();
+                var gpuResource = CreateGpuTexture(entry.LoadResult, srvHandle);
+                entry.AttachGpuResource(srvHandle, gpuResource);
+            }
+        }
     }
 
     public int LoadTexture(string filePath)
@@ -398,15 +414,22 @@ public sealed class TextureManager : ITextureManager
 
         public string Path { get; }
         public TextureLoadResult LoadResult { get; }
-        public DescriptorHandle SrvHandle { get; }
-        public ComPtr<ID3D12Resource> GpuResource { get; }
-        public bool HasGpuResource { get; }
+        public DescriptorHandle SrvHandle { get; private set; }
+        public ComPtr<ID3D12Resource> GpuResource { get; private set; }
+        public bool HasGpuResource { get; private set; }
         public int RefCount => _refCount;
 
         public TextureEntry(string path, TextureLoadResult loadResult, DescriptorHandle srvHandle, ComPtr<ID3D12Resource> gpuResource = default)
         {
             Path = path;
             LoadResult = loadResult;
+            SrvHandle = srvHandle;
+            GpuResource = gpuResource;
+            unsafe { HasGpuResource = gpuResource.Handle != null; }
+        }
+
+        public void AttachGpuResource(DescriptorHandle srvHandle, ComPtr<ID3D12Resource> gpuResource)
+        {
             SrvHandle = srvHandle;
             GpuResource = gpuResource;
             unsafe { HasGpuResource = gpuResource.Handle != null; }

@@ -33,9 +33,13 @@ public sealed class DirectX12MeshRenderer : IDisposable
     private unsafe void* _shadowConstantBufferMapped;
     private ShadowMapManager? _shadowMapManager;
     private bool _useShadows;
+    private TextureManager? _textureManager;
+    private ComPtr<ID3D12DescriptorHeap> _meshSrvHeap;
+    private uint _srvIncrementSize;
     private const int MaxVertices = 65536;
     private const int MaxIndices = 65536 * 3;
     private const int MaxDrawCalls = 1024;
+    private const int MeshSrvHeapSize = MaxDrawCalls + 1; // slot 0 = shadow map, 1..MaxDrawCalls = per-draw diffuse texture
     private int _currentDrawCallIndex;
     private bool _disposed;
     private bool _gpuResourcesCreated;
@@ -48,10 +52,12 @@ public sealed class DirectX12MeshRenderer : IDisposable
     public int LastDrawVertexCount { get; private set; }
     public int LastDrawIndexCount { get; private set; }
 
-    public void Initialize(object? device = null, ShadowMapManager? shadowMapManager = null, bool useShadows = false)
+    public void Initialize(object? device = null, ShadowMapManager? shadowMapManager = null, bool useShadows = false,
+        TextureManager? textureManager = null)
     {
         _shadowMapManager = shadowMapManager;
         _useShadows = useShadows;
+        _textureManager = textureManager;
 
         if (device is ComPtr<ID3D12Device> d3dDevice)
         {
@@ -60,6 +66,13 @@ public sealed class DirectX12MeshRenderer : IDisposable
                 throw new InvalidOperationException(
                     "DirectX12MeshRenderer.Initialize was called with useShadows=true but no ShadowMapManager was " +
                     "provided; the USE_SHADOWS shader variant would compile but its shadow resources would never be bound.");
+            }
+
+            if (textureManager is null)
+            {
+                throw new InvalidOperationException(
+                    "DirectX12MeshRenderer.Initialize was called with a real device but no TextureManager was " +
+                    "provided; the USE_ALBEDO_MAP shader variant would compile but its diffuse texture slot would never be bound.");
             }
 
             _device = d3dDevice;
@@ -72,9 +85,10 @@ public sealed class DirectX12MeshRenderer : IDisposable
             var diskCache = new ShaderDiskCache(cachePath);
 
             _shaderManager = new DirectX12MeshShaderManager(_shaderFileLoader, diskCache, null);
-            var variant = useShadows
-                ? new ShaderVariant(ShaderFeatureFlags.UseShadows)
-                : new ShaderVariant(ShaderFeatureFlags.None);
+            var features = ShaderFeatureFlags.UseAlbedoMap;
+            if (useShadows)
+                features |= ShaderFeatureFlags.UseShadows;
+            var variant = new ShaderVariant(features);
             _shaderManager.Initialize(variant);
 
             _pipelineManager = new DirectX12MeshPipelineManager();
@@ -85,6 +99,7 @@ public sealed class DirectX12MeshRenderer : IDisposable
             CreateSceneConstantBuffer();
             CreateMaterialConstantBuffer();
             CreateLightConstantBuffer();
+            CreateMeshSrvHeap();
 
             if (useShadows)
                 CreateShadowConstantBuffer();
@@ -112,7 +127,8 @@ public sealed class DirectX12MeshRenderer : IDisposable
                          ReadOnlySpan<uint> indices,
                          IRenderContext context,
                          Material? material = null,
-                         LightData[]? lights = null)
+                         LightData[]? lights = null,
+                         int diffuseTextureHandle = -1)
     {
         ArgumentNullException.ThrowIfNull(context);
 
@@ -150,14 +166,25 @@ public sealed class DirectX12MeshRenderer : IDisposable
         commandList.SetGraphicsRootConstantBufferView(1, materialAddress);
         commandList.SetGraphicsRootConstantBufferView(2, lightAddress);
 
+        var diffuseSlot = 1 + _currentDrawCallIndex;
+        var resolvedDiffuseHandle = diffuseTextureHandle >= 0 ? diffuseTextureHandle : _textureManager!.DefaultWhiteTexture;
+        var diffuseSrvHandle = _textureManager!.GetSrvHandle(resolvedDiffuseHandle);
+        if (diffuseSrvHandle.IsValid)
+        {
+            _device.CopyDescriptorsSimple(1, GetMeshSrvCpuHandle(diffuseSlot), diffuseSrvHandle.CpuHandle, DescriptorHeapType.CbvSrvUav);
+        }
+
+        var meshSrvHeap = _meshSrvHeap;
+        commandList.SetDescriptorHeaps(1, ref meshSrvHeap);
+        commandList.SetGraphicsRootDescriptorTable(5, GetMeshSrvGpuHandle(diffuseSlot));
+
         if (_useShadows)
         {
             if (_shadowMapManager is { IsInitialized: true, HasShadowData: true })
             {
                 var shadowAddress = UpdateShadowConstantBuffer();
-                var shadowSrvHeap = _shadowMapManager.SrvHeap;
-                commandList.SetDescriptorHeaps(1, ref shadowSrvHeap);
-                commandList.SetGraphicsRootDescriptorTable(3, _shadowMapManager.GetSrvGpuHandle());
+                _device.CopyDescriptorsSimple(1, GetMeshSrvCpuHandle(0), _shadowMapManager.GetSrvCpuHandle(), DescriptorHeapType.CbvSrvUav);
+                commandList.SetGraphicsRootDescriptorTable(3, GetMeshSrvGpuHandle(0));
                 commandList.SetGraphicsRootConstantBufferView(4, shadowAddress);
             }
             else if (HasDirectionalLight(lights))
@@ -301,6 +328,35 @@ public sealed class DirectX12MeshRenderer : IDisposable
     private unsafe void CreateShadowConstantBuffer()
     {
         CreateMappedConstantBuffer<ShadowCbuffer>(MaxDrawCalls, out _shadowConstantBuffer, out _shadowConstantBufferMapped);
+    }
+
+    private void CreateMeshSrvHeap()
+    {
+        _srvIncrementSize = _device.GetDescriptorHandleIncrementSize(DescriptorHeapType.CbvSrvUav);
+
+        var heapDesc = new DescriptorHeapDesc
+        {
+            Type = DescriptorHeapType.CbvSrvUav,
+            NumDescriptors = (uint)MeshSrvHeapSize,
+            Flags = DescriptorHeapFlags.ShaderVisible,
+            NodeMask = 0
+        };
+
+        var result = _device.CreateDescriptorHeap(in heapDesc, out _meshSrvHeap);
+        if (result < 0)
+            throw new Exception($"Failed to create mesh SRV heap. HRESULT: {result:X8}");
+    }
+
+    private CpuDescriptorHandle GetMeshSrvCpuHandle(int slot)
+    {
+        var start = _meshSrvHeap.GetCPUDescriptorHandleForHeapStart();
+        return new CpuDescriptorHandle(start.Ptr + (nuint)(slot * (int)_srvIncrementSize));
+    }
+
+    private GpuDescriptorHandle GetMeshSrvGpuHandle(int slot)
+    {
+        var start = _meshSrvHeap.GetGPUDescriptorHandleForHeapStart();
+        return new GpuDescriptorHandle(start.Ptr + (ulong)(slot * (int)_srvIncrementSize));
     }
 
     private unsafe void CreateMappedConstantBuffer<T>(int slotCount, out ComPtr<ID3D12Resource> buffer, out void* mapped) where T : unmanaged
@@ -528,6 +584,7 @@ public sealed class DirectX12MeshRenderer : IDisposable
             }
         }
 
+        _meshSrvHeap.Dispose();
         _shadowConstantBuffer.Dispose();
         _lightConstantBuffer.Dispose();
         _materialConstantBuffer.Dispose();

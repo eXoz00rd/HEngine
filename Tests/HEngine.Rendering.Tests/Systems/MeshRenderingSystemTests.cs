@@ -8,6 +8,8 @@ using HEngine.Core.Managers;
 using HEngine.Core.Rendering.Contracts;
 using HEngine.Core.Rendering.Data;
 using HEngine.Rendering.Components;
+using HEngine.Rendering.Data;
+using HEngine.Rendering.Managers;
 using HEngine.Rendering.Systems;
 using Xunit;
 
@@ -18,7 +20,7 @@ file sealed class FakeRenderer : IRenderer
     public bool IsInitialized { get; private set; }
     public bool ShouldClose { get; private set; }
 
-    public readonly List<(Matrix4x4 Transform, int VertexCount, int IndexCount)> MeshDraws = new();
+    public readonly List<(Matrix4x4 Transform, int VertexCount, int IndexCount, MaterialData? Material)> MeshDraws = new();
 
     public void Initialize(int width, int height, string title)
     {
@@ -39,9 +41,9 @@ file sealed class FakeRenderer : IRenderer
 
     public void FlushBatch() { }
 
-    public void DrawMesh(Matrix4x4 transform, ReadOnlySpan<float> vertices, ReadOnlySpan<uint> indices)
+    public void DrawMesh(Matrix4x4 transform, ReadOnlySpan<float> vertices, ReadOnlySpan<uint> indices, MaterialData? material = null)
     {
-        MeshDraws.Add((transform, vertices.Length, indices.Length));
+        MeshDraws.Add((transform, vertices.Length, indices.Length, material));
     }
 
     public void Run() { }
@@ -163,6 +165,61 @@ public class MeshRenderingSystemTests
         var context = new FakeRenderContext(fakeRenderer);
 
         Assert.Throws<NotSupportedException>(() => system.Render(context));
+    }
+
+    [Fact(DisplayName = "Render resolves a registered Renderable.MaterialId into MaterialData passed to DrawMesh")]
+    public void Render_ResolvesRegisteredMaterial_PassesMaterialDataToDrawMesh()
+    {
+        var world = new WorldManager(new SystemManager());
+        var materialManager = new MaterialManager();
+        using var textureManager = new TextureManager();
+        var system = new MeshRenderingSystem(materialManager: materialManager, textureManager: textureManager);
+        system.Initialize(world);
+
+        var material = new Material { DiffuseColor = new Vector4(0.1f, 0.2f, 0.3f, 1f) };
+        var materialId = materialManager.RegisterWithId("checker", material);
+
+        var entity = world.CreateEntity();
+        world.AddComponent(entity, new Transform(Vector3.Zero));
+        world.AddComponent(entity, new Mesh(1, 3));
+        world.AddComponent(entity, new Renderable { MaterialId = materialId });
+
+        var fakeRenderer = new FakeRenderer();
+        var context = new FakeRenderContext(fakeRenderer);
+
+        system.Render(context);
+
+        var draw = Assert.Single(fakeRenderer.MeshDraws);
+        Assert.NotNull(draw.Material);
+        Assert.Equal(material.DiffuseColor, draw.Material!.Value.DiffuseColor);
+        Assert.Equal(textureManager.DefaultWhiteTexture, draw.Material!.Value.DiffuseTextureHandle);
+    }
+
+    [Fact(DisplayName = "Render passes null MaterialData for entities without a Renderable component or with the default MaterialId")]
+    public void Render_WithoutMaterial_PassesNullMaterialData()
+    {
+        var world = new WorldManager(new SystemManager());
+        var materialManager = new MaterialManager();
+        using var textureManager = new TextureManager();
+        var system = new MeshRenderingSystem(materialManager: materialManager, textureManager: textureManager);
+        system.Initialize(world);
+
+        var noRenderable = world.CreateEntity();
+        world.AddComponent(noRenderable, new Transform(Vector3.Zero));
+        world.AddComponent(noRenderable, new Mesh(1, 3));
+
+        var defaultRenderable = world.CreateEntity();
+        world.AddComponent(defaultRenderable, new Transform(new Vector3(1, 0, 0)));
+        world.AddComponent(defaultRenderable, new Mesh(2, 6));
+        world.AddComponent(defaultRenderable, new Renderable());
+
+        var fakeRenderer = new FakeRenderer();
+        var context = new FakeRenderContext(fakeRenderer);
+
+        system.Render(context);
+
+        Assert.Equal(2, fakeRenderer.MeshDraws.Count);
+        Assert.All(fakeRenderer.MeshDraws, d => Assert.Null(d.Material));
     }
 
     private static bool MatricesEqual(Matrix4x4 a, Matrix4x4 b, float eps = 1e-5f)

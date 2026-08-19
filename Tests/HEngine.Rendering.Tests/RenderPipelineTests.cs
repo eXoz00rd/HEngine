@@ -51,7 +51,7 @@ namespace HEngine.Rendering.Tests
 
         public void FlushBatch() { }
 
-        public void DrawMesh(Matrix4x4 transform, ReadOnlySpan<float> vertices, ReadOnlySpan<uint> indices) { }
+        public void DrawMesh(Matrix4x4 transform, ReadOnlySpan<float> vertices, ReadOnlySpan<uint> indices, MaterialData? material = null) { }
 
         public void Run() { }
 

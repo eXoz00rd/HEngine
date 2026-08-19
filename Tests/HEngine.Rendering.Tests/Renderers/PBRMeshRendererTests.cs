@@ -32,7 +32,7 @@ file sealed class NullPBRRenderer : IRenderer
     public void SetLights(ReadOnlySpan<LightData> lights) { }
     public void DrawSprite(Vector2 position, Vector2 size, Vector4 color) { }
     public void FlushBatch() { }
-    public void DrawMesh(Matrix4x4 transform, ReadOnlySpan<float> vertices, ReadOnlySpan<uint> indices) { }
+    public void DrawMesh(Matrix4x4 transform, ReadOnlySpan<float> vertices, ReadOnlySpan<uint> indices, MaterialData? material = null) { }
     public void Run() { }
     public void Dispose() { }
 }
