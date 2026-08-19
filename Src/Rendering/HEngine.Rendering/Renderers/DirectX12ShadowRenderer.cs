@@ -2,6 +2,7 @@ using System.Numerics;
 using System.Runtime.InteropServices;
 using HEngine.Core.Configuration;
 using HEngine.Core.Rendering.Contracts;
+using HEngine.Rendering.Data;
 using HEngine.Rendering.DirectX12;
 using HEngine.Rendering.Devices;
 using HEngine.Rendering.Managers;
@@ -163,6 +164,8 @@ public sealed class DirectX12ShadowRenderer : IShadowRenderer, IDisposable
         }
 
         ((DirectX12Device)_device).RestoreBackBufferTarget();
+
+        _shadowMapManager.SetShadowConstants(ShadowCbuffer.Create(lightVPs, cascadeSplits));
 
         if (_logger?.IsEnabled(LogLevel.Debug) == true)
         {

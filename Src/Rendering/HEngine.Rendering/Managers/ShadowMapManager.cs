@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using HEngine.Rendering.Data;
+using Microsoft.Extensions.Logging;
 using Silk.NET.Core.Native;
 using Silk.NET.Direct3D12;
 using Silk.NET.DXGI;
@@ -30,9 +31,24 @@ public sealed class ShadowMapManager : IDisposable
     public int Resolution => _resolution;
     public int CascadeCount => _cascadeCount;
 
+    /// <summary>
+    /// Cascade light-VP matrices and split distances from the most recent shadow pass,
+    /// for the main mesh pass to bind as the USE_SHADOWS variant's b3 cbuffer.
+    /// </summary>
+    public ShadowCbuffer ShadowConstants { get; private set; }
+
+    /// <summary>Whether <see cref="ShadowConstants"/> has been populated by a completed shadow pass.</summary>
+    public bool HasShadowData { get; private set; }
+
     public ShadowMapManager(ILogger<ShadowMapManager>? logger = null)
     {
         _logger = logger;
+    }
+
+    public void SetShadowConstants(ShadowCbuffer constants)
+    {
+        ShadowConstants = constants;
+        HasShadowData = true;
     }
 
     public void Initialize(ComPtr<ID3D12Device> device, int resolution, int cascadeCount)

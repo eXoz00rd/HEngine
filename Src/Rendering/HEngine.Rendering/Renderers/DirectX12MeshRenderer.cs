@@ -4,6 +4,7 @@ using HEngine.Core.Rendering.Contracts;
 using HEngine.Core.Rendering.Data;
 using HEngine.Rendering.Data;
 using HEngine.Rendering.DirectX12;
+using HEngine.Rendering.Enums;
 using HEngine.Rendering.Managers;
 using Silk.NET.Core.Native;
 using Silk.NET.Direct3D12;
@@ -25,9 +26,13 @@ public sealed class DirectX12MeshRenderer : IDisposable
     private ComPtr<ID3D12Resource> _sceneConstantBuffer;
     private ComPtr<ID3D12Resource> _materialConstantBuffer;
     private ComPtr<ID3D12Resource> _lightConstantBuffer;
+    private ComPtr<ID3D12Resource> _shadowConstantBuffer;
     private unsafe void* _sceneConstantBufferMapped;
     private unsafe void* _materialConstantBufferMapped;
     private unsafe void* _lightConstantBufferMapped;
+    private unsafe void* _shadowConstantBufferMapped;
+    private ShadowMapManager? _shadowMapManager;
+    private bool _useShadows;
     private const int MaxVertices = 65536;
     private const int MaxIndices = 65536 * 3;
     private const int MaxDrawCalls = 1024;
@@ -43,8 +48,11 @@ public sealed class DirectX12MeshRenderer : IDisposable
     public int LastDrawVertexCount { get; private set; }
     public int LastDrawIndexCount { get; private set; }
 
-    public void Initialize(object? device = null)
+    public void Initialize(object? device = null, ShadowMapManager? shadowMapManager = null, bool useShadows = false)
     {
+        _shadowMapManager = shadowMapManager;
+        _useShadows = useShadows;
+
         if (device is ComPtr<ID3D12Device> d3dDevice)
         {
             _device = d3dDevice;
@@ -57,7 +65,10 @@ public sealed class DirectX12MeshRenderer : IDisposable
             var diskCache = new ShaderDiskCache(cachePath);
 
             _shaderManager = new DirectX12MeshShaderManager(_shaderFileLoader, diskCache, null);
-            _shaderManager.Initialize();
+            var variant = useShadows
+                ? new ShaderVariant(ShaderFeatureFlags.UseShadows)
+                : new ShaderVariant(ShaderFeatureFlags.None);
+            _shaderManager.Initialize(variant);
 
             _pipelineManager = new DirectX12MeshPipelineManager();
             _pipelineManager.Initialize(_device, _shaderManager);
@@ -67,6 +78,9 @@ public sealed class DirectX12MeshRenderer : IDisposable
             CreateSceneConstantBuffer();
             CreateMaterialConstantBuffer();
             CreateLightConstantBuffer();
+
+            if (useShadows)
+                CreateShadowConstantBuffer();
 
             _gpuResourcesCreated = true;
         }
@@ -128,6 +142,15 @@ public sealed class DirectX12MeshRenderer : IDisposable
         commandList.SetGraphicsRootConstantBufferView(0, sceneAddress);
         commandList.SetGraphicsRootConstantBufferView(1, materialAddress);
         commandList.SetGraphicsRootConstantBufferView(2, lightAddress);
+
+        if (_useShadows && _shadowMapManager is { IsInitialized: true })
+        {
+            var shadowAddress = UpdateShadowConstantBuffer();
+            var shadowSrvHeap = _shadowMapManager.SrvHeap;
+            commandList.SetDescriptorHeaps(1, ref shadowSrvHeap);
+            commandList.SetGraphicsRootDescriptorTable(3, _shadowMapManager.GetSrvGpuHandle());
+            commandList.SetGraphicsRootConstantBufferView(4, shadowAddress);
+        }
 
         commandList.IASetPrimitiveTopology(D3DPrimitiveTopology.D3DPrimitiveTopologyTrianglelist);
 
@@ -258,6 +281,11 @@ public sealed class DirectX12MeshRenderer : IDisposable
         CreateMappedRawBuffer(totalSize, out _lightConstantBuffer, out _lightConstantBufferMapped);
     }
 
+    private unsafe void CreateShadowConstantBuffer()
+    {
+        CreateMappedConstantBuffer<ShadowCbuffer>(MaxDrawCalls, out _shadowConstantBuffer, out _shadowConstantBufferMapped);
+    }
+
     private unsafe void CreateMappedConstantBuffer<T>(int slotCount, out ComPtr<ID3D12Resource> buffer, out void* mapped) where T : unmanaged
     {
         var size = sizeof(T);
@@ -350,6 +378,19 @@ public sealed class DirectX12MeshRenderer : IDisposable
         MemoryMarshal.Write(new Span<byte>(destPtr, sizeof(PBRMaterialConstants)), in constants);
 
         return _materialConstantBuffer.GetGPUVirtualAddress() + (ulong)offset;
+    }
+
+    private unsafe ulong UpdateShadowConstantBuffer()
+    {
+        var alignedSize = (sizeof(ShadowCbuffer) + 255) & ~255;
+        var offset = _currentDrawCallIndex * alignedSize;
+
+        var constants = _shadowMapManager!.ShadowConstants;
+
+        var destPtr = (byte*)_shadowConstantBufferMapped + offset;
+        MemoryMarshal.Write(new Span<byte>(destPtr, sizeof(ShadowCbuffer)), in constants);
+
+        return _shadowConstantBuffer.GetGPUVirtualAddress() + (ulong)offset;
     }
 
     private unsafe ulong UpdateLightConstantBuffer(LightData[]? lights)
@@ -450,8 +491,15 @@ public sealed class DirectX12MeshRenderer : IDisposable
                 _lightConstantBuffer.Unmap(0u, (Range*)null);
                 _lightConstantBufferMapped = null;
             }
+
+            if (_shadowConstantBufferMapped != null)
+            {
+                _shadowConstantBuffer.Unmap(0u, (Range*)null);
+                _shadowConstantBufferMapped = null;
+            }
         }
 
+        _shadowConstantBuffer.Dispose();
         _lightConstantBuffer.Dispose();
         _materialConstantBuffer.Dispose();
         _sceneConstantBuffer.Dispose();

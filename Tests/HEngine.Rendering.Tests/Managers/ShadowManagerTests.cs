@@ -58,6 +58,22 @@ public class ShadowManagerTests
         Assert.False(manager.IsInitialized);
         Assert.Equal(0, manager.Resolution);
         Assert.Equal(0, manager.CascadeCount);
+        Assert.False(manager.HasShadowData);
+    }
+
+    [Fact(DisplayName = "ShadowMapManager SetShadowConstants stores constants and flags HasShadowData")]
+    public void ShadowMapManager_SetShadowConstants_StoresConstantsAndFlagsHasShadowData()
+    {
+        var manager = new ShadowMapManager();
+        Matrix4x4[] vps = [Matrix4x4.CreateTranslation(1f, 2f, 3f)];
+        float[] splits = [50f];
+        var constants = ShadowCbuffer.Create(vps, splits);
+
+        manager.SetShadowConstants(constants);
+
+        Assert.True(manager.HasShadowData);
+        Assert.Equal(1, manager.ShadowConstants.CascadeCount);
+        Assert.Equal(50f, manager.ShadowConstants.CascadeSplits.X, 3);
     }
 
     [Fact(DisplayName = "SamplerManager registers ShadowComparison sampler by default")]

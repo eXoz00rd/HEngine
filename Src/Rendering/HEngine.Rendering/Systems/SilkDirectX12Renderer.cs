@@ -1,5 +1,6 @@
 ﻿using System.Buffers;
 using System.Numerics;
+using HEngine.Core.Configuration;
 using HEngine.Core.Rendering.Contracts;
 using HEngine.Core.Rendering.Data;
 using HEngine.Rendering.Batches;
@@ -21,6 +22,8 @@ public class SilkDirectX12Renderer : IRenderer
     private readonly IShaderManager _shaderManager;
     private readonly IRenderBatch<SpriteData> _spriteBatch;
     private readonly ISpriteRenderer _spriteRenderer;
+    private readonly ShadowMapManager _shadowMapManager;
+    private readonly ShadowSettings _shadowSettings;
 
     private DirectX12CommandList _commandList;
     private bool _disposed;
@@ -34,13 +37,15 @@ public class SilkDirectX12Renderer : IRenderer
     private const int MeshDrawStackAllocThreshold = 256;
 
     public SilkDirectX12Renderer(IGraphicsDevice device, IRenderBatch<SpriteData> spriteBatch,
-        ISpriteRenderer spriteRenderer, IShaderManager shaderManager, ILogger<SilkDirectX12Renderer> logger,
-        ILoggerFactory loggerFactory)
+        ISpriteRenderer spriteRenderer, IShaderManager shaderManager, ShadowMapManager shadowMapManager,
+        ShadowSettings shadowSettings, ILogger<SilkDirectX12Renderer> logger, ILoggerFactory loggerFactory)
     {
         _device = device ?? throw new ArgumentNullException(nameof(device));
         _spriteBatch = spriteBatch ?? throw new ArgumentNullException(nameof(spriteBatch));
         _spriteRenderer = spriteRenderer ?? throw new ArgumentNullException(nameof(spriteRenderer));
         _shaderManager = shaderManager ?? throw new ArgumentNullException(nameof(shaderManager));
+        _shadowMapManager = shadowMapManager ?? throw new ArgumentNullException(nameof(shadowMapManager));
+        _shadowSettings = shadowSettings ?? throw new ArgumentNullException(nameof(shadowSettings));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
         _commandList = null!;
@@ -83,7 +88,7 @@ public class SilkDirectX12Renderer : IRenderer
             var dx12Device = (DirectX12Device)_device;
             var d3dDevice = dx12Device.GetDevice();
             _meshRenderer = new DirectX12MeshRenderer();
-            _meshRenderer.Initialize(d3dDevice);
+            _meshRenderer.Initialize(d3dDevice, _shadowMapManager, _shadowSettings.Enabled);
             _meshRenderer.SetCommandQueue(dx12Device.GetDirectX12CommandQueue());
             _meshDrawContext = new MeshDrawContext(this);
 

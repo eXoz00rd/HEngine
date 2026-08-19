@@ -84,4 +84,20 @@ public class DirectX12ShadowRendererTests
 
         renderer.BindShadowResources(lightVPs, splits);
     }
+
+    [Fact(DisplayName = "BindShadowResources leaves ShadowMapManager.HasShadowData false when GPU resources were never initialized")]
+    public void BindShadowResources_Does_Not_Populate_ShadowMapManager_Before_GpuResourcesInitialized()
+    {
+        var device = new UninitializedGraphicsDevice();
+        var shadowMapManager = new ShadowMapManager();
+        var shaderFileLoader = new ShaderFileLoader(AppDomain.CurrentDomain.BaseDirectory);
+        var pipelineStateManager = new ShadowPipelineStateManager(shaderFileLoader);
+        var settings = new ShadowSettings();
+
+        using var renderer = new DirectX12ShadowRenderer(device, shadowMapManager, pipelineStateManager, settings);
+
+        renderer.BindShadowResources([Matrix4x4.Identity], [10f]);
+
+        Assert.False(shadowMapManager.HasShadowData);
+    }
 }
