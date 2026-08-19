@@ -25,10 +25,10 @@ public class MeshAssetLoadingSystem : ISystem
         _assetManager = new AssetManager(LoadMeshFile);
     }
 
-    private static Task<object> LoadMeshFile(string path)
+    private static Task<LoadedMesh> LoadMeshFile(string path)
     {
         var (vertices, indices) = SimpleMeshFormat.Load(path);
-        return Task.FromResult<object>(new LoadedMesh(vertices, indices));
+        return Task.FromResult(new LoadedMesh(vertices, indices));
     }
 
     public void Initialize(WorldManager world, AssetManager assetManager)

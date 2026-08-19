@@ -6,10 +6,10 @@ public class AssetManager : IDisposable
 {
     private readonly ConcurrentDictionary<string, CachedAsset> _loadedAssets = new();
     private readonly ConcurrentDictionary<string, Task<object>> _loadingTasks = new();
-    private readonly Func<string, Task<object>> _meshLoader;
+    private readonly Func<string, Task<LoadedMesh>> _meshLoader;
     private bool _disposed;
 
-    public AssetManager(Func<string, Task<object>> meshLoader)
+    public AssetManager(Func<string, Task<LoadedMesh>> meshLoader)
     {
         _meshLoader = meshLoader ?? throw new ArgumentNullException(nameof(meshLoader));
     }

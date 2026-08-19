@@ -269,7 +269,7 @@ public class MeshAssetLoadingSystemTests : IDisposable
     {
         return new AssetManager(path =>
         {
-            return Task.FromResult<object>(new LoadedMesh(CreateTestVertices(), new uint[] { 0, 1, 2, 2, 1, 3 }));
+            return Task.FromResult(new LoadedMesh(CreateTestVertices(), new uint[] { 0, 1, 2, 2, 1, 3 }));
         });
     }
 

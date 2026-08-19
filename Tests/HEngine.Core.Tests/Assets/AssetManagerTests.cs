@@ -271,7 +271,7 @@ public class AssetManagerTests : IDisposable
         return Path.Combine(_testDirectory, filename);
     }
 
-    private Func<string, Task<object>> CreateMockLoader()
+    private Func<string, Task<LoadedMesh>> CreateMockLoader()
     {
         return async path =>
         {
