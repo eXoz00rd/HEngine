@@ -8,11 +8,11 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\..\Src\Core\HEngine.Core\HEngine.Core.csproj" />
+        <ProjectReference Include="..\..\Src\Core\HEngine.Core\HEngine.Core.csproj"/>
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="BenchmarkDotNet" Version="0.15.8" />
+        <PackageReference Include="BenchmarkDotNet"/>
     </ItemGroup>
 
 </Project>
