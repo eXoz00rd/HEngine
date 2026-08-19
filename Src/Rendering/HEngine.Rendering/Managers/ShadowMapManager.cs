@@ -48,7 +48,7 @@ public sealed class ShadowMapManager : IDisposable
 
     public void Initialize(ComPtr<ID3D12Device> device, int resolution, int cascadeCount)
     {
-        if (_initialized) Dispose();
+        if (_initialized) ReleaseGpuResources();
 
         _device = device;
         _resolution = Math.Max(resolution, 64);
@@ -94,16 +94,7 @@ public sealed class ShadowMapManager : IDisposable
     {
         if (!_initialized) return;
 
-        _shadowTexture.Dispose();
-
-        _resolution = Math.Max(resolution, 64);
-        _cascadeCount = Math.Clamp(cascadeCount, 1, 4);
-        ShadowConstants = default;
-        HasShadowData = false;
-
-        CreateShadowTextureArray();
-        CreateDsvs();
-        CreateSrv();
+        Initialize(_device, resolution, cascadeCount);
     }
 
     private unsafe void CreateDescriptorHeaps()
@@ -203,13 +194,18 @@ public sealed class ShadowMapManager : IDisposable
             GetSrvCpuHandle());
     }
 
+    private void ReleaseGpuResources()
+    {
+        _shadowTexture.Dispose();
+        _dsvHeap.Dispose();
+        _srvHeap.Dispose();
+    }
+
     public void Dispose()
     {
         if (_disposed) return;
 
-        _shadowTexture.Dispose();
-        _dsvHeap.Dispose();
-        _srvHeap.Dispose();
+        ReleaseGpuResources();
         _d3d12.Dispose();
 
         ShadowConstants = default;

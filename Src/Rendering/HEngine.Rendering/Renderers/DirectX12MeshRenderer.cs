@@ -163,9 +163,9 @@ public sealed class DirectX12MeshRenderer : IDisposable
             else if (HasDirectionalLight(lights))
             {
                 throw new InvalidOperationException(
-                    "DirectX12MeshRenderer is compiled with the USE_SHADOWS variant and a directional light is present " +
-                    "this frame, but ShadowMapManager has no shadow data bound yet. The shadow pass must run before " +
-                    "the mesh pass whenever a directional light exists, or the pixel shader would read unbound t5/s1/b3.");
+                    "A directional light is present this frame and DirectX12MeshRenderer is compiled with the " +
+                    "USE_SHADOWS variant, but ShadowMapManager has no shadow data bound yet. The shadow pass must " +
+                    "run before the mesh pass whenever a directional light exists, or the pixel shader would read unbound t5/s1/b3.");
             }
         }
 
