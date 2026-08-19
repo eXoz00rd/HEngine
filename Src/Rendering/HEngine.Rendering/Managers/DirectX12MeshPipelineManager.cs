@@ -50,65 +50,67 @@ public class DirectX12MeshPipelineManager : IDisposable
     {
         unsafe
         {
-            var shadowSrvRange = new DescriptorRange
-            {
-                RangeType = DescriptorRangeType.Srv,
-                NumDescriptors = 1,
-                BaseShaderRegister = 5,
-                RegisterSpace = 0,
-                OffsetInDescriptorsFromTableStart = 0
-            };
+                // Descriptor range for shadow map (t5)
+                var shadowSrvRange = new DescriptorRange
+                {
+                    RangeType = DescriptorRangeType.Srv,
+                    NumDescriptors = 1,
+                    BaseShaderRegister = 5,
+                    RegisterSpace = 0,
+                    OffsetInDescriptorsFromTableStart = 0
+                };
 
-            var diffuseSrvRange = new DescriptorRange
-            {
-                RangeType = DescriptorRangeType.Srv,
-                NumDescriptors = 1,
-                BaseShaderRegister = 0,
-                RegisterSpace = 0,
-                OffsetInDescriptorsFromTableStart = 0
-            };
+                // Descriptor range for all material textures (t0-t7)
+                var materialSrvRange = new DescriptorRange
+                {
+                    RangeType = DescriptorRangeType.Srv,
+                    NumDescriptors = 8, // t0-t7
+                    BaseShaderRegister = 0,
+                    RegisterSpace = 0,
+                    OffsetInDescriptorsFromTableStart = 0
+                };
 
-            var shadowSrvRangePtr = &shadowSrvRange;
-            var diffuseSrvRangePtr = &diffuseSrvRange;
-            var rootParameters = new RootParameter[]
-            {
-                new()
+                var shadowSrvRangePtr = &shadowSrvRange;
+                var materialSrvRangePtr = &materialSrvRange;
+                var rootParameters = new RootParameter[]
                 {
-                    ParameterType = RootParameterType.TypeCbv,
-                    ShaderVisibility = ShaderVisibility.All,
-                    Descriptor = new RootDescriptor { ShaderRegister = 0, RegisterSpace = 0 }
-                },
-                new()
-                {
-                    ParameterType = RootParameterType.TypeCbv,
-                    ShaderVisibility = ShaderVisibility.All,
-                    Descriptor = new RootDescriptor { ShaderRegister = 1, RegisterSpace = 0 }
-                },
-                new()
-                {
-                    ParameterType = RootParameterType.TypeCbv,
-                    ShaderVisibility = ShaderVisibility.All,
-                    Descriptor = new RootDescriptor { ShaderRegister = 2, RegisterSpace = 0 }
-                },
-                new()
-                {
-                    ParameterType = RootParameterType.TypeDescriptorTable,
-                    ShaderVisibility = ShaderVisibility.Pixel,
-                    DescriptorTable = new RootDescriptorTable { NumDescriptorRanges = 1, PDescriptorRanges = shadowSrvRangePtr }
-                },
-                new()
-                {
-                    ParameterType = RootParameterType.TypeCbv,
-                    ShaderVisibility = ShaderVisibility.Pixel,
-                    Descriptor = new RootDescriptor { ShaderRegister = 3, RegisterSpace = 0 }
-                },
-                new()
-                {
-                    ParameterType = RootParameterType.TypeDescriptorTable,
-                    ShaderVisibility = ShaderVisibility.Pixel,
-                    DescriptorTable = new RootDescriptorTable { NumDescriptorRanges = 1, PDescriptorRanges = diffuseSrvRangePtr }
-                }
-            };
+                    new()
+                    {
+                        ParameterType = RootParameterType.TypeCbv,
+                        ShaderVisibility = ShaderVisibility.All,
+                        Descriptor = new RootDescriptor { ShaderRegister = 0, RegisterSpace = 0 }
+                    },
+                    new()
+                    {
+                        ParameterType = RootParameterType.TypeCbv,
+                        ShaderVisibility = ShaderVisibility.All,
+                        Descriptor = new RootDescriptor { ShaderRegister = 1, RegisterSpace = 0 }
+                    },
+                    new()
+                    {
+                        ParameterType = RootParameterType.TypeCbv,
+                        ShaderVisibility = ShaderVisibility.All,
+                        Descriptor = new RootDescriptor { ShaderRegister = 2, RegisterSpace = 0 }
+                    },
+                    new()
+                    {
+                        ParameterType = RootParameterType.TypeDescriptorTable,
+                        ShaderVisibility = ShaderVisibility.Pixel,
+                        DescriptorTable = new RootDescriptorTable { NumDescriptorRanges = 1, PDescriptorRanges = shadowSrvRangePtr }
+                    },
+                    new()
+                    {
+                        ParameterType = RootParameterType.TypeCbv,
+                        ShaderVisibility = ShaderVisibility.Pixel,
+                        Descriptor = new RootDescriptor { ShaderRegister = 3, RegisterSpace = 0 }
+                    },
+                    new()
+                    {
+                        ParameterType = RootParameterType.TypeDescriptorTable,
+                        ShaderVisibility = ShaderVisibility.Pixel,
+                        DescriptorTable = new RootDescriptorTable { NumDescriptorRanges = 1, PDescriptorRanges = materialSrvRangePtr }
+                    }
+                };
 
             var shadowSampler = new StaticSamplerDesc
             {
