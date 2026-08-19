@@ -5,37 +5,37 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <Folder Include="Batches\" />
-      <Folder Include="Components\" />
-      <Folder Include="Extensions\" />
+        <Folder Include="Batches\"/>
+        <Folder Include="Components\"/>
+        <Folder Include="Extensions\"/>
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\..\Core\HEngine.Core\HEngine.Core.csproj" />
+        <ProjectReference Include="..\..\Core\HEngine.Core\HEngine.Core.csproj"/>
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="Silk.NET.Core" Version="2.23.0" />
-      <PackageReference Include="Silk.NET.Direct3D.Compilers" Version="2.23.0" />
-      <PackageReference Include="Silk.NET.Direct3D11" Version="2.23.0" />
-      <PackageReference Include="Silk.NET.Direct3D12" Version="2.23.0" />
-      <PackageReference Include="Silk.NET.DXGI" Version="2.23.0" />
-      <PackageReference Include="Silk.NET.Input" Version="2.23.0" />
-      <PackageReference Include="Silk.NET.Windowing" Version="2.23.0" />
-      <PackageReference Include="StbImageSharp" Version="2.30.16" />
+        <PackageReference Include="Silk.NET.Core"/>
+        <PackageReference Include="Silk.NET.Direct3D.Compilers"/>
+        <PackageReference Include="Silk.NET.Direct3D11"/>
+        <PackageReference Include="Silk.NET.Direct3D12"/>
+        <PackageReference Include="Silk.NET.DXGI"/>
+        <PackageReference Include="Silk.NET.Input"/>
+        <PackageReference Include="Silk.NET.Windowing"/>
+        <PackageReference Include="StbImageSharp"/>
     </ItemGroup>
 
     <ItemGroup>
-      <None Include="Shaders\*.hlsl" CopyToOutputDirectory="PreserveNewest" />
+        <None Include="Shaders\*.hlsl" CopyToOutputDirectory="PreserveNewest"/>
     </ItemGroup>
 
     <ItemGroup>
-      <ClCompile Include="Shaders\Bloom.hlsl" />
-      <ClCompile Include="Shaders\FXAA.hlsl" />
-      <ClCompile Include="Shaders\PBR.hlsl" />
-      <ClCompile Include="Shaders\PostProcessBlit.hlsl" />
-      <ClCompile Include="Shaders\ShadowPass.hlsl" />
-      <ClCompile Include="Shaders\ToneMapping.hlsl" />
+        <ClCompile Include="Shaders\Bloom.hlsl"/>
+        <ClCompile Include="Shaders\FXAA.hlsl"/>
+        <ClCompile Include="Shaders\PBR.hlsl"/>
+        <ClCompile Include="Shaders\PostProcessBlit.hlsl"/>
+        <ClCompile Include="Shaders\ShadowPass.hlsl"/>
+        <ClCompile Include="Shaders\ToneMapping.hlsl"/>
     </ItemGroup>
 
 </Project>
