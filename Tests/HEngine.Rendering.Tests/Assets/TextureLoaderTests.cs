@@ -53,7 +53,7 @@ public class TextureLoaderTests : IDisposable
         var path = CreateTestPng(2, 2, 255, 0, 0, 255); // red
         using var result = _loader.Load(path);
 
-        Assert.True(result.PixelData.Any(b => b != 0));
+        Assert.Contains(result.PixelData, b => b != 0);
     }
 
     [Fact]
@@ -306,4 +306,3 @@ public class TextureLoaderTests : IDisposable
         return path;
     }
 }
-
