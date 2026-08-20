@@ -1,8 +1,7 @@
 root = true
 
 [*]
-charset = utf-8
-end_of_line = crlf
+end_of_line = lf
 indent_style = space
 indent_size = 4
 insert_final_newline = true
@@ -22,7 +21,16 @@ csharp_prefer_braces = true:suggestion
 csharp_style_expression_bodied_properties = true:suggestion
 csharp_style_expression_bodied_methods = false:suggestion
 
-# Private fields are _camelCase throughout the codebase.
+dotnet_naming_rule.private_const_fields_pascal_case.severity = suggestion
+dotnet_naming_rule.private_const_fields_pascal_case.symbols = private_const_fields
+dotnet_naming_rule.private_const_fields_pascal_case.style = pascal_case
+
+dotnet_naming_symbols.private_const_fields.applicable_kinds = field
+dotnet_naming_symbols.private_const_fields.applicable_accessibilities = private
+dotnet_naming_symbols.private_const_fields.required_modifiers = const
+
+dotnet_naming_style.pascal_case.capitalization = pascal_case
+
 dotnet_naming_rule.private_fields_underscore_camel_case.severity = suggestion
 dotnet_naming_rule.private_fields_underscore_camel_case.symbols = private_fields
 dotnet_naming_rule.private_fields_underscore_camel_case.style = underscore_camel_case
@@ -32,8 +40,3 @@ dotnet_naming_symbols.private_fields.applicable_accessibilities = private
 
 dotnet_naming_style.underscore_camel_case.capitalization = camel_case
 dotnet_naming_style.underscore_camel_case.required_prefix = _
-
-# TARGET_ARCHITECTURE.md §4.8 forbids Assembly.Load/name-based binding, file-path asset
-# ids, static mutable state and InternalsVisibleTo beyond a module's own tests. None of
-# these currently has an analyzer emitting a diagnostic id, so there is nothing to raise
-# to error yet — that lands with the dedicated analyzer tasks, in this same file.
