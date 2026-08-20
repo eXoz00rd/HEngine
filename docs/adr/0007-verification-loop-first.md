@@ -17,9 +17,17 @@ There is a second argument, from §8.2. The MCP surface is described there as th
 
 ## Decision
 
-`TextureTarget`, `HeadlessTarget`, `HEngine.Testing` and the `frame.capture`/`frame.compare` slice of the MCP surface are built **immediately after the module split completes**, ahead of the frame-contract reshape, the world-lifetime work and the component registry.
+`TextureTarget`, `HeadlessTarget`, `HEngine.Testing` and the end-to-end frame test are built **immediately after the module split completes**, ahead of the frame-contract reshape, the world-lifetime work and the component registry.
 
-The rest of the MCP surface stays in its planned position — those tools depend on APIs that genuinely do not exist yet.
+The MCP surface stays in its planned position, including `frame.capture`/`frame.compare`.
+
+### Correction (2026-08-20, after review)
+
+An earlier version of this record bundled the `frame.capture`/`frame.compare` MCP tools into the early slice, and the roadmap claimed the verification loop "only closes in the MCP phase". Both were wrong, and the error mattered because it understated how soon the payoff arrives.
+
+The loop from §7.4 closes **at the end of the presentation phase**, through plain `dotnet test`: headless mode renders to a texture and the integration test compares against a reference image. No MCP server is involved. What the MCP tools add is a different **transport** — interactive, agent-driven verification instead of batch verification in CI — which is valuable but not what closes the loop.
+
+So the reordering stands, and the slice that needs moving is smaller than first written: three tasks in the presentation phase, not a carve-out of the MCP phase.
 
 ## Consequences
 
@@ -27,4 +35,5 @@ The rest of the MCP surface stays in its planned position — those tools depend
 - Reference images become load-bearing early, which raises the stakes on how the first ones are produced. **Every first reference image must be reviewed by a human before it is accepted** — an unreviewed baseline cements a wrong render as ground truth for every later comparison, including automated ones. This is the one step in the loop that cannot itself be automated.
 - Rendering tasks after this point can carry a real Definition of Done instead of "console output looked plausible."
 - The backend split gets an automated regression check for the change most likely to need one.
-- Some of `HEngine.Testing` will be built before every consumer exists, so parts of its shape are provisional and may move when the remaining MCP tools arrive.
+- Some of `HEngine.Testing` will be built before every consumer exists, so parts of its shape are provisional and may move when the MCP tools arrive.
+- Automated visual regression checking arrives at the **end of the presentation phase**. Interactive, agent-driven verification arrives later with the MCP transport. Conflating the two, as the first version of this record did, makes the payoff look further away than it is.
