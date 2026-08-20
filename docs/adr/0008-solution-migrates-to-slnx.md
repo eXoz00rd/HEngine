@@ -11,7 +11,7 @@ The case for migrating is concrete and has been felt repeatedly during the modul
 
 `.slnx` is plain XML: one line per project, no GUIDs, human-readable and mergeable.
 
-**Tool support, verified 2026-08-20:** the pinned SDK is 10.0.201 and ships `dotnet sln migrate`, which generates `.slnx` from the existing `.sln`. The condition in decision #7 is satisfied.
+**Tool support, verified 2026-08-20:** `global.json` pins 10.0.100 with `rollForward: latestMajor`, so the SDK in use is 10.0.201. It ships `dotnet sln migrate`, which generates `.slnx` from the existing `.sln`. The condition in decision #7 is satisfied.
 
 ## Decision
 
