@@ -22,6 +22,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\HEngine.ECS\HEngine.ECS.csproj"/>
+        <ProjectReference Include="..\HEngine.Scene\HEngine.Scene.csproj"/>
     </ItemGroup>
 
 </Project>
