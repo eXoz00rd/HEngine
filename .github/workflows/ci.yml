@@ -31,17 +31,8 @@ jobs:
     - name: Build solution
       run: dotnet build HEngine.slnx --no-restore --configuration Release /p:ContinuousIntegrationBuild=true
 
-    - name: Run Core Tests
-      run: dotnet test Tests/HEngine.Core.Tests/HEngine.Core.Tests.csproj --no-build --configuration Release --logger "trx;LogFileName=core-tests.trx" --verbosity normal
-
-    - name: Run Rendering Tests
-      run: dotnet test Tests/HEngine.Rendering.Tests/HEngine.Rendering.Tests.csproj --no-build --configuration Release --logger "trx;LogFileName=rendering-tests.trx" --verbosity normal
-
-    - name: Run ECS Tests
-      run: dotnet test Tests/HEngine.ECS.Tests/HEngine.ECS.Tests.csproj --no-build --configuration Release --logger "trx;LogFileName=ecs-tests.trx" --verbosity normal
-
-    - name: Run Scene Tests
-      run: dotnet test Tests/HEngine.Scene.Tests/HEngine.Scene.Tests.csproj --no-build --configuration Release --logger "trx;LogFileName=scene-tests.trx" --verbosity normal
+    - name: Run tests
+      run: dotnet test HEngine.slnx --no-build --configuration Release --logger "trx" --verbosity normal
 
     - name: Upload Test Results
       uses: actions/upload-artifact@v4
