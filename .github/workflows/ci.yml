@@ -37,6 +37,9 @@ jobs:
     - name: Run Rendering Tests
       run: dotnet test Tests/HEngine.Rendering.Tests/HEngine.Rendering.Tests.csproj --no-build --configuration Release --logger "trx;LogFileName=rendering-tests.trx" --verbosity normal
 
+    - name: Run ECS Tests
+      run: dotnet test Tests/HEngine.ECS.Tests/HEngine.ECS.Tests.csproj --no-build --configuration Release --logger "trx;LogFileName=ecs-tests.trx" --verbosity normal
+
     - name: Upload Test Results
       uses: actions/upload-artifact@v4
       if: always()

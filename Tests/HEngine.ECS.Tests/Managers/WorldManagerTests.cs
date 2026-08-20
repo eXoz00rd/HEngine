@@ -3,7 +3,7 @@ using HEngine.Core.Managers;
 using HEngine.Core.Primitives;
 using NSubstitute;
 
-namespace HEngine.Core.Tests.Managers;
+namespace HEngine.ECS.Tests.Managers;
 
 public class WorldManagerTests : IDisposable {
     private readonly WorldManager _worldManager = new(new SystemManager());

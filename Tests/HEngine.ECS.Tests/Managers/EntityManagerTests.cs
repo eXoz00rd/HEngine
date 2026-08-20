@@ -1,7 +1,7 @@
 ﻿using HEngine.Core.Managers;
 using HEngine.Core.Primitives;
 
-namespace HEngine.Core.Tests.Managers;
+namespace HEngine.ECS.Tests.Managers;
 
 public class EntityManagerTests : IDisposable {
     private readonly EntityManager _entityManager = new();
