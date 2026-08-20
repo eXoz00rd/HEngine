@@ -11,9 +11,14 @@ public sealed class ComponentIdAttribute : Attribute
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(id);
 
-        if (!id.StartsWith(RequiredPrefix, StringComparison.Ordinal))
+        if (id.Any(char.IsWhiteSpace))
         {
-            throw new ArgumentException($"Component id '{id}' must start with the '{RequiredPrefix}' prefix.", nameof(id));
+            throw new ArgumentException($"Component id '{id}' must not contain whitespace.", nameof(id));
+        }
+
+        if (!id.StartsWith(RequiredPrefix, StringComparison.Ordinal) || id.Length == RequiredPrefix.Length)
+        {
+            throw new ArgumentException($"Component id '{id}' must start with the '{RequiredPrefix}' prefix and have a name following it.", nameof(id));
         }
 
         Id = id;

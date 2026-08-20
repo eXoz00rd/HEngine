@@ -16,7 +16,8 @@ public class ComponentIdAttributeTests
     [InlineData("transform")]
     [InlineData("Hengine.transform")]
     [InlineData("hengine")]
-    public void Constructor_WithoutRequiredPrefix_ShouldThrow(string id)
+    [InlineData("hengine.")]
+    public void Constructor_WithoutRequiredPrefixOrSuffix_ShouldThrow(string id)
     {
         Assert.Throws<ArgumentException>(() => new ComponentIdAttribute(id));
     }
@@ -28,5 +29,15 @@ public class ComponentIdAttributeTests
     public void Constructor_WithNullOrWhitespaceId_ShouldThrow(string? id)
     {
         Assert.ThrowsAny<ArgumentException>(() => new ComponentIdAttribute(id!));
+    }
+
+    [Theory]
+    [InlineData("hengine. transform")]
+    [InlineData("hengine.transform ")]
+    [InlineData(" hengine.transform")]
+    [InlineData("hengine.trans form")]
+    public void Constructor_WithWhitespaceInsideId_ShouldThrow(string id)
+    {
+        Assert.Throws<ArgumentException>(() => new ComponentIdAttribute(id));
     }
 }
