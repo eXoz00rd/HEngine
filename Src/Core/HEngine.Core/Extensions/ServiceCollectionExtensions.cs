@@ -1,7 +1,7 @@
 ﻿using HEngine.Core.Configuration;
 using HEngine.Core.Contracts;
-using HEngine.Core.Managers;
 using HEngine.Core.Time;
+using HEngine.ECS.Extensions;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace HEngine.Core.Extensions;
@@ -13,9 +13,8 @@ public static class ServiceCollectionExtensions
         services.AddSingleton(config);
 
         services.AddSingleton<GameTime>();
-        services.AddSingleton<WorldManager>();
-        services.AddSingleton<SystemManager>();
-        
+        services.AddHEngineECS();
+
         services.AddSingleton<IGameLoop, GameLoop>();
 
         return services;
