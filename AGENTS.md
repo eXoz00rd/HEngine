@@ -26,8 +26,8 @@ Two rules follow:
 ## 2. Build and test
 
 ```bash
-dotnet build HEngine.sln -c Debug
-dotnet test HEngine.sln
+dotnet build HEngine.slnx -c Debug
+dotnet test HEngine.slnx
 ```
 
 Two test projects: `Tests/HEngine.Core.Tests` (platform-agnostic) and `Tests/HEngine.Rendering.Tests`. Narrow the loop when iterating:

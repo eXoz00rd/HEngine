@@ -221,7 +221,7 @@ Comprehensive test coverage across 44 test files:
 
 ```bash
 # Run all tests
-dotnet test HEngine.sln
+dotnet test HEngine.slnx
 
 # Run specific suite
 dotnet test Tests/HEngine.Core.Tests
@@ -240,7 +240,7 @@ dotnet run --project Benchmarks/HEngine.Core.Benchmarks -c Release
 
 ```
 HEngine/
-├── HEngine.sln                          # Solution (6 projects)
+├── HEngine.slnx                         # Solution (6 projects)
 ├── global.json                          # .NET SDK pinning
 │
 ├── HEngine/                             # 🟢 Application Layer (Composition Root)
@@ -344,8 +344,8 @@ HEngine/
 
 ```bash
 # Restore and build
-dotnet restore HEngine.sln
-dotnet build HEngine.sln -c Release
+dotnet restore HEngine.slnx
+dotnet build HEngine.slnx -c Release
 
 # Run the engine
 dotnet run --project HEngine -c Release

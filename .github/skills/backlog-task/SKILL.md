@@ -79,7 +79,7 @@ git checkout -b fix/short-description
 ## 5. Validate
 
 ```bash
-dotnet build HEngine.sln -c Debug
+dotnet build HEngine.slnx -c Debug
 dotnet test Tests/HEngine.Core.Tests/HEngine.Core.Tests.csproj --filter "FullyQualifiedName~<TouchedArea>"
 ```
 
