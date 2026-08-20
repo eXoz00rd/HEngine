@@ -21,4 +21,4 @@ jobs:
           global-json-file: global.json
 
       - name: Restore solution
-        run: dotnet restore HEngine.sln
+        run: dotnet restore HEngine.slnx

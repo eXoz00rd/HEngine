@@ -7,9 +7,9 @@
 - C# IDE: Rider, Visual Studio 2022, or VS Code
 
 ```bash
-dotnet restore HEngine.sln
-dotnet build HEngine.sln
-dotnet test HEngine.sln
+dotnet restore HEngine.slnx
+dotnet build HEngine.slnx
+dotnet test HEngine.slnx
 ```
 
 ## Workflow
@@ -82,6 +82,6 @@ CI must be green before merging.
 
 ## Before a PR
 
-- `dotnet build HEngine.sln` — no new warnings
-- `dotnet test HEngine.sln` — all tests green
+- `dotnet build HEngine.slnx` — no new warnings
+- `dotnet test HEngine.slnx` — all tests green
 - If the change touches the render path, **look at the result** — the test suite covers subsystems that are not reachable from the game loop, so green tests alone do not prove a rendering change works.

@@ -26,10 +26,10 @@ jobs:
         dotnet-quality: 'preview'
 
     - name: Restore dependencies
-      run: dotnet restore HEngine.sln
+      run: dotnet restore HEngine.slnx
 
     - name: Build solution
-      run: dotnet build HEngine.sln --no-restore --configuration Release /p:ContinuousIntegrationBuild=true
+      run: dotnet build HEngine.slnx --no-restore --configuration Release /p:ContinuousIntegrationBuild=true
 
     - name: Run Core Tests
       run: dotnet test Tests/HEngine.Core.Tests/HEngine.Core.Tests.csproj --no-build --configuration Release --logger "trx;LogFileName=core-tests.trx" --verbosity normal
