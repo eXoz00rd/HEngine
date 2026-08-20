@@ -12,6 +12,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\..\Core\HEngine.Core\HEngine.Core.csproj"/>
+        <ProjectReference Include="..\..\Core\HEngine.Assets\HEngine.Assets.csproj"/>
     </ItemGroup>
 
     <ItemGroup>
