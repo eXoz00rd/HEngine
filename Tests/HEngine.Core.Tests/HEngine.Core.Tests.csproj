@@ -30,9 +30,4 @@
         <ProjectReference Include="..\..\Src\Core\HEngine.Core\HEngine.Core.csproj"/>
     </ItemGroup>
 
-    <ItemGroup>
-        <Folder Include="Components\Core\"/>
-        <Folder Include="Components\Rendering\"/>
-    </ItemGroup>
-
 </Project>
