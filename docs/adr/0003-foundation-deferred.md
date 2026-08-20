@@ -1,7 +1,7 @@
 # 0003 — HEngine.Foundation is deferred; Color lives in Scene
 
-**Status:** Accepted (2026-08-20) · **partly overtaken (2026-08-20)** — the deferral has expired on its own terms: the trigger named below fired, and `HEngine.Foundation` is now scheduled as roadmap task R-A.0, ahead of the component registry. The `Color` half of this record still holds and is now **settled** rather than open — see *Resolution*. Read this for **why Foundation was skipped during the module split**, not as a claim that it stays skipped.
-**Relates to:** `TARGET_ARCHITECTURE.md` §2 (Z3), §3.2, §6.1 · issue #51, PR #67 · superseded in part by roadmap R-A.0
+**Status:** Accepted (2026-08-20) · **overtaken (2026-08-20)** — the Foundation deferral expired on its own terms: the trigger named below fired, `HEngine.Foundation` was created under roadmap task R-A.0, and `Color`'s placement is now closed under R-A.1 — see *Closure*. Read this for **why Foundation was skipped during the module split and where `Color` ended up**, not as a claim that either question is still open.
+**Relates to:** `TARGET_ARCHITECTURE.md` §2 (Z3), §3.2, §6.1 · issue #51, PR #67, PR #72 · superseded in part by roadmap R-A.0 and R-A.1
 
 ## Context
 
@@ -62,3 +62,11 @@ None of this forbids unification — the ECS-facing light components could adopt
 Either way the question is answered by the work that determines the answer, instead of waiting on a trigger that may never fire by itself. A colour-as-component, if anything ever genuinely needs one, is a distinct named component in the owning module (`Tint` in `Rendering`) — not a marker bolted onto the value type.
 
 **Generalisable, and the second time this record has produced the same lesson:** a type's module is decided by who consumes it, and the answer changes as consumers move. "Revisit later" on a placement question tends to mean "inherit by default", because nothing schedules the revisit. Attach it to the task that moves the consumers.
+
+## Closure — R-A.1 decided not to unify (2026-08-20)
+
+R-A.1 moved `DirectionalLight`, `PointLight`, `SpotLight` and `Renderable` from `Core` into `Rendering`. It did **not** unify the three light components' raw `Vector3 Color` fields onto the `Color` type, for the reason the Caveat above predicted rather than a new one: `LightingSystem.GatherLightsInto` assigns each component's `Color` straight into `LightData.Color` with no conversion today (`LightingSystem.cs:82,101,122`), because both sides are already `Vector3`. `LightData.Color` is GPU-layout-bound to `float3 Color` at `PBR.hlsl:28`, so it cannot itself become `Color`-typed. Unifying the components would turn those three direct assignments into `Color → Vector3` conversions that exist solely to satisfy the component's type, not because either endpoint needs it — the components would carry a richer type than the GPU boundary can use, purely for its own sake. HDR radiance vs. LDR display colour (the second half of the Caveat) is a real mismatch on top of that, not a tie-breaker.
+
+`Color` therefore keeps its single production consumer, `Camera.BackgroundColor`. Per the Resolution's own test — *shared by more than one module* — this is now permanent rather than pending: no task in the roadmap proposes another `Color` consumer, and R-A.2 (`Vertex3D` → `Assets`) does not touch it either, since `Vertex3D.Color` is a raw `Vector4`, not this type, for the same GPU-layout reason.
+
+**`Color` stays in `HEngine.Scene`. `HEngine.Foundation`'s membership is decided solely by the metadata attributes that triggered its creation (R-A.0) — `Color` was never part of that trigger and this record no longer carries it as an open question.**
