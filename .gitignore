@@ -118,4 +118,7 @@ BenchmarkDotNet.Artifacts/
 ############################
 .junie/
 .agents/
-docs/
+
+# Working planning documents stay local; architecture decision records are committed.
+docs/*
+!docs/adr/
