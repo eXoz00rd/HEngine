@@ -16,7 +16,7 @@ Each record: `NNNN-short-slug.md`, with Status / Context / Decision / Consequenc
 |---|---|---|
 | [0001](0001-ten-runtime-modules.md) | Ten runtime modules, extracted in dependency order | Accepted |
 | [0002](0002-namespaces-unchanged-during-extraction.md) | Namespaces stay unchanged while modules are extracted | Accepted |
-| [0003](0003-foundation-deferred.md) | HEngine.Foundation is deferred; Color lives in Scene | Accepted |
+| [0003](0003-foundation-deferred.md) | HEngine.Foundation is deferred; Color lives in Scene | Accepted · partly overtaken — Foundation is now scheduled (R-A.0); `Color` resolved |
 | [0004](0004-gameloop-placement-before-shape.md) | GameLoop is relocated before it is reshaped | Accepted |
 | [0005](0005-vertex-data-belongs-to-assets.md) | Vertex3D and loaded mesh data belong to Assets | Accepted |
 | [0006](0006-component-ids-are-stable-strings.md) | Component type identifiers are stable strings, not GUIDs | Accepted |
