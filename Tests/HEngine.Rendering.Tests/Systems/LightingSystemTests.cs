@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Linq;
 using System.Numerics;
 using HEngine.Core.Components.Rendering;
 using HEngine.Core.Components.Transform;
@@ -126,7 +125,7 @@ public class LightingSystemTests
 
         var lights = system.GatherLights(world);
 
-        Assert.Single(lights.Where(l => l.Type == LightType.Point));
+        Assert.Single(lights, l => l.Type == LightType.Point);
         Assert.DoesNotContain(lights, l => l.Type == LightType.Point && Math.Abs(l.Position.X - 2f) < 1e-5f);
     }
 }

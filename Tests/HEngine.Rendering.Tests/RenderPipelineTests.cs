@@ -8,6 +8,7 @@ using HEngine.Core.Rendering.Data;
 using HEngine.Rendering;
 using HEngine.Rendering.PostProcessing;
 using HEngine.Rendering.Systems;
+using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
 namespace HEngine.Rendering.Tests
@@ -126,19 +127,6 @@ namespace HEngine.Rendering.Tests
         public void Dispose() { }
     }
 
-    file sealed class NullLogger<T> : Microsoft.Extensions.Logging.ILogger<T>
-    {
-        public IDisposable BeginScope<TState>(TState state) => NullDisposable.Instance;
-        public bool IsEnabled(Microsoft.Extensions.Logging.LogLevel logLevel) => false;
-        public void Log<TState>(Microsoft.Extensions.Logging.LogLevel logLevel, Microsoft.Extensions.Logging.EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter) { }
-
-        private sealed class NullDisposable : IDisposable
-        {
-            public static readonly NullDisposable Instance = new();
-            public void Dispose() { }
-        }
-    }
-
     public class RenderPipelineTests
     {
         [Fact(DisplayName = "RenderPipeline uses ECS Camera view/projection matrices")]
@@ -163,7 +151,7 @@ namespace HEngine.Rendering.Tests
             var context = new FakeRenderContext(fakeRenderer);
             var renderManager = new FakeRenderManager(context);
             var renderingSystem = new FakeRenderingSystem();
-            var logger = new NullLogger<RenderPipeline>();
+            var logger = NullLogger<RenderPipeline>.Instance;
 
             var lightingSystem = new LightingSystem();
             lightingSystem.Initialize(world);
@@ -210,7 +198,7 @@ namespace HEngine.Rendering.Tests
             var context = new FakeRenderContext(fakeRenderer);
             var renderManager = new FakeRenderManager(context);
             var renderingSystem = new FakeRenderingSystem();
-            var logger = new NullLogger<RenderPipeline>();
+            var logger = NullLogger<RenderPipeline>.Instance;
 
             var lightingSystem = new LightingSystem();
             lightingSystem.Initialize(world);
@@ -257,7 +245,7 @@ namespace HEngine.Rendering.Tests
                 lightingSystem, shadowRenderingSystem,
                 new ShadowSettings { Enabled = true },
                 new PostProcessStack(), new NullPostProcessCommandContext(fakeRenderContext),
-                new NullLogger<RenderPipeline>()));
+                NullLogger<RenderPipeline>.Instance));
         }
 
         [Fact(DisplayName = "RenderFrame runs the post-process pass through IPostProcessCommandContext when effects are enabled, and still balances EndRender")]
@@ -279,7 +267,7 @@ namespace HEngine.Rendering.Tests
                 new FakeRenderingSystem(), world,
                 lightingSystem, shadowRenderingSystem,
                 new ShadowSettings { Enabled = false },
-                postProcessStack, postProcessContext, new NullLogger<RenderPipeline>());
+                postProcessStack, postProcessContext, NullLogger<RenderPipeline>.Instance);
 
             pipeline.RenderFrame();
 
