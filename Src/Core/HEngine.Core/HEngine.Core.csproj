@@ -6,10 +6,6 @@
 
 
     <ItemGroup>
-        <Folder Include="Components\Animation\"/>
-        <Folder Include="Components\Audio\"/>
-        <Folder Include="Components\Networking\"/>
-        <Folder Include="Queries\Contracts\"/>
         <Folder Include="Extensions\"/>
     </ItemGroup>
 
