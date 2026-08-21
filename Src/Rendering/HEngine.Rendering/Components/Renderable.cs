@@ -1,6 +1,6 @@
 ﻿using HEngine.Core.Contracts;
 
-namespace HEngine.Core.Components.Rendering;
+namespace HEngine.Rendering.Components;
 
 public struct Renderable : IComponent {
     public bool IsVisible;

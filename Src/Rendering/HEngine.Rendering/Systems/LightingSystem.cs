@@ -6,6 +6,7 @@ using HEngine.Core.Contracts;
 using HEngine.Core.Managers;
 using HEngine.Core.Queries;
 using HEngine.Core.Rendering.Data;
+using HEngine.Rendering.Components;
 
 namespace HEngine.Rendering.Systems;
 

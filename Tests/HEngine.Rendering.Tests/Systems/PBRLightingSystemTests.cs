@@ -3,6 +3,7 @@ using HEngine.Core.Components.Rendering;
 using HEngine.Core.Components.Transform;
 using HEngine.Core.Managers;
 using HEngine.Core.Rendering.Data;
+using HEngine.Rendering.Components;
 using HEngine.Rendering.Managers;
 using HEngine.Rendering.Systems;
 

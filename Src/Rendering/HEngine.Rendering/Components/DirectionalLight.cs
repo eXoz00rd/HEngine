@@ -1,7 +1,7 @@
 ﻿using HEngine.Core.Contracts;
 using System.Numerics;
 
-namespace HEngine.Core.Components.Rendering;
+namespace HEngine.Rendering.Components;
 
 public struct DirectionalLight : IComponent
 {

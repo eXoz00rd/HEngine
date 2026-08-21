@@ -1,5 +1,4 @@
 using System.Numerics;
-using HEngine.Core.Components.Rendering;
 using HEngine.Core.Components.Transform;
 using HEngine.Core.Configuration;
 using HEngine.Core.Managers;

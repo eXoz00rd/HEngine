@@ -1,7 +1,7 @@
-﻿using HEngine.Core.Components.Rendering;
-using HEngine.Core.Contracts;
+﻿using HEngine.Core.Contracts;
+using HEngine.Rendering.Components;
 
-namespace HEngine.Core.Tests.Components.Rendering;
+namespace HEngine.Rendering.Tests.Components;
 
 public class RenderableTests
 {

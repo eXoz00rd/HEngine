@@ -3,6 +3,7 @@ using System.Numerics;
 using HEngine.Core.Components.Rendering;
 using HEngine.Core.Components.Transform;
 using HEngine.Core.Managers;
+using HEngine.Rendering.Components;
 using HEngine.Rendering.Systems;
 using HEngine.Core.Rendering.Data;
 using Xunit;
