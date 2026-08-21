@@ -7,6 +7,7 @@ using HEngine.Core.Rendering.Contracts;
 using HEngine.Core.Rendering.Data;
 using HEngine.Rendering;
 using HEngine.Rendering.Components;
+using HEngine.Rendering.Contracts;
 using HEngine.Rendering.PostProcessing;
 using HEngine.Rendering.Systems;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -70,7 +71,7 @@ namespace HEngine.Rendering.Tests
         public FakeRenderContext(IRenderer renderer) => Renderer = renderer;
     }
 
-    file sealed class FakeRenderManager : IRenderManager
+    file sealed class FakeRenderManager : IRenderManagerContext
     {
         private readonly IRenderContext _context;
 
@@ -239,9 +240,10 @@ namespace HEngine.Rendering.Tests
             shadowRenderingSystem.Initialize(world);
 
             var fakeRenderContext = new FakeRenderContext(new FakeRenderer());
+            var fakeRenderManager = new FakeRenderManager(fakeRenderContext);
 
             Assert.Throws<InvalidOperationException>(() => new RenderPipeline(
-                new FakeRenderManager(fakeRenderContext),
+                fakeRenderManager,
                 new FakeRenderingSystem(), world,
                 lightingSystem, shadowRenderingSystem,
                 new ShadowSettings { Enabled = true },

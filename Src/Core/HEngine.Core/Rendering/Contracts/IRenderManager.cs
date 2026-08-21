@@ -15,10 +15,6 @@ public interface IRenderManager : IDisposable
     void Clear(Vector4 clearColor);
     void Present();
 
-   IRenderContext GetRenderContext();
-
-   bool TryGetRenderContext(out IRenderContext context);
-
    void SetActiveCamera(ICamera camera);
     bool TryGetActiveCamera(out ICamera camera);
 }

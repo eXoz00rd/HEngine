@@ -4,6 +4,7 @@ using HEngine.Core.Managers;
 using HEngine.Core.Mathematics;
 using HEngine.Core.Rendering.Contracts;
 using HEngine.Core.Rendering.Data;
+using HEngine.Rendering.Contracts;
 using HEngine.Rendering.Logging;
 using HEngine.Rendering.PostProcessing;
 using HEngine.Rendering.Systems;
@@ -15,7 +16,7 @@ public class RenderPipeline : IRenderPipeline {
     private readonly LightingSystem _lightingSystem;
     private readonly ILogger<RenderPipeline> _logger;
     private readonly IRenderingSystem _renderingSystem;
-    private readonly IRenderManager _renderManager;
+    private readonly IRenderManagerContext _renderManager;
     private readonly ShadowRenderingSystem _shadowRenderingSystem;
     private readonly ShadowSettings _shadowSettings;
     private readonly WorldManager _world;
@@ -25,7 +26,7 @@ public class RenderPipeline : IRenderPipeline {
     public PostProcessStack PostProcessStack => _postProcessStack;
 
     public RenderPipeline(
-        IRenderManager renderManager,
+        IRenderManagerContext renderManager,
         IRenderingSystem renderingSystem,
         WorldManager world,
         LightingSystem lightingSystem,

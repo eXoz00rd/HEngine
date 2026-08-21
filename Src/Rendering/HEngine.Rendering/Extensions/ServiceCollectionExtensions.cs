@@ -3,6 +3,7 @@ using HEngine.Core.Contracts;
 using HEngine.Core.Managers;
 using HEngine.Core.Rendering.Contracts;
 using HEngine.Rendering.Batches;
+using HEngine.Rendering.Contracts;
 using HEngine.Rendering.Devices;
 using HEngine.Rendering.Factories;
 using HEngine.Rendering.Input;
@@ -27,7 +28,9 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ISpriteRenderer, DirectX12SpriteRenderer>();
 
         services.AddSingleton<IRenderer, SilkDirectX12Renderer>();
-        services.AddSingleton<IRenderManager, RenderManager>();
+        services.AddSingleton<RenderManager>();
+        services.AddSingleton<IRenderManager>(provider => provider.GetRequiredService<RenderManager>());
+        services.AddSingleton<IRenderManagerContext>(provider => provider.GetRequiredService<RenderManager>());
 
         services.AddSingleton<IRenderContextFactory, SilkRenderContextFactory>();
 
