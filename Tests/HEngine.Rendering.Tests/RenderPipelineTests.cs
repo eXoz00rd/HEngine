@@ -71,7 +71,7 @@ namespace HEngine.Rendering.Tests
         public FakeRenderContext(IRenderer renderer) => Renderer = renderer;
     }
 
-    file sealed class FakeRenderManager : IRenderManager, IRenderContextProvider
+    file sealed class FakeRenderManager : IRenderManagerContext
     {
         private readonly IRenderContext _context;
 
@@ -165,7 +165,6 @@ namespace HEngine.Rendering.Tests
 
             var pipeline = new RenderPipeline(
                 renderManager,
-                renderManager,
                 renderingSystem,
                 world,
                 lightingSystem,
@@ -213,7 +212,6 @@ namespace HEngine.Rendering.Tests
 
             var pipeline = new RenderPipeline(
                 renderManager,
-                renderManager,
                 renderingSystem,
                 world,
                 lightingSystem,
@@ -246,7 +244,6 @@ namespace HEngine.Rendering.Tests
 
             Assert.Throws<InvalidOperationException>(() => new RenderPipeline(
                 fakeRenderManager,
-                fakeRenderManager,
                 new FakeRenderingSystem(), world,
                 lightingSystem, shadowRenderingSystem,
                 new ShadowSettings { Enabled = true },
@@ -269,7 +266,6 @@ namespace HEngine.Rendering.Tests
             var postProcessContext = new NullPostProcessCommandContext(new FakeRenderContext(new FakeRenderer()));
 
             var pipeline = new RenderPipeline(
-                renderManager,
                 renderManager,
                 new FakeRenderingSystem(), world,
                 lightingSystem, shadowRenderingSystem,

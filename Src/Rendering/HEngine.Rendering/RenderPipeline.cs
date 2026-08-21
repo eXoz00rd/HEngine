@@ -16,8 +16,7 @@ public class RenderPipeline : IRenderPipeline {
     private readonly LightingSystem _lightingSystem;
     private readonly ILogger<RenderPipeline> _logger;
     private readonly IRenderingSystem _renderingSystem;
-    private readonly IRenderManager _renderManager;
-    private readonly IRenderContextProvider _renderContextProvider;
+    private readonly IRenderManagerContext _renderManager;
     private readonly ShadowRenderingSystem _shadowRenderingSystem;
     private readonly ShadowSettings _shadowSettings;
     private readonly WorldManager _world;
@@ -27,8 +26,7 @@ public class RenderPipeline : IRenderPipeline {
     public PostProcessStack PostProcessStack => _postProcessStack;
 
     public RenderPipeline(
-        IRenderManager renderManager,
-        IRenderContextProvider renderContextProvider,
+        IRenderManagerContext renderManager,
         IRenderingSystem renderingSystem,
         WorldManager world,
         LightingSystem lightingSystem,
@@ -39,7 +37,6 @@ public class RenderPipeline : IRenderPipeline {
         ILogger<RenderPipeline> logger)
     {
         _renderManager = renderManager ?? throw new ArgumentNullException(nameof(renderManager));
-        _renderContextProvider = renderContextProvider ?? throw new ArgumentNullException(nameof(renderContextProvider));
         _renderingSystem = renderingSystem ?? throw new ArgumentNullException(nameof(renderingSystem));
         _world = world ?? throw new ArgumentNullException(nameof(world));
         _lightingSystem = lightingSystem ?? throw new ArgumentNullException(nameof(lightingSystem));
@@ -64,7 +61,7 @@ public class RenderPipeline : IRenderPipeline {
             return;
         }
 
-        if (!_renderContextProvider.TryGetRenderContext(out var context))
+        if (!_renderManager.TryGetRenderContext(out var context))
         {
             _logger.LogWarning(RenderLogEvents.PipelineContextNullWarn, "RenderContext unavailable; skipping frame");
             return;

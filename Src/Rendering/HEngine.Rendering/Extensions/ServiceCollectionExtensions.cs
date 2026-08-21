@@ -30,7 +30,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IRenderer, SilkDirectX12Renderer>();
         services.AddSingleton<RenderManager>();
         services.AddSingleton<IRenderManager>(provider => provider.GetRequiredService<RenderManager>());
-        services.AddSingleton<IRenderContextProvider>(provider => provider.GetRequiredService<RenderManager>());
+        services.AddSingleton<IRenderManagerContext>(provider => provider.GetRequiredService<RenderManager>());
 
         services.AddSingleton<IRenderContextFactory, SilkRenderContextFactory>();
 

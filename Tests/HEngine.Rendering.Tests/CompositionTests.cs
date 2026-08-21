@@ -6,6 +6,7 @@ using HEngine.Core.Managers;
 using HEngine.Core.Rendering.Contracts;
 using HEngine.Rendering;
 using HEngine.Rendering.Components;
+using HEngine.Rendering.Contracts;
 using HEngine.Rendering.Extensions;
 using HEngine.Rendering.PostProcessing;
 using HEngine.Rendering.Systems;
@@ -151,6 +152,19 @@ namespace HEngine.Rendering.Tests
             Assert.Same(postProcessContextA, postProcessContextB);
             Assert.IsType<DirectX12PostProcessCommandContext>(postProcessContextA);
             Assert.Same(postProcessContextA, provider.GetRequiredService<DirectX12PostProcessCommandContext>());
+        }
+
+        [Fact(DisplayName = "RenderManager is registered in DI as a shared singleton exposed through IRenderManager and IRenderManagerContext")]
+        public void Composition_Resolves_RenderManager_As_Singleton_Across_Redirected_Interfaces()
+        {
+            using var provider = BuildProductionServiceCollection().BuildServiceProvider();
+
+            var renderManager = provider.GetRequiredService<HEngine.Rendering.Managers.RenderManager>();
+            var renderManagerAsInterface = provider.GetRequiredService<IRenderManager>();
+            var renderManagerContext = provider.GetRequiredService<IRenderManagerContext>();
+
+            Assert.Same(renderManager, renderManagerAsInterface);
+            Assert.Same(renderManager, renderManagerContext);
         }
 
         [Fact(DisplayName = "Production composition resolves the real RenderPipeline/RenderingSystem implementations, not a test double")]

@@ -8,7 +8,7 @@ using Microsoft.Extensions.Logging;
 
 namespace HEngine.Rendering.Managers;
 
-public class RenderManager : IRenderManager, IRenderContextProvider
+public class RenderManager : IRenderManagerContext
 {
     private readonly EngineConfiguration _config;
     private readonly IRenderContextFactory _contextFactory;
