@@ -1,13 +1,14 @@
 ﻿using System.Numerics;
 using HEngine.Core.Configuration;
 using HEngine.Core.Rendering.Contracts;
+using HEngine.Rendering.Contracts;
 using HEngine.Rendering.Factories;
 using HEngine.Rendering.Logging;
 using Microsoft.Extensions.Logging;
 
 namespace HEngine.Rendering.Managers;
 
-public class RenderManager : IRenderManager
+public class RenderManager : IRenderManager, IRenderContextProvider
 {
     private readonly EngineConfiguration _config;
     private readonly IRenderContextFactory _contextFactory;
