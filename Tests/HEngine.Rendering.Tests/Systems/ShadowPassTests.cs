@@ -65,7 +65,7 @@ public class ShadowPassTests
         var caster = world.CreateEntity();
         world.AddComponent(caster, new Transform(new Vector3(0, 0, 0)));
         world.AddComponent(caster, new HEngine.Rendering.Components.Mesh(1, 36));
-        world.AddComponent(caster, new HEngine.Core.Components.Rendering.Renderable
+        world.AddComponent(caster, new Renderable
         {
             CastShadows = true,
             ReceiveShadows = true,
@@ -75,7 +75,7 @@ public class ShadowPassTests
         var nonCaster = world.CreateEntity();
         world.AddComponent(nonCaster, new Transform(new Vector3(5, 0, 0)));
         world.AddComponent(nonCaster, new HEngine.Rendering.Components.Mesh(1, 36));
-        world.AddComponent(nonCaster, new HEngine.Core.Components.Rendering.Renderable
+        world.AddComponent(nonCaster, new Renderable
         {
             CastShadows = false,
             ReceiveShadows = false,
@@ -101,12 +101,12 @@ public class ShadowPassTests
         var visible = world.CreateEntity();
         world.AddComponent(visible, new Transform(new Vector3(0, 0, 0)));
         world.AddComponent(visible, new HEngine.Rendering.Components.Mesh(1, 36));
-        world.AddComponent(visible, new HEngine.Core.Components.Rendering.Renderable { CastShadows = true });
+        world.AddComponent(visible, new Renderable { CastShadows = true });
 
         var culled = world.CreateEntity();
         world.AddComponent(culled, new Transform(new Vector3(5, 0, 0)));
         world.AddComponent(culled, new HEngine.Rendering.Components.Mesh(1, 36));
-        world.AddComponent(culled, new HEngine.Core.Components.Rendering.Renderable { CastShadows = true });
+        world.AddComponent(culled, new Renderable { CastShadows = true });
         world.AddComponent(culled, new HEngine.Core.Components.Rendering.Culled());
 
         var fakeRenderer = new FakeShadowRenderer();

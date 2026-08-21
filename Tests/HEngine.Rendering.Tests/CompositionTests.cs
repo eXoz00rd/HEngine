@@ -1,11 +1,11 @@
 using System.Linq;
 using System.Numerics;
-using HEngine.Core.Components.Rendering;
 using HEngine.Core.Configuration;
 using HEngine.Core.Extensions;
 using HEngine.Core.Managers;
 using HEngine.Core.Rendering.Contracts;
 using HEngine.Rendering;
+using HEngine.Rendering.Components;
 using HEngine.Rendering.Extensions;
 using HEngine.Rendering.PostProcessing;
 using HEngine.Rendering.Systems;

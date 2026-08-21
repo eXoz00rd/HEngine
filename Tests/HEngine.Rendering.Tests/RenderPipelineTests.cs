@@ -6,6 +6,7 @@ using HEngine.Core.Managers;
 using HEngine.Core.Rendering.Contracts;
 using HEngine.Core.Rendering.Data;
 using HEngine.Rendering;
+using HEngine.Rendering.Components;
 using HEngine.Rendering.PostProcessing;
 using HEngine.Rendering.Systems;
 using Microsoft.Extensions.Logging.Abstractions;
