@@ -1,7 +1,7 @@
 ﻿using HEngine.Core.Contracts;
 using HEngine.Core.Primitives;
 
-namespace HEngine.Core.Queries;
+namespace HEngine.ECS.Queries;
 
 public interface IQuery<T1, T2, T3> : IQuery
     where T1 : struct, IComponent

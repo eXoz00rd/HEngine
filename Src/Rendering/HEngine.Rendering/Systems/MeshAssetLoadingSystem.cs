@@ -3,7 +3,7 @@ using HEngine.Core.Assets;
 using HEngine.Core.Contracts;
 using HEngine.Core.Managers;
 using HEngine.Core.Primitives;
-using HEngine.Core.Queries;
+using HEngine.ECS.Queries;
 using HEngine.Rendering.Assets;
 using HEngine.Rendering.Components;
 

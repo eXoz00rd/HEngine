@@ -1,7 +1,7 @@
 ﻿using HEngine.Core.Contracts;
 using HEngine.Core.Managers;
 
-namespace HEngine.Core.Queries;
+namespace HEngine.ECS.Queries;
 
 public class QueryBuilder {
     private readonly ComponentManager _componentManager;
