@@ -11,8 +11,7 @@ public static class MaterialTemplateSerializer
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         WriteIndented = true,
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-        Converters = { new MaterialPropertyConverter() }
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
     };
 
     public static string SerializeToJson(MaterialTemplate template)
@@ -181,37 +180,5 @@ public static class MaterialTemplateSerializer
         public string? Name { get; set; }
         public string? Type { get; set; }
         public object? Value { get; set; }
-    }
-
-    private class MaterialPropertyConverter : JsonConverter<MaterialProperty>
-    {
-        public override MaterialProperty Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override void Write(Utf8JsonWriter writer, MaterialProperty value, JsonSerializerOptions options)
-        {
-            writer.WriteStartObject();
-            writer.WriteString("Name", value.Name);
-            writer.WriteString("Type", value.Type.ToString());
-
-            writer.WritePropertyName("Value");
-            switch (value.Type)
-            {
-                case MaterialPropertyType.Float:
-                    writer.WriteNumberValue(value.AsFloat());
-                    break;
-                case MaterialPropertyType.Int:
-                    writer.WriteNumberValue(value.AsInt());
-                    break;
-                case MaterialPropertyType.Texture2D:
-                case MaterialPropertyType.TextureCube:
-                    writer.WriteStringValue(value.AsTexturePath());
-                    break;
-            }
-
-            writer.WriteEndObject();
-        }
     }
 }
