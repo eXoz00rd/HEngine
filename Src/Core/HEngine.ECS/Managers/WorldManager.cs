@@ -1,6 +1,6 @@
 ﻿using HEngine.Core.Contracts;
 using HEngine.Core.Primitives;
-using HEngine.Core.Queries;
+using HEngine.ECS.Queries;
 
 namespace HEngine.Core.Managers;
 

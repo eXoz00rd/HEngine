@@ -2,7 +2,7 @@
 using HEngine.Core.Managers;
 using HEngine.Core.Primitives;
 
-namespace HEngine.Core.Queries;
+namespace HEngine.ECS.Queries;
 
 public readonly ref struct QueryItem<T1, T2, T3>
     where T1 : struct, IComponent

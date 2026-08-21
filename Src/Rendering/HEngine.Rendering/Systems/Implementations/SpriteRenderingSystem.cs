@@ -1,7 +1,7 @@
 ﻿using HEngine.Core.Components.Transform;
 using HEngine.Core.Managers;
-using HEngine.Core.Queries;
 using HEngine.Core.Rendering.Contracts;
+using HEngine.ECS.Queries;
 using HEngine.Rendering.Components;
 using HEngine.Rendering.Systems.Contracts;
 
