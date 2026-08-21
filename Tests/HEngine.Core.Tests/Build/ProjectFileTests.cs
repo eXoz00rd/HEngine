@@ -12,8 +12,10 @@ public class ProjectFileTests
 
         foreach (var csprojPath in Directory.EnumerateFiles(repoRoot, "*.csproj", SearchOption.AllDirectories))
         {
-            if (csprojPath.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}") ||
-                csprojPath.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}"))
+            var relativeSegments = Path.GetRelativePath(repoRoot, csprojPath)
+                .Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+
+            if (relativeSegments.Contains("bin") || relativeSegments.Contains("obj"))
                 continue;
 
             var projectDirectory = Path.GetDirectoryName(csprojPath)!;
