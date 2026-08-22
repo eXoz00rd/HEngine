@@ -11,7 +11,6 @@ public enum ProjectionMode
 public class EngineConfiguration {
     public WindowSettings Window { get; set; } = new();
     public RenderingSettings Rendering { get; set; } = new();
-    public PerformanceSettings Performance { get; set; } = new();
     public PbrSettings PBR { get; set; } = new();
     public ShadowSettings Shadow { get; set; } = new();
     public PostProcessingSettings PostProcessing { get; set; } = new();
@@ -32,12 +31,6 @@ public class RenderingSettings {
     public float NearPlane { get; set; } = 0.1f;
     public float FarPlane { get; set; } = 100.0f;
     public int MaxAnisotropy { get; set; } = 16;
-}
-
-public class PerformanceSettings {
-    public int TargetFps { get; set; } = 60;
-    public bool LimitFrameRate { get; set; } = false;
-    public bool ShowFps { get; set; } = true;
 }
 
 public class PbrSettings {
