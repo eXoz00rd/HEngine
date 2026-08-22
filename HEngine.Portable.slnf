@@ -1,0 +1,18 @@
+{
+  "solution": {
+    "path": "HEngine.slnx",
+    "projects": [
+      "Benchmarks/HEngine.Core.Benchmarks/HEngine.Core.Benchmarks.csproj",
+      "Src/Core/HEngine.Assets/HEngine.Assets.csproj",
+      "Src/Core/HEngine.Core/HEngine.Core.csproj",
+      "Src/Core/HEngine.ECS/HEngine.ECS.csproj",
+      "Src/Core/HEngine.Foundation/HEngine.Foundation.csproj",
+      "Src/Core/HEngine.Scene/HEngine.Scene.csproj",
+      "Tests/HEngine.Assets.Tests/HEngine.Assets.Tests.csproj",
+      "Tests/HEngine.Core.Tests/HEngine.Core.Tests.csproj",
+      "Tests/HEngine.ECS.Tests/HEngine.ECS.Tests.csproj",
+      "Tests/HEngine.Foundation.Tests/HEngine.Foundation.Tests.csproj",
+      "Tests/HEngine.Scene.Tests/HEngine.Scene.Tests.csproj"
+    ]
+  }
+}
