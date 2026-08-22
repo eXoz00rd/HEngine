@@ -101,7 +101,7 @@ Composition root. Wires everything together using Microsoft.Extensions.Dependenc
 | **Core** | `Active`, `Children` (inline 4 + overflow list), `DirtyFlag`, `Name`, `Parent`, `Timer` |
 | **Transform** | `Transform` (3D pos/rot/scale + world matrix caching), `Transform2D`, `WorldTransform` |
 | **Rendering** | `Camera` (perspective/ortho, clear flags, culling mask, depth), `Renderable` (layer, LOD, shadow, render mode), `BoundingBox`, `Color`, `Culled`, `DirectionalLight`, `PointLight`, `SpotLight` |
-| **Physics** | `Rigidbody` (mass, drag, kinematic, gravity), `Velocity` (linear + angular), `Acceleration`, `BoxCollider`, `SphereCollider`, `CollisionInfo` |
+| **Physics** | *(placeholder — folder created)* |
 | **Animation** | *(placeholder — folder created)* |
 | **Audio** | *(placeholder — folder created)* |
 | **Networking** | *(placeholder — folder created)* |
@@ -259,7 +259,7 @@ HEngine/
 │   │   │   ├── Core/                    #    Active, Children, DirtyFlag, Name, Parent, Timer
 │   │   │   ├── Transform/              #    Transform, Transform2D, WorldTransform
 │   │   │   ├── Rendering/              #    Camera, Renderable, Lights, BoundingBox, Color, Culled
-│   │   │   ├── Physics/                #    Rigidbody, Velocity, Acceleration, Colliders, CollisionInfo
+│   │   │   ├── Physics/                #    (placeholder)
 │   │   │   ├── Animation/              #    (placeholder)
 │   │   │   ├── Audio/                   #    (placeholder)
 │   │   │   └── Networking/              #    (placeholder)
