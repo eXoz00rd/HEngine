@@ -1,5 +1,5 @@
 using System.Numerics;
-using HEngine.Core.Assets;
+using HEngine.Assets.Assets;
 using HEngine.Core.Managers;
 using HEngine.Core.Primitives;
 using HEngine.Core.Rendering.Data;

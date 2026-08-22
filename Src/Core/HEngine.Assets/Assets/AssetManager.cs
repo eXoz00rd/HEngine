@@ -1,6 +1,6 @@
 using System.Collections.Concurrent;
 
-namespace HEngine.Core.Assets;
+namespace HEngine.Assets.Assets;
 
 public class AssetManager : IDisposable
 {

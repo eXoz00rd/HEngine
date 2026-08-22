@@ -1,6 +1,6 @@
 using HEngine.Core.Rendering.Data;
 
-namespace HEngine.Core.Assets;
+namespace HEngine.Assets.Assets;
 
 public class LoadedMesh
 {

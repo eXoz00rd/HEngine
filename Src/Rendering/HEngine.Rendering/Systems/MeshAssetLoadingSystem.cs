@@ -1,5 +1,5 @@
 using System.Collections.Concurrent;
-using HEngine.Core.Assets;
+using HEngine.Assets.Assets;
 using HEngine.Core.Contracts;
 using HEngine.Core.Managers;
 using HEngine.Core.Primitives;
