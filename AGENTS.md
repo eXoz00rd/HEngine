@@ -102,6 +102,7 @@ A subsystem is done when it is **reachable from the game loop and its effect is 
 
 - Submit the review as `REQUEST_CHANGES` whenever the findings say changes are needed — that verdict is not softened to `COMMENT` just because the request only asked for "comments" or "uwagi". `COMMENT` is for a review with no blocking findings; `APPROVE` only when explicitly asked to approve.
 - Review comments and the review summary are in English, same as commits, PR bodies and issues (§9).
+- Correctness and runtime reachability come first, but every review is also a standing quality pass on three axes, not optional polish: **performance** (avoidable allocations, boxing, redundant computation/I/O, especially on per-frame ECS/render/input hot paths — an interface's shape counts here too, since it constrains every future implementer), **maintainability** (duplication, unclear naming, logic at the wrong architectural layer instead of generalizing shared infrastructure), and **design patterns** (new abstractions should match how sibling modules already solve the same kind of problem — flag both a type doing too many jobs and a pattern used where a plain method would do). See `.github/skills/code-review/SKILL.md` and `.github/copilot-instructions.md` for the fuller checklist.
 
 ## 9. Writing documents
 

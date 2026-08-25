@@ -4,23 +4,15 @@ namespace HEngine.Platform.Tests.Windowing;
 
 public class NativeSurfaceHandleTests
 {
-    [Fact]
-    public void Equals_SameHandleValue_ReturnsTrue()
+    [Theory]
+    [InlineData(1234, 1234, true)]
+    [InlineData(1234, 5678, false)]
+    public void Equals_ComparesByHandleValue(int firstHandle, int secondHandle, bool expectedEqual)
     {
-        var first = new NativeSurfaceHandle(1234);
-        var second = new NativeSurfaceHandle(1234);
+        var first = new NativeSurfaceHandle(firstHandle);
+        var second = new NativeSurfaceHandle(secondHandle);
 
-        Assert.Equal(first, second);
-        Assert.True(first == second);
-    }
-
-    [Fact]
-    public void Equals_DifferentHandleValue_ReturnsFalse()
-    {
-        var first = new NativeSurfaceHandle(1234);
-        var second = new NativeSurfaceHandle(5678);
-
-        Assert.NotEqual(first, second);
-        Assert.False(first == second);
+        Assert.Equal(expectedEqual, first.Equals(second));
+        Assert.Equal(expectedEqual, first == second);
     }
 }
