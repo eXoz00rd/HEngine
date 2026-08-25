@@ -1,6 +1,6 @@
 namespace HEngine.Platform.Windowing;
 
-public interface IWindow
+public interface IWindow : IDisposable
 {
     string Title { get; set; }
     int Width { get; }
@@ -9,5 +9,4 @@ public interface IWindow
     NativeSurfaceHandle Surface { get; }
 
     void PumpEvents();
-    void Close();
 }
