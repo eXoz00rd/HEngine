@@ -13,6 +13,7 @@ namespace HEngine.Platform.Windows.Input;
 public sealed class SilkInputSource : IInputSource, IDisposable
 {
     private readonly SilkIInputContext _inputContext;
+    private readonly SilkWindow _window;
     private bool _disposed;
 
     public SilkInputSource(IWindow window)
@@ -26,6 +27,7 @@ public sealed class SilkInputSource : IInputSource, IDisposable
                 nameof(window));
         }
 
+        _window = silkWindow;
         _inputContext = Silk.NET.Input.InputWindowExtensions.CreateInput(silkWindow.NativeWindow);
 
         foreach (var keyboard in _inputContext.Keyboards)
@@ -40,6 +42,10 @@ public sealed class SilkInputSource : IInputSource, IDisposable
             mouse.MouseUp += OnMouseUp;
             mouse.MouseMove += OnMouseMove;
         }
+
+        // Consumers that only hold IInputSource (no Dispose in that contract) would
+        // otherwise never release the Silk input context; tie it to window lifetime too.
+        _window.NativeWindow.Closing += OnWindowClosing;
     }
 
     public event Action<Key>? KeyDown;
@@ -73,12 +79,16 @@ public sealed class SilkInputSource : IInputSource, IDisposable
     private void OnMouseMove(SilkIMouse mouse, Vector2 position) =>
         MouseMoved?.Invoke(position);
 
+    private void OnWindowClosing() => Dispose();
+
     public void Dispose()
     {
         if (_disposed)
         {
             return;
         }
+
+        _window.NativeWindow.Closing -= OnWindowClosing;
 
         foreach (var keyboard in _inputContext.Keyboards)
         {
