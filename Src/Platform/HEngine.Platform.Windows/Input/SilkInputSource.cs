@@ -1,5 +1,6 @@
 using System.Numerics;
 using HEngine.Platform.Input;
+using HEngine.Platform.Windowing;
 using HEngine.Platform.Windows.Windowing;
 using SilkIInputContext = Silk.NET.Input.IInputContext;
 using SilkIKeyboard = Silk.NET.Input.IKeyboard;
@@ -14,11 +15,18 @@ public sealed class SilkInputSource : IInputSource, IDisposable
     private readonly SilkIInputContext _inputContext;
     private bool _disposed;
 
-    public SilkInputSource(SilkWindow window)
+    public SilkInputSource(IWindow window)
     {
         ArgumentNullException.ThrowIfNull(window);
 
-        _inputContext = Silk.NET.Input.InputWindowExtensions.CreateInput(window.NativeWindow);
+        if (window is not SilkWindow silkWindow)
+        {
+            throw new ArgumentException(
+                $"{nameof(SilkInputSource)} requires a {nameof(SilkWindow)}, got {window.GetType().Name}.",
+                nameof(window));
+        }
+
+        _inputContext = Silk.NET.Input.InputWindowExtensions.CreateInput(silkWindow.NativeWindow);
 
         foreach (var keyboard in _inputContext.Keyboards)
         {

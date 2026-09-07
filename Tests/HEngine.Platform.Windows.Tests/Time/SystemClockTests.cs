@@ -10,9 +10,13 @@ public class SystemClockTests
         var clock = new SystemClock();
 
         var first = clock.Elapsed;
-        Thread.Sleep(10);
-        var second = clock.Elapsed;
+        var deadline = DateTime.UtcNow.AddSeconds(5);
 
-        Assert.True(second > first);
+        while (clock.Elapsed == first && DateTime.UtcNow < deadline)
+        {
+            Thread.SpinWait(100);
+        }
+
+        Assert.True(clock.Elapsed > first);
     }
 }

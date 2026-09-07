@@ -35,8 +35,21 @@ public sealed class SilkWindow : IWindow
     public int Height => NativeWindow.Size.Y;
     public bool ShouldClose => NativeWindow.IsClosing;
 
-    public NativeSurfaceHandle Surface =>
-        new(NativeWindow.Native?.Win32?.Hwnd ?? 0);
+    public NativeSurfaceHandle Surface
+    {
+        get
+        {
+            var hwnd = NativeWindow.Native?.Win32?.Hwnd;
+
+            if (hwnd is null)
+            {
+                throw new InvalidOperationException(
+                    "The window has no Win32 surface handle. Was it initialized on this platform?");
+            }
+
+            return new NativeSurfaceHandle(hwnd.Value);
+        }
+    }
 
     public void PumpEvents()
     {
