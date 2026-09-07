@@ -52,8 +52,18 @@ Find high-signal review findings that would ship incorrect runtime behavior even
 - Contracts belong in Core; rendering implementations belong in Rendering.
 - Reuse existing configuration and service registration patterns instead of introducing ad hoc paths.
 
+### Code quality: performance, maintainability, design patterns
+
+Correctness and reachability come first, but every review also evaluates quality on three axes — this is a standing bar, not an optional pass:
+
+- **Performance.** Flag avoidable allocations, boxing, or redundant computation/I/O on hot paths (per-frame code in ECS systems, the render loop, input handling). Flag sequential work that has no ordering dependency and could run independently. A contracts-only or interface-shape change still matters here: the shape constrains every future implementer, so check whether it forces an inefficient pattern later even if nothing calls it yet.
+- **Maintainability.** Flag duplication, unclear naming, deep nesting, and code placed at the wrong architectural layer (a special case bolted onto shared infrastructure instead of generalizing the underlying mechanism). Prefer the simplest form that does the job — no speculative abstraction for hypothetical future needs, but also no copy-paste that a small shared helper would remove.
+- **Design patterns.** Check that new abstractions follow established, idiomatic C#/.NET patterns and match how the rest of this codebase already solves the same kind of problem (Grep for a sibling module before inventing a new shape). Flag both under-engineering (a god-object doing several jobs) and over-engineering (a pattern applied where a plain method would do).
+
+When these findings conflict with tight scope discipline (§7 of `AGENTS.md`), prefer flagging the issue over silently expanding the diff to fix it — note it, don't necessarily fix it inline unless it's small and squarely in the reviewed files.
+
 ## Findings bar
 
-Report only issues that are likely to cause incorrect behavior, broken integration, misleading tests, or maintainability risk tightly coupled to the change.
+Report only issues that are likely to cause incorrect behavior, broken integration, misleading tests, or a real cost on the performance/maintainability/design-pattern axes above.
 
-Do not spend review budget on formatting, naming nits, or subjective style unless they mask a real bug.
+Do not spend review budget on formatting, naming nits, or subjective style unless they mask a real bug or a concrete quality cost.

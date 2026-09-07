@@ -42,6 +42,14 @@ Use them for all repository reviews alongside `AGENTS.md` and any matching skill
 - Configuration should come from `EngineConfiguration`, not new hardcoded values
 - Review service registration changes for completeness across settings, systems, and concrete implementations
 
+## Code quality: performance, maintainability, design patterns
+
+This is a standing review bar, not optional polish, and applies on top of the correctness checks above:
+
+- Performance: flag avoidable allocations, boxing, or redundant computation/I/O on hot paths (per-frame ECS/render/input code). An interface or contract change matters here too — its shape constrains every future implementer even before anything calls it.
+- Maintainability: flag duplication, unclear naming, deep nesting, and logic placed at the wrong architectural layer instead of generalizing shared infrastructure.
+- Design patterns: check new abstractions match how sibling modules in this codebase already solve the same kind of problem; flag both under-engineering (one type doing too many jobs) and over-engineering (a pattern where a plain method would do).
+
 ## Tests and validation expectations
 
 - Expect targeted tests for changed behavior when tests exist in the affected area
