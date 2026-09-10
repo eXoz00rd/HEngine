@@ -4,8 +4,10 @@ namespace HEngine.Assets.Assets;
 
 public class AssetManager : IDisposable
 {
-    private readonly ConcurrentDictionary<string, CachedAsset> _loadedAssets = new();
-    private readonly ConcurrentDictionary<string, Task<object>> _loadingTasks = new();
+    private readonly ConcurrentDictionary<AssetId, CachedAsset> _loadedAssets = new();
+    private readonly ConcurrentDictionary<AssetId, Task<object>> _loadingTasks = new();
+    private readonly ConcurrentDictionary<AssetId, string> _importedPaths = new();
+    private readonly ConcurrentDictionary<string, AssetId> _idsByNormalizedPath = new();
     private readonly Func<string, Task<LoadedMesh>> _meshLoader;
     private bool _disposed;
 
@@ -27,27 +29,62 @@ public class AssetManager : IDisposable
         _disposed = true;
     }
 
-    public async Task<LoadedMesh> LoadMeshAsync(string path)
+    public AssetId Import(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            throw new ArgumentException("Path cannot be null or empty", nameof(path));
+        }
+
+        var normalized = NormalizePath(path);
+
+        return _idsByNormalizedPath.GetOrAdd(normalized, _ =>
+        {
+            var id = AssetId.New();
+            _importedPaths[id] = path;
+            return id;
+        });
+    }
+
+    public void Move(AssetId id, string newPath)
+    {
+        if (string.IsNullOrWhiteSpace(newPath))
+        {
+            throw new ArgumentException("Path cannot be null or empty", nameof(newPath));
+        }
+
+        var oldPath = ResolvePath(id);
+        _idsByNormalizedPath.TryRemove(NormalizePath(oldPath), out _);
+        _importedPaths[id] = newPath;
+        _idsByNormalizedPath[NormalizePath(newPath)] = id;
+    }
+
+    public string ResolvePath(AssetId id)
+    {
+        if (!_importedPaths.TryGetValue(id, out var path))
+        {
+            throw new KeyNotFoundException($"Asset id '{id}' has not been imported.");
+        }
+
+        return path;
+    }
+
+    public async Task<LoadedMesh> LoadMeshAsync(AssetId id)
     {
         if (_disposed)
         {
             throw new ObjectDisposedException(nameof(AssetManager));
         }
 
-        if (string.IsNullOrWhiteSpace(path))
-        {
-            throw new ArgumentException("Path cannot be null or empty", nameof(path));
-        }
+        var path = ResolvePath(id);
 
-        path = NormalizePath(path);
-
-        if (_loadedAssets.TryGetValue(path, out var cached))
+        if (_loadedAssets.TryGetValue(id, out var cached))
         {
             cached.IncrementRefCount();
             return (LoadedMesh)cached.Asset;
         }
 
-        var loadingTask = _loadingTasks.GetOrAdd(path, _ => LoadAssetInternalAsync(path));
+        var loadingTask = _loadingTasks.GetOrAdd(id, _ => LoadAssetInternalAsync(id, path));
 
         try
         {
@@ -56,20 +93,13 @@ public class AssetManager : IDisposable
         }
         finally
         {
-            _loadingTasks.TryRemove(path, out _);
+            _loadingTasks.TryRemove(id, out _);
         }
     }
 
-    public void Unload(string path)
+    public void Unload(AssetId id)
     {
-        if (string.IsNullOrWhiteSpace(path))
-        {
-            return;
-        }
-
-        path = NormalizePath(path);
-
-        if (!_loadedAssets.TryGetValue(path, out var cached))
+        if (!_loadedAssets.TryGetValue(id, out var cached))
         {
             return;
         }
@@ -79,7 +109,7 @@ public class AssetManager : IDisposable
             return;
         }
 
-        _loadedAssets.TryRemove(path, out _);
+        _loadedAssets.TryRemove(id, out _);
         (cached.Asset as IDisposable)?.Dispose();
     }
 
@@ -93,46 +123,19 @@ public class AssetManager : IDisposable
         _loadedAssets.Clear();
     }
 
-    public bool IsLoaded(string path)
-    {
-        if (string.IsNullOrWhiteSpace(path))
-        {
-            return false;
-        }
+    public bool IsLoaded(AssetId id) => _loadedAssets.ContainsKey(id);
 
-        path = NormalizePath(path);
-        return _loadedAssets.ContainsKey(path);
-    }
+    public bool IsLoading(AssetId id) => _loadingTasks.ContainsKey(id);
 
-    public bool IsLoading(string path)
-    {
-        if (string.IsNullOrWhiteSpace(path))
-        {
-            return false;
-        }
+    public int GetRefCount(AssetId id) => _loadedAssets.TryGetValue(id, out var cached) ? cached.RefCount : 0;
 
-        path = NormalizePath(path);
-        return _loadingTasks.ContainsKey(path);
-    }
-
-    public int GetRefCount(string path)
-    {
-        if (string.IsNullOrWhiteSpace(path))
-        {
-            return 0;
-        }
-
-        path = NormalizePath(path);
-        return _loadedAssets.TryGetValue(path, out var cached) ? cached.RefCount : 0;
-    }
-
-    private async Task<object> LoadAssetInternalAsync(string path)
+    private async Task<object> LoadAssetInternalAsync(AssetId id, string path)
     {
         var asset = await Task.Run(() => _meshLoader(path));
 
         var cached = new CachedAsset(asset);
         cached.IncrementRefCount();
-        _loadedAssets[path] = cached;
+        _loadedAssets[id] = cached;
 
         return asset;
     }
