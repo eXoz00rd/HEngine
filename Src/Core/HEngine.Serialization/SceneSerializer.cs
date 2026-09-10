@@ -65,7 +65,17 @@ public sealed class SceneSerializer
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(json);
 
-        var entities = JsonNode.Parse(json) as JsonArray
+        JsonNode? root;
+        try
+        {
+            root = JsonNode.Parse(json);
+        }
+        catch (JsonException ex)
+        {
+            throw new FormatException("A scene document is not valid JSON.", ex);
+        }
+
+        var entities = root as JsonArray
             ?? throw new FormatException("A scene document must be a JSON array of entities.");
 
         var scene = new SceneDocument();

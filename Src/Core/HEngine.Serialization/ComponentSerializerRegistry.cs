@@ -29,13 +29,20 @@ public sealed class ComponentSerializerRegistry
                 "A component serializer must have a non-empty TypeId.", nameof(serializer));
         }
 
-        if (!_serializersByTypeId.TryAdd(typeId, serializer))
+        if (_serializersByTypeId.ContainsKey(typeId))
         {
             throw new InvalidOperationException(
                 $"A component serializer is already registered for type id '{typeId}'.");
         }
 
-        _serializersByComponentType[serializer.ComponentType] = serializer;
+        if (_serializersByComponentType.ContainsKey(serializer.ComponentType))
+        {
+            throw new InvalidOperationException(
+                $"A component serializer is already registered for component type '{serializer.ComponentType.FullName}'.");
+        }
+
+        _serializersByTypeId.Add(typeId, serializer);
+        _serializersByComponentType.Add(serializer.ComponentType, serializer);
     }
 
     public bool TryGet(string typeId, [NotNullWhen(true)] out IComponentSerializer? serializer)

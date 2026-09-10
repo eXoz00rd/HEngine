@@ -66,6 +66,14 @@ public class SceneSerializerTests
     }
 
     [Fact]
+    public void Deserialize_SyntacticallyInvalidJson_ThrowsFormatException()
+    {
+        var sceneSerializer = CreateSceneSerializer();
+
+        Assert.Throws<FormatException>(() => sceneSerializer.Deserialize("[{"));
+    }
+
+    [Fact]
     public void Deserialize_ComponentEntryMissingTypeField_Throws()
     {
         var sceneSerializer = CreateSceneSerializer();

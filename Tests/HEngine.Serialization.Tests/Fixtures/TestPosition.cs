@@ -48,3 +48,14 @@ public sealed class InvalidTypeIdSerializer : IComponentSerializer
 
     public object Read(JsonNode data) => throw new NotSupportedException();
 }
+
+public sealed class DuplicateComponentTypeSerializer : IComponentSerializer
+{
+    public string TypeId => "hengine.test.position.duplicate";
+
+    public Type ComponentType => typeof(TestPosition);
+
+    public JsonNode Write(object component) => throw new NotSupportedException();
+
+    public object Read(JsonNode data) => throw new NotSupportedException();
+}

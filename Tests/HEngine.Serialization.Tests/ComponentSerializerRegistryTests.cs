@@ -87,4 +87,30 @@ public class ComponentSerializerRegistryTests
 
         Assert.Throws<InvalidOperationException>(() => registry.Get(typeof(TestPosition)));
     }
+
+    [Fact]
+    public void Register_DuplicateComponentType_Throws()
+    {
+        var registry = new ComponentSerializerRegistry([]);
+        registry.Register(new TestPositionSerializer());
+
+        Assert.Throws<InvalidOperationException>(() => registry.Register(new DuplicateComponentTypeSerializer()));
+    }
+
+    [Fact]
+    public void Register_DuplicateComponentType_DoesNotRegisterTypeIdEither()
+    {
+        var registry = new ComponentSerializerRegistry([]);
+        registry.Register(new TestPositionSerializer());
+
+        try
+        {
+            registry.Register(new DuplicateComponentTypeSerializer());
+        }
+        catch (InvalidOperationException)
+        {
+        }
+
+        Assert.False(registry.TryGet("hengine.test.position.duplicate", out _));
+    }
 }
