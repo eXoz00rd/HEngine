@@ -43,8 +43,6 @@ public sealed class SilkInputSource : IInputSource, IDisposable
             mouse.MouseMove += OnMouseMove;
         }
 
-        // Consumers that only hold IInputSource (no Dispose in that contract) would
-        // otherwise never release the Silk input context; tie it to window lifetime too.
         _window.NativeWindow.Closing += OnWindowClosing;
     }
 
