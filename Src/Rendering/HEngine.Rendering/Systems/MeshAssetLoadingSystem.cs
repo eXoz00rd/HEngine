@@ -18,6 +18,8 @@ public class MeshAssetLoadingSystem : ISystem
     private readonly object _updateLock = new();
     private bool _disposed;
 
+    public AssetManager? AssetManager => _assetManager;
+
     public void Initialize(WorldManager world)
     {
         _world = world ?? throw new ArgumentNullException(nameof(world));

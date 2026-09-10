@@ -327,8 +327,9 @@ public class AssetManagerTests : IDisposable
         var loadTask = manager.LoadMeshAsync(id);
         manager.Dispose();
 
-        await Task.Delay(200);
+        var mesh = await loadTask;
 
+        Assert.NotNull(mesh);
         Assert.Equal(0, manager.LoadedAssetCount);
     }
 

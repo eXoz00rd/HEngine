@@ -131,6 +131,26 @@ public class MeshAssetLoadingSystemTests : IDisposable
     }
 
     [Fact]
+    public async Task Update_IdImportedThroughExposedAssetManager_Loads()
+    {
+        var system = new MeshAssetLoadingSystem();
+        system.Initialize(_world);
+
+        var id = system.AssetManager!.Import("test.mesh");
+        var entity = _world.CreateEntity();
+        _world.AddComponent(entity, new MeshAsset(id));
+
+        system.Update(0.016f);
+        await Task.Delay(200);
+        system.Update(0.016f);
+
+        var asset = _world.GetComponent<MeshAsset>(entity);
+        Assert.True(asset.IsLoaded || asset.HasFailed);
+
+        system.Dispose();
+    }
+
+    [Fact]
     public async Task Update_AfterEntityRemoved_DoesNotCrash()
     {
         var entity = _world.CreateEntity();

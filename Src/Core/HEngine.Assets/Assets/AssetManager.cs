@@ -5,7 +5,7 @@ namespace HEngine.Assets.Assets;
 public class AssetManager : IDisposable
 {
     private readonly ConcurrentDictionary<AssetId, CachedAsset> _loadedAssets = new();
-    private readonly ConcurrentDictionary<AssetId, Lazy<Task<object>>> _loadingTasks = new();
+    private readonly ConcurrentDictionary<AssetId, PendingLoad> _loadingTasks = new();
     private readonly Dictionary<AssetId, string> _importedPaths = new();
     private readonly Dictionary<string, AssetId> _idsByNormalizedPath = new(StringComparer.Ordinal);
     private readonly object _importLock = new();
@@ -109,20 +109,19 @@ public class AssetManager : IDisposable
             return (LoadedMesh)cached.Asset;
         }
 
-        var path = ResolvePath(id);
-        var lazyLoad = _loadingTasks.GetOrAdd(id, _ => new Lazy<Task<object>>(() => LoadAssetInternalAsync(id, path)));
+        var pending = _loadingTasks.GetOrAdd(id, _ => new PendingLoad(() => LoadAssetInternalAsync(id)));
 
         LoadedMesh asset;
         try
         {
-            asset = (LoadedMesh)await lazyLoad.Value;
+            asset = (LoadedMesh)await pending.Lazy.Value;
         }
         finally
         {
             _loadingTasks.TryRemove(id, out _);
         }
 
-        if (_loadedAssets.TryGetValue(id, out var loadedCached))
+        if (_loadedAssets.TryGetValue(id, out var loadedCached) && !pending.TryClaimInitialReference())
         {
             loadedCached.IncrementRefCount();
         }
@@ -162,8 +161,9 @@ public class AssetManager : IDisposable
 
     public int GetRefCount(AssetId id) => _loadedAssets.TryGetValue(id, out var cached) ? cached.RefCount : 0;
 
-    private async Task<object> LoadAssetInternalAsync(AssetId id, string path)
+    private async Task<object> LoadAssetInternalAsync(AssetId id)
     {
+        var path = ResolvePath(id);
         var asset = await Task.Run(() => _meshLoader(path));
 
         if (_disposed)
@@ -172,7 +172,9 @@ public class AssetManager : IDisposable
             return asset;
         }
 
-        _loadedAssets[id] = new CachedAsset(asset);
+        var cached = new CachedAsset(asset);
+        cached.IncrementRefCount();
+        _loadedAssets[id] = cached;
 
         return asset;
     }
@@ -180,6 +182,20 @@ public class AssetManager : IDisposable
     private static string NormalizeKey(string absolutePath)
     {
         return absolutePath.ToLowerInvariant();
+    }
+
+    private sealed class PendingLoad
+    {
+        private int _initialReferenceClaimed;
+
+        public PendingLoad(Func<Task<object>> factory)
+        {
+            Lazy = new Lazy<Task<object>>(factory);
+        }
+
+        public Lazy<Task<object>> Lazy { get; }
+
+        public bool TryClaimInitialReference() => Interlocked.CompareExchange(ref _initialReferenceClaimed, 1, 0) == 0;
     }
 
     private class CachedAsset
