@@ -6,8 +6,9 @@ public class AssetManager : IDisposable
 {
     private readonly ConcurrentDictionary<AssetId, CachedAsset> _loadedAssets = new();
     private readonly ConcurrentDictionary<AssetId, Task<object>> _loadingTasks = new();
-    private readonly ConcurrentDictionary<AssetId, string> _importedPaths = new();
-    private readonly ConcurrentDictionary<string, AssetId> _idsByNormalizedPath = new();
+    private readonly Dictionary<AssetId, string> _importedPaths = new();
+    private readonly Dictionary<string, AssetId> _idsByNormalizedPath = new(StringComparer.Ordinal);
+    private readonly object _importLock = new();
     private readonly Func<string, Task<LoadedMesh>> _meshLoader;
     private bool _disposed;
 
@@ -36,14 +37,21 @@ public class AssetManager : IDisposable
             throw new ArgumentException("Path cannot be null or empty", nameof(path));
         }
 
-        var normalized = NormalizePath(path);
+        var absolutePath = Path.GetFullPath(path);
+        var key = NormalizeKey(absolutePath);
 
-        return _idsByNormalizedPath.GetOrAdd(normalized, _ =>
+        lock (_importLock)
         {
+            if (_idsByNormalizedPath.TryGetValue(key, out var existingId))
+            {
+                return existingId;
+            }
+
             var id = AssetId.New();
-            _importedPaths[id] = path;
+            _importedPaths[id] = absolutePath;
+            _idsByNormalizedPath[key] = id;
             return id;
-        });
+        }
     }
 
     public void Move(AssetId id, string newPath)
@@ -53,20 +61,39 @@ public class AssetManager : IDisposable
             throw new ArgumentException("Path cannot be null or empty", nameof(newPath));
         }
 
-        var oldPath = ResolvePath(id);
-        _idsByNormalizedPath.TryRemove(NormalizePath(oldPath), out _);
-        _importedPaths[id] = newPath;
-        _idsByNormalizedPath[NormalizePath(newPath)] = id;
+        var newAbsolutePath = Path.GetFullPath(newPath);
+        var newKey = NormalizeKey(newAbsolutePath);
+
+        lock (_importLock)
+        {
+            if (!_importedPaths.TryGetValue(id, out var oldPath))
+            {
+                throw new KeyNotFoundException($"Asset id '{id}' has not been imported.");
+            }
+
+            if (_idsByNormalizedPath.TryGetValue(newKey, out var owner) && !owner.Equals(id))
+            {
+                throw new InvalidOperationException(
+                    $"Cannot move asset '{id}' to '{newPath}': that path is already owned by asset '{owner}'.");
+            }
+
+            _idsByNormalizedPath.Remove(NormalizeKey(oldPath));
+            _importedPaths[id] = newAbsolutePath;
+            _idsByNormalizedPath[newKey] = id;
+        }
     }
 
     public string ResolvePath(AssetId id)
     {
-        if (!_importedPaths.TryGetValue(id, out var path))
+        lock (_importLock)
         {
-            throw new KeyNotFoundException($"Asset id '{id}' has not been imported.");
-        }
+            if (!_importedPaths.TryGetValue(id, out var path))
+            {
+                throw new KeyNotFoundException($"Asset id '{id}' has not been imported.");
+            }
 
-        return path;
+            return path;
+        }
     }
 
     public async Task<LoadedMesh> LoadMeshAsync(AssetId id)
@@ -140,9 +167,9 @@ public class AssetManager : IDisposable
         return asset;
     }
 
-    private static string NormalizePath(string path)
+    private static string NormalizeKey(string absolutePath)
     {
-        return Path.GetFullPath(path).ToLowerInvariant();
+        return absolutePath.ToLowerInvariant();
     }
 
     private class CachedAsset

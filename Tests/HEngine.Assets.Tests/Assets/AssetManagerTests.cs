@@ -245,6 +245,39 @@ public class AssetManagerTests : IDisposable
     }
 
     [Fact]
+    public void Move_UnimportedId_ThrowsKeyNotFoundException()
+    {
+        Assert.Throws<KeyNotFoundException>(() => _assetManager.Move(AssetId.New(), CreateTestMeshFile("target.mesh")));
+    }
+
+    [Fact]
+    public void Move_DestinationOwnedByAnotherId_ThrowsInvalidOperationException()
+    {
+        var pathA = CreateTestMeshFile("owner-a.mesh");
+        var pathB = CreateTestMeshFile("owner-b.mesh");
+        var idA = _assetManager.Import(pathA);
+        var idB = _assetManager.Import(pathB);
+
+        Assert.Throws<InvalidOperationException>(() => _assetManager.Move(idA, pathB));
+
+        Assert.Equal(pathA, _assetManager.ResolvePath(idA));
+        Assert.Equal(pathB, _assetManager.ResolvePath(idB));
+        Assert.Equal(idB, _assetManager.Import(pathB));
+    }
+
+    [Fact]
+    public void Import_RelativePath_ResolvesToAbsolutePath()
+    {
+        var absolutePath = CreateTestMeshFile("relative-target.mesh");
+        var relativePath = Path.GetRelativePath(Directory.GetCurrentDirectory(), absolutePath);
+
+        var id = _assetManager.Import(relativePath);
+
+        Assert.Equal(absolutePath, _assetManager.ResolvePath(id));
+        Assert.True(Path.IsPathFullyQualified(_assetManager.ResolvePath(id)));
+    }
+
+    [Fact]
     public async Task LoadMeshAsync_MultipleConcurrentDifferentAssets_LoadsAllCorrectly()
     {
         var ids = new[]
