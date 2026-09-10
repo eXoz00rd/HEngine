@@ -12,6 +12,7 @@ public class AssetManager : IDisposable
     private readonly object _cacheLock = new();
     private readonly Func<string, Task<LoadedMesh>> _meshLoader;
     private bool _disposed;
+    private int _generation;
 
     public AssetManager(Func<string, Task<LoadedMesh>> meshLoader)
     {
@@ -123,7 +124,8 @@ public class AssetManager : IDisposable
             }
             else
             {
-                lazyLoad = new Lazy<Task<object>>(() => LoadAssetInternalAsync(id));
+                var generation = _generation;
+                lazyLoad = new Lazy<Task<object>>(() => LoadAssetInternalAsync(id, generation));
                 _pendingLoads[id] = new PendingLoad(lazyLoad);
             }
         }
@@ -160,6 +162,8 @@ public class AssetManager : IDisposable
 
     private void UnloadAllUnsynchronized()
     {
+        _generation++;
+
         foreach (var kvp in _loadedAssets)
         {
             (kvp.Value.Asset as IDisposable)?.Dispose();
@@ -180,7 +184,7 @@ public class AssetManager : IDisposable
 
     public int GetRefCount(AssetId id) => _loadedAssets.TryGetValue(id, out var cached) ? cached.RefCount : 0;
 
-    private async Task<object> LoadAssetInternalAsync(AssetId id)
+    private async Task<object> LoadAssetInternalAsync(AssetId id, int generation)
     {
         try
         {
@@ -191,7 +195,7 @@ public class AssetManager : IDisposable
             {
                 _pendingLoads.Remove(id, out var pending);
 
-                if (_disposed)
+                if (_disposed || generation != _generation)
                 {
                     (asset as IDisposable)?.Dispose();
                     return asset;

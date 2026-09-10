@@ -123,6 +123,31 @@ public class AssetManagerTests : IDisposable
     }
 
     [Fact]
+    public async Task UnloadAll_DuringInFlightLoad_DoesNotRepopulateCache()
+    {
+        var gate = new TaskCompletionSource();
+        var manager = new AssetManager(async p =>
+        {
+            await gate.Task;
+            return new LoadedMesh(CreateTestVertices(), new uint[] { 0, 1, 2 });
+        });
+        var id = manager.Import(CreateTestMeshFile("unload-all-race.mesh"));
+
+        var loadTask = manager.LoadMeshAsync(id);
+
+        manager.UnloadAll();
+        gate.SetResult();
+
+        var mesh = await loadTask;
+
+        Assert.NotNull(mesh);
+        Assert.Equal(0, manager.LoadedAssetCount);
+        Assert.False(manager.IsLoaded(id));
+
+        manager.Dispose();
+    }
+
+    [Fact]
     public async Task LoadMeshAsync_UnimportedId_ThrowsKeyNotFoundException()
     {
         await Assert.ThrowsAsync<KeyNotFoundException>(() => _assetManager.LoadMeshAsync(AssetId.New()));
