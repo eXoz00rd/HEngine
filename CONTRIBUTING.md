@@ -53,6 +53,17 @@ Bulleted checklist of how the change was verified (build, tests, what was observ
 - Keep the reply to one brief sentence: what changed and, if useful, the commit it landed in. No walls of text.
 - Do this for every review thread the fix addresses — don't leave threads open once the code has moved on.
 
+### Copilot review cycle
+
+Driving a PR to merge follows one repeating cycle:
+
+1. Request a Copilot review (`copilot-pull-request-reviewer`).
+2. Wait for its response:
+   - No blocking findings → merge.
+   - Copilot reports its review quota is used up (cannot run) → merge; a review that didn't happen doesn't block the PR.
+   - Blocking comments → fix them, push, reply/resolve the threads per "Responding to review comments" above, and go back to step 1.
+3. Repeat until the PR merges.
+
 ## C# code
 
 - Match the style of the surrounding code. There is **no `.editorconfig` in this repo yet** — until there is, the existing sources are the reference.
