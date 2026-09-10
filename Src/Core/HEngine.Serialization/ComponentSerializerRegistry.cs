@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using HEngine.Serialization.Contracts;
 
 namespace HEngine.Serialization;
@@ -5,6 +6,16 @@ namespace HEngine.Serialization;
 public sealed class ComponentSerializerRegistry
 {
     private readonly Dictionary<string, IComponentSerializer> _serializersByTypeId = new();
+
+    public ComponentSerializerRegistry(IEnumerable<IComponentSerializer> serializers)
+    {
+        ArgumentNullException.ThrowIfNull(serializers);
+
+        foreach (var serializer in serializers)
+        {
+            Register(serializer);
+        }
+    }
 
     public void Register(IComponentSerializer serializer)
     {
@@ -17,8 +28,8 @@ public sealed class ComponentSerializerRegistry
         }
     }
 
-    public bool TryGet(string typeId, out IComponentSerializer serializer)
-        => _serializersByTypeId.TryGetValue(typeId, out serializer!);
+    public bool TryGet(string typeId, [NotNullWhen(true)] out IComponentSerializer? serializer)
+        => _serializersByTypeId.TryGetValue(typeId, out serializer);
 
     public IComponentSerializer Get(string typeId)
         => TryGet(typeId, out var serializer)

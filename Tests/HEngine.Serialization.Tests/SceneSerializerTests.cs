@@ -8,7 +8,7 @@ public class SceneSerializerTests
 {
     private static SceneSerializer CreateSceneSerializer()
     {
-        var registry = new ComponentSerializerRegistry();
+        var registry = new ComponentSerializerRegistry([]);
         registry.Register(new TestPositionSerializer());
         return new SceneSerializer(registry);
     }
@@ -58,6 +58,25 @@ public class SceneSerializerTests
         const string json = """[{"components":[{"data":{"x":1,"y":2}}]}]""";
 
         Assert.Throws<FormatException>(() => sceneSerializer.Deserialize(json));
+    }
+
+    [Fact]
+    public void Deserialize_ComponentsFieldIsNotAnArray_Throws()
+    {
+        var sceneSerializer = CreateSceneSerializer();
+        const string json = """[{"components":{}}]""";
+
+        Assert.Throws<FormatException>(() => sceneSerializer.Deserialize(json));
+    }
+
+    [Fact]
+    public void Deserialize_EntityWithoutComponentsField_ProducesEntityWithNoComponents()
+    {
+        var sceneSerializer = CreateSceneSerializer();
+
+        var scene = sceneSerializer.Deserialize("[{}]");
+
+        Assert.Empty(scene.Entities[0].Components);
     }
 
     [Fact]

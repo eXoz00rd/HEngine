@@ -1,3 +1,4 @@
+using HEngine.Serialization.Contracts;
 using HEngine.Serialization.Tests.Fixtures;
 
 namespace HEngine.Serialization.Tests.Contracts;
@@ -15,6 +16,24 @@ public class ComponentSerializerTests
     [Fact]
     public void Constructor_ComponentWithoutComponentIdAttribute_Throws()
     {
-        Assert.Throws<InvalidOperationException>(() => new UnannotatedComponentSerializer());
+        var exception = Assert.Throws<TypeInitializationException>(() => new UnannotatedComponentSerializer());
+
+        Assert.IsType<InvalidOperationException>(exception.InnerException);
+    }
+
+    [Fact]
+    public void Write_WrongComponentType_ThrowsArgumentException()
+    {
+        IComponentSerializer serializer = new TestPositionSerializer();
+
+        Assert.Throws<ArgumentException>(() => serializer.Write(42));
+    }
+
+    [Fact]
+    public void Write_NullComponent_ThrowsArgumentException()
+    {
+        IComponentSerializer serializer = new TestPositionSerializer();
+
+        Assert.Throws<ArgumentException>(() => serializer.Write(null!));
     }
 }

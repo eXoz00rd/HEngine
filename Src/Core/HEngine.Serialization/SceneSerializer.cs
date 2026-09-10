@@ -66,9 +66,13 @@ public sealed class SceneSerializer
                 ?? throw new FormatException("Each scene entity must be a JSON object.");
 
             var entity = new EntityDocument();
+            var componentsNode = entityObject["components"];
 
-            if (entityObject["components"] is JsonArray componentsArray)
+            if (componentsNode is not null)
             {
+                var componentsArray = componentsNode as JsonArray
+                    ?? throw new FormatException("An entity's 'components' field must be a JSON array.");
+
                 foreach (var componentNode in componentsArray)
                 {
                     entity.Components.Add(ParseComponent(componentNode));
