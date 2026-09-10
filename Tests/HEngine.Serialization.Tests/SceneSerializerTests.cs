@@ -60,6 +60,17 @@ public class SceneSerializerTests
         Assert.Throws<FormatException>(() => sceneSerializer.Deserialize(json));
     }
 
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Deserialize_ComponentEntryHasEmptyTypeField_Throws(string typeId)
+    {
+        var sceneSerializer = CreateSceneSerializer();
+        var json = $"[{{\"components\":[{{\"type\":\"{typeId}\",\"data\":{{\"x\":1,\"y\":2}}}}]}}]";
+
+        Assert.Throws<FormatException>(() => sceneSerializer.Deserialize(json));
+    }
+
     [Fact]
     public void Deserialize_ComponentsFieldIsNotAnArray_Throws()
     {

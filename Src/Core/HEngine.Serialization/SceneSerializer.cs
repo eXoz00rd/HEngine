@@ -95,6 +95,12 @@ public sealed class SceneSerializer
 
         var typeId = componentObject["type"]?.GetValue<string>()
             ?? throw new FormatException("A component entry is missing its 'type' field.");
+
+        if (string.IsNullOrWhiteSpace(typeId))
+        {
+            throw new FormatException("A component entry's 'type' field must not be empty or whitespace.");
+        }
+
         var data = componentObject["data"]
             ?? throw new FormatException($"Component entry '{typeId}' is missing its 'data' field.");
 
