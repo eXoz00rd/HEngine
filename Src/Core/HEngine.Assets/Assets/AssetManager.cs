@@ -26,8 +26,8 @@ public class AssetManager : IDisposable
             return;
         }
 
-        UnloadAll();
         _disposed = true;
+        UnloadAll();
     }
 
     public AssetId Import(string path)
@@ -159,6 +159,12 @@ public class AssetManager : IDisposable
     private async Task<object> LoadAssetInternalAsync(AssetId id, string path)
     {
         var asset = await Task.Run(() => _meshLoader(path));
+
+        if (_disposed)
+        {
+            (asset as IDisposable)?.Dispose();
+            return asset;
+        }
 
         var cached = new CachedAsset(asset);
         cached.IncrementRefCount();

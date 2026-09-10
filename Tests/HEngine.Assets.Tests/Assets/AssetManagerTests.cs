@@ -313,6 +313,24 @@ public class AssetManagerTests : IDisposable
         await Task.Delay(300);
     }
 
+    [Fact]
+    public async Task Dispose_LoadCompletesAfterDispose_DoesNotLeakIntoCache()
+    {
+        var manager = new AssetManager(async p =>
+        {
+            await Task.Delay(100);
+            return new LoadedMesh(CreateTestVertices(), new uint[] { 0, 1, 2 });
+        });
+        var id = manager.Import(CreateTestMeshFile("post-dispose.mesh"));
+
+        var loadTask = manager.LoadMeshAsync(id);
+        manager.Dispose();
+
+        await Task.Delay(200);
+
+        Assert.Equal(0, manager.LoadedAssetCount);
+    }
+
     private string CreateTestMeshFile(string filename)
     {
         return Path.Combine(_testDirectory, filename);
