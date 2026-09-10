@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using HEngine.Serialization.Contracts;
 using HEngine.Serialization.Documents;
 
 namespace HEngine.Serialization;
@@ -21,14 +22,17 @@ public sealed class SceneSerializer
         ArgumentNullException.ThrowIfNull(component);
 
         var serializer = _registry.Get(typeId);
-        return new ComponentDocument { TypeId = typeId, Data = serializer.Write(component) };
+        return BuildDocument(serializer, component);
     }
 
     public ComponentDocument WriteComponent<T>(in T component) where T : struct
     {
         var serializer = _registry.Get(typeof(T));
-        return WriteComponent(serializer.TypeId, component);
+        return BuildDocument(serializer, component);
     }
+
+    private static ComponentDocument BuildDocument(IComponentSerializer serializer, object component)
+        => new() { TypeId = serializer.TypeId, Data = serializer.Write(component) };
 
     public object ReadComponent(ComponentDocument document)
     {

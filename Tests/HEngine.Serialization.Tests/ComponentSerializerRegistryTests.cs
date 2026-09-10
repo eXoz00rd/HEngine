@@ -103,13 +103,7 @@ public class ComponentSerializerRegistryTests
         var registry = new ComponentSerializerRegistry([]);
         registry.Register(new TestPositionSerializer());
 
-        try
-        {
-            registry.Register(new DuplicateComponentTypeSerializer());
-        }
-        catch (InvalidOperationException)
-        {
-        }
+        Assert.Throws<InvalidOperationException>(() => registry.Register(new DuplicateComponentTypeSerializer()));
 
         Assert.False(registry.TryGet("hengine.test.position.duplicate", out _));
     }
