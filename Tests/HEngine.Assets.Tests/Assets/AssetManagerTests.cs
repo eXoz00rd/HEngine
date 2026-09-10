@@ -160,6 +160,7 @@ public class AssetManagerTests : IDisposable
 
         Assert.Equal(1, loadCount);
         Assert.Equal(1, manager.LoadedAssetCount);
+        Assert.Equal(tasks.Length, manager.GetRefCount(id));
 
         for (var i = 1; i < results.Length; i++)
         {

@@ -5,7 +5,7 @@ namespace HEngine.Assets.Assets;
 public class AssetManager : IDisposable
 {
     private readonly ConcurrentDictionary<AssetId, CachedAsset> _loadedAssets = new();
-    private readonly ConcurrentDictionary<AssetId, Task<object>> _loadingTasks = new();
+    private readonly ConcurrentDictionary<AssetId, Lazy<Task<object>>> _loadingTasks = new();
     private readonly Dictionary<AssetId, string> _importedPaths = new();
     private readonly Dictionary<string, AssetId> _idsByNormalizedPath = new(StringComparer.Ordinal);
     private readonly object _importLock = new();
@@ -103,25 +103,31 @@ public class AssetManager : IDisposable
             throw new ObjectDisposedException(nameof(AssetManager));
         }
 
-        var path = ResolvePath(id);
-
         if (_loadedAssets.TryGetValue(id, out var cached))
         {
             cached.IncrementRefCount();
             return (LoadedMesh)cached.Asset;
         }
 
-        var loadingTask = _loadingTasks.GetOrAdd(id, _ => LoadAssetInternalAsync(id, path));
+        var path = ResolvePath(id);
+        var lazyLoad = _loadingTasks.GetOrAdd(id, _ => new Lazy<Task<object>>(() => LoadAssetInternalAsync(id, path)));
 
+        LoadedMesh asset;
         try
         {
-            var asset = await loadingTask;
-            return (LoadedMesh)asset;
+            asset = (LoadedMesh)await lazyLoad.Value;
         }
         finally
         {
             _loadingTasks.TryRemove(id, out _);
         }
+
+        if (_loadedAssets.TryGetValue(id, out var loadedCached))
+        {
+            loadedCached.IncrementRefCount();
+        }
+
+        return asset;
     }
 
     public void Unload(AssetId id)
@@ -166,9 +172,7 @@ public class AssetManager : IDisposable
             return asset;
         }
 
-        var cached = new CachedAsset(asset);
-        cached.IncrementRefCount();
-        _loadedAssets[id] = cached;
+        _loadedAssets[id] = new CachedAsset(asset);
 
         return asset;
     }
