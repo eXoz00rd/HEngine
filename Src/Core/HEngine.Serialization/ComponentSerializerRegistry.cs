@@ -29,7 +29,11 @@ public sealed class ComponentSerializerRegistry
     }
 
     public bool TryGet(string typeId, [NotNullWhen(true)] out IComponentSerializer? serializer)
-        => _serializersByTypeId.TryGetValue(typeId, out serializer);
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(typeId);
+
+        return _serializersByTypeId.TryGetValue(typeId, out serializer);
+    }
 
     public IComponentSerializer Get(string typeId)
         => TryGet(typeId, out var serializer)

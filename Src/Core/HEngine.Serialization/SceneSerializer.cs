@@ -17,6 +17,9 @@ public sealed class SceneSerializer
 
     public ComponentDocument WriteComponent(string typeId, object component)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(typeId);
+        ArgumentNullException.ThrowIfNull(component);
+
         var serializer = _registry.Get(typeId);
         return new ComponentDocument { TypeId = typeId, Data = serializer.Write(component) };
     }

@@ -40,6 +40,17 @@ public class ComponentSerializerRegistryTests
         Assert.False(registry.TryGet("hengine.unknown", out _));
     }
 
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void TryGet_NullOrWhitespaceTypeId_Throws(string? typeId)
+    {
+        var registry = new ComponentSerializerRegistry([]);
+
+        Assert.ThrowsAny<ArgumentException>(() => registry.TryGet(typeId!, out _));
+    }
+
     [Fact]
     public void Constructor_WithSerializers_RegistersEachOfThem()
     {

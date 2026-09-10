@@ -79,6 +79,25 @@ public class SceneSerializerTests
         Assert.Empty(scene.Entities[0].Components);
     }
 
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void WriteComponent_NullOrWhitespaceTypeId_Throws(string? typeId)
+    {
+        var sceneSerializer = CreateSceneSerializer();
+
+        Assert.ThrowsAny<ArgumentException>(() => sceneSerializer.WriteComponent(typeId!, new TestPosition()));
+    }
+
+    [Fact]
+    public void WriteComponent_NullComponent_Throws()
+    {
+        var sceneSerializer = CreateSceneSerializer();
+
+        Assert.Throws<ArgumentNullException>(() => sceneSerializer.WriteComponent("hengine.test.position", null!));
+    }
+
     [Fact]
     public void ReadComponent_UnregisteredTypeId_Throws()
     {
