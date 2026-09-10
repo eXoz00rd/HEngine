@@ -37,3 +37,14 @@ public sealed class UnannotatedComponentSerializer : ComponentSerializer<Unannot
     protected override UnannotatedComponent ReadValue(JsonNode data)
         => new UnannotatedComponent { Value = data.GetValue<int>() };
 }
+
+public sealed class InvalidTypeIdSerializer : IComponentSerializer
+{
+    public string TypeId => "   ";
+
+    public Type ComponentType => typeof(TestPosition);
+
+    public JsonNode Write(object component) => throw new NotSupportedException();
+
+    public object Read(JsonNode data) => throw new NotSupportedException();
+}

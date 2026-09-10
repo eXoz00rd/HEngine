@@ -60,4 +60,31 @@ public class ComponentSerializerRegistryTests
 
         Assert.Same(serializer, registry.Get("hengine.test.position"));
     }
+
+    [Fact]
+    public void Register_SerializerWithWhitespaceTypeId_Throws()
+    {
+        var registry = new ComponentSerializerRegistry([]);
+
+        Assert.Throws<ArgumentException>(() => registry.Register(new InvalidTypeIdSerializer()));
+    }
+
+    [Fact]
+    public void Register_ThenGetByComponentType_ReturnsTheSameSerializer()
+    {
+        var registry = new ComponentSerializerRegistry([]);
+        var serializer = new TestPositionSerializer();
+
+        registry.Register(serializer);
+
+        Assert.Same(serializer, registry.Get(typeof(TestPosition)));
+    }
+
+    [Fact]
+    public void Get_UnknownComponentType_Throws()
+    {
+        var registry = new ComponentSerializerRegistry([]);
+
+        Assert.Throws<InvalidOperationException>(() => registry.Get(typeof(TestPosition)));
+    }
 }

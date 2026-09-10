@@ -6,6 +6,8 @@ public interface IComponentSerializer
 {
     string TypeId { get; }
 
+    Type ComponentType { get; }
+
     JsonNode Write(object component);
 
     object Read(JsonNode data);

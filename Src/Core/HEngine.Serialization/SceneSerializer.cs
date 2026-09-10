@@ -24,6 +24,12 @@ public sealed class SceneSerializer
         return new ComponentDocument { TypeId = typeId, Data = serializer.Write(component) };
     }
 
+    public ComponentDocument WriteComponent<T>(in T component) where T : struct
+    {
+        var serializer = _registry.Get(typeof(T));
+        return WriteComponent(serializer.TypeId, component);
+    }
+
     public object ReadComponent(ComponentDocument document)
     {
         ArgumentNullException.ThrowIfNull(document);

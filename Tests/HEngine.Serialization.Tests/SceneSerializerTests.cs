@@ -34,6 +34,20 @@ public class SceneSerializerTests
     }
 
     [Fact]
+    public void WriteComponentOfT_DerivesTypeIdFromComponentIdAttribute()
+    {
+        var sceneSerializer = CreateSceneSerializer();
+        var original = new TestPosition { X = 3f, Y = 4f };
+
+        var document = sceneSerializer.WriteComponent(original);
+
+        Assert.Equal("hengine.test.position", document.TypeId);
+        var roundTripped = (TestPosition)sceneSerializer.ReadComponent(document);
+        Assert.Equal(original.X, roundTripped.X);
+        Assert.Equal(original.Y, roundTripped.Y);
+    }
+
+    [Fact]
     public void Serialize_EmptyScene_ProducesEmptyJsonArray()
     {
         var sceneSerializer = CreateSceneSerializer();

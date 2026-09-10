@@ -14,6 +14,8 @@ public abstract class ComponentSerializer<T> : IComponentSerializer where T : st
 
     public string TypeId => CachedTypeId;
 
+    public Type ComponentType => typeof(T);
+
     protected abstract JsonNode WriteValue(in T component);
 
     protected abstract T ReadValue(JsonNode data);
