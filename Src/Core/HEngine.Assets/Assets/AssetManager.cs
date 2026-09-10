@@ -102,14 +102,14 @@ public class AssetManager : IDisposable
 
     public async Task<LoadedMesh> LoadMeshAsync(AssetId id)
     {
-        if (_disposed)
-        {
-            throw new ObjectDisposedException(nameof(AssetManager));
-        }
-
         Lazy<Task<object>> lazyLoad;
         lock (_cacheLock)
         {
+            if (_disposed)
+            {
+                throw new ObjectDisposedException(nameof(AssetManager));
+            }
+
             if (_loadedAssets.TryGetValue(id, out var cached))
             {
                 cached.IncrementRefCount();
@@ -182,30 +182,42 @@ public class AssetManager : IDisposable
 
     private async Task<object> LoadAssetInternalAsync(AssetId id)
     {
-        var path = ResolvePath(id);
-        var asset = await Task.Run(() => _meshLoader(path));
-
-        lock (_cacheLock)
+        try
         {
-            _pendingLoads.Remove(id, out var pending);
+            var path = ResolvePath(id);
+            var asset = await Task.Run(() => _meshLoader(path));
 
-            if (_disposed)
+            lock (_cacheLock)
             {
-                (asset as IDisposable)?.Dispose();
-                return asset;
+                _pendingLoads.Remove(id, out var pending);
+
+                if (_disposed)
+                {
+                    (asset as IDisposable)?.Dispose();
+                    return asset;
+                }
+
+                var cached = new CachedAsset(asset);
+                var attachedCount = pending?.AttachedCount ?? 1;
+                for (var i = 0; i < attachedCount; i++)
+                {
+                    cached.IncrementRefCount();
+                }
+
+                _loadedAssets[id] = cached;
             }
 
-            var cached = new CachedAsset(asset);
-            var attachedCount = pending?.AttachedCount ?? 1;
-            for (var i = 0; i < attachedCount; i++)
-            {
-                cached.IncrementRefCount();
-            }
-
-            _loadedAssets[id] = cached;
+            return asset;
         }
+        catch
+        {
+            lock (_cacheLock)
+            {
+                _pendingLoads.Remove(id);
+            }
 
-        return asset;
+            throw;
+        }
     }
 
     private static string NormalizeKey(string absolutePath)

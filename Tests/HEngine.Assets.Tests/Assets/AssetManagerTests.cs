@@ -138,6 +138,34 @@ public class AssetManagerTests : IDisposable
     }
 
     [Fact]
+    public async Task LoadMeshAsync_RetryAfterFailure_StartsFreshLoad()
+    {
+        var attempt = 0;
+        var manager = new AssetManager(async p =>
+        {
+            Interlocked.Increment(ref attempt);
+            await Task.Delay(10);
+            if (attempt == 1)
+            {
+                throw new InvalidOperationException("simulated failure");
+            }
+
+            return new LoadedMesh(CreateTestVertices(), new uint[] { 0, 1, 2 });
+        });
+        var id = manager.Import(CreateTestMeshFile("retry.mesh"));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => manager.LoadMeshAsync(id));
+        Assert.False(manager.IsLoading(id));
+
+        var mesh = await manager.LoadMeshAsync(id);
+
+        Assert.NotNull(mesh);
+        Assert.Equal(2, attempt);
+
+        manager.Dispose();
+    }
+
+    [Fact]
     public async Task LoadMeshAsync_ConcurrentRequests_LoadsOnlyOnce()
     {
         var loadCount = 0;
