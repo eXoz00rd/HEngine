@@ -3,6 +3,7 @@ using HEngine.Assets.Assets;
 using HEngine.Core.Managers;
 using HEngine.Core.Primitives;
 using HEngine.Core.Rendering.Data;
+using HEngine.Rendering.Assets;
 using HEngine.Rendering.Components;
 using HEngine.Rendering.Systems;
 
@@ -133,21 +134,37 @@ public class MeshAssetLoadingSystemTests : IDisposable
     [Fact]
     public async Task Update_IdImportedThroughExposedAssetManager_Loads()
     {
-        var system = new MeshAssetLoadingSystem();
-        system.Initialize(_world);
+        var tempDirectory = Path.Combine(Path.GetTempPath(), "HEngineMeshAssetLoadingSystemTests_" + Guid.NewGuid());
+        var meshPath = Path.Combine(tempDirectory, "test.mesh");
+        SimpleMeshFormat.Save(meshPath, CreateTestVertices(), new uint[] { 0, 1, 2 });
 
-        var id = system.AssetManager!.Import("test.mesh");
-        var entity = _world.CreateEntity();
-        _world.AddComponent(entity, new MeshAsset(id));
+        try
+        {
+            var system = new MeshAssetLoadingSystem();
+            system.Initialize(_world);
 
-        system.Update(0.016f);
-        await Task.Delay(200);
-        system.Update(0.016f);
+            var id = system.AssetManager!.Import(meshPath);
+            var entity = _world.CreateEntity();
+            _world.AddComponent(entity, new MeshAsset(id));
 
-        var asset = _world.GetComponent<MeshAsset>(entity);
-        Assert.True(asset.IsLoaded || asset.HasFailed);
+            system.Update(0.016f);
+            await Task.Delay(200);
+            system.Update(0.016f);
 
-        system.Dispose();
+            var asset = _world.GetComponent<MeshAsset>(entity);
+            Assert.Equal(AssetLoadState.Loaded, asset.LoadState);
+            Assert.NotNull(asset.Vertices);
+            Assert.NotNull(asset.Indices);
+
+            system.Dispose();
+        }
+        finally
+        {
+            if (Directory.Exists(tempDirectory))
+            {
+                Directory.Delete(tempDirectory, true);
+            }
+        }
     }
 
     [Fact]

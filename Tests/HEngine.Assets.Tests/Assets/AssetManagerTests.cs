@@ -240,6 +240,23 @@ public class AssetManagerTests : IDisposable
     }
 
     [Fact]
+    public async Task Move_AfterLoad_SubsequentLoadReturnsSameCachedAsset()
+    {
+        var oldPath = CreateTestMeshFile("moved-loaded-source.mesh");
+        var newPath = CreateTestMeshFile("moved-loaded-destination.mesh");
+        var id = _assetManager.Import(oldPath);
+
+        var beforeMove = await _assetManager.LoadMeshAsync(id);
+
+        _assetManager.Move(id, newPath);
+        var afterMove = await _assetManager.LoadMeshAsync(id);
+
+        Assert.Same(beforeMove, afterMove);
+        Assert.Equal(1, _assetManager.LoadedAssetCount);
+        Assert.Equal(2, _assetManager.GetRefCount(id));
+    }
+
+    [Fact]
     public void ResolvePath_UnimportedId_ThrowsKeyNotFoundException()
     {
         Assert.Throws<KeyNotFoundException>(() => _assetManager.ResolvePath(AssetId.New()));

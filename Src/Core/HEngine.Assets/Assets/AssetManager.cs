@@ -9,6 +9,7 @@ public class AssetManager : IDisposable
     private readonly Dictionary<AssetId, string> _importedPaths = new();
     private readonly Dictionary<string, AssetId> _idsByNormalizedPath = new(StringComparer.Ordinal);
     private readonly object _importLock = new();
+    private readonly object _disposeLock = new();
     private readonly Func<string, Task<LoadedMesh>> _meshLoader;
     private bool _disposed;
 
@@ -21,13 +22,16 @@ public class AssetManager : IDisposable
 
     public void Dispose()
     {
-        if (_disposed)
+        lock (_disposeLock)
         {
-            return;
-        }
+            if (_disposed)
+            {
+                return;
+            }
 
-        _disposed = true;
-        UnloadAll();
+            _disposed = true;
+            UnloadAllUnsynchronized();
+        }
     }
 
     public AssetId Import(string path)
@@ -109,7 +113,7 @@ public class AssetManager : IDisposable
             return (LoadedMesh)cached.Asset;
         }
 
-        var pending = _loadingTasks.GetOrAdd(id, _ => new PendingLoad(() => LoadAssetInternalAsync(id)));
+        var pending = _loadingTasks.GetOrAdd(id, _ => new PendingLoad(this, id));
 
         LoadedMesh asset;
         try
@@ -118,12 +122,12 @@ public class AssetManager : IDisposable
         }
         finally
         {
-            _loadingTasks.TryRemove(id, out _);
+            _loadingTasks.TryRemove(new KeyValuePair<AssetId, PendingLoad>(id, pending));
         }
 
-        if (_loadedAssets.TryGetValue(id, out var loadedCached) && !pending.TryClaimInitialReference())
+        if (pending.PublishedAsset is { } publishedCached && !pending.TryClaimInitialReference())
         {
-            loadedCached.IncrementRefCount();
+            publishedCached.IncrementRefCount();
         }
 
         return asset;
@@ -147,6 +151,14 @@ public class AssetManager : IDisposable
 
     public void UnloadAll()
     {
+        lock (_disposeLock)
+        {
+            UnloadAllUnsynchronized();
+        }
+    }
+
+    private void UnloadAllUnsynchronized()
+    {
         foreach (var kvp in _loadedAssets)
         {
             (kvp.Value.Asset as IDisposable)?.Dispose();
@@ -161,20 +173,24 @@ public class AssetManager : IDisposable
 
     public int GetRefCount(AssetId id) => _loadedAssets.TryGetValue(id, out var cached) ? cached.RefCount : 0;
 
-    private async Task<object> LoadAssetInternalAsync(AssetId id)
+    private async Task<object> LoadAssetInternalAsync(AssetId id, PendingLoad pending)
     {
         var path = ResolvePath(id);
         var asset = await Task.Run(() => _meshLoader(path));
 
-        if (_disposed)
+        lock (_disposeLock)
         {
-            (asset as IDisposable)?.Dispose();
-            return asset;
-        }
+            if (_disposed)
+            {
+                (asset as IDisposable)?.Dispose();
+                return asset;
+            }
 
-        var cached = new CachedAsset(asset);
-        cached.IncrementRefCount();
-        _loadedAssets[id] = cached;
+            var cached = new CachedAsset(asset);
+            cached.IncrementRefCount();
+            _loadedAssets[id] = cached;
+            pending.PublishedAsset = cached;
+        }
 
         return asset;
     }
@@ -188,12 +204,14 @@ public class AssetManager : IDisposable
     {
         private int _initialReferenceClaimed;
 
-        public PendingLoad(Func<Task<object>> factory)
+        public PendingLoad(AssetManager owner, AssetId id)
         {
-            Lazy = new Lazy<Task<object>>(factory);
+            Lazy = new Lazy<Task<object>>(() => owner.LoadAssetInternalAsync(id, this));
         }
 
         public Lazy<Task<object>> Lazy { get; }
+
+        public CachedAsset? PublishedAsset { get; set; }
 
         public bool TryClaimInitialReference() => Interlocked.CompareExchange(ref _initialReferenceClaimed, 1, 0) == 0;
     }
