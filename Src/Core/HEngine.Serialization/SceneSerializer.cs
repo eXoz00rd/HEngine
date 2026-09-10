@@ -93,8 +93,13 @@ public sealed class SceneSerializer
         var componentObject = componentNode as JsonObject
             ?? throw new FormatException("Each component entry must be a JSON object.");
 
-        var typeId = componentObject["type"]?.GetValue<string>()
+        var typeNode = componentObject["type"]
             ?? throw new FormatException("A component entry is missing its 'type' field.");
+
+        if (typeNode is not JsonValue typeValue || !typeValue.TryGetValue<string>(out var typeId))
+        {
+            throw new FormatException("A component entry's 'type' field must be a string.");
+        }
 
         if (string.IsNullOrWhiteSpace(typeId))
         {

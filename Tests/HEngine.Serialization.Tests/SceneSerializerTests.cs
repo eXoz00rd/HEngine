@@ -60,6 +60,15 @@ public class SceneSerializerTests
         Assert.Throws<FormatException>(() => sceneSerializer.Deserialize(json));
     }
 
+    [Fact]
+    public void Deserialize_ComponentEntryHasNonStringTypeField_Throws()
+    {
+        var sceneSerializer = CreateSceneSerializer();
+        const string json = """[{"components":[{"type":123,"data":{"x":1,"y":2}}]}]""";
+
+        Assert.Throws<FormatException>(() => sceneSerializer.Deserialize(json));
+    }
+
     [Theory]
     [InlineData("")]
     [InlineData("   ")]
