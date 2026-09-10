@@ -2,5 +2,5 @@ namespace HEngine.Serialization.Documents;
 
 public sealed class SceneDocument
 {
-    public List<EntityDocument> Entities { get; init; } = [];
+    public List<EntityDocument> Entities { get; } = [];
 }
