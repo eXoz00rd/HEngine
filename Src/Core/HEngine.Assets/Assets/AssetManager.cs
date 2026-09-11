@@ -42,6 +42,14 @@ public class AssetManager : IDisposable
             throw new ArgumentException("Path cannot be null or empty", nameof(path));
         }
 
+        lock (_cacheLock)
+        {
+            if (_disposed)
+            {
+                throw new ObjectDisposedException(nameof(AssetManager));
+            }
+        }
+
         var absolutePath = Path.GetFullPath(path);
         var key = NormalizeKey(absolutePath);
 
@@ -124,9 +132,10 @@ public class AssetManager : IDisposable
             }
             else
             {
-                var generation = _generation;
-                lazyLoad = new Lazy<Task<object>>(() => LoadAssetInternalAsync(id, generation));
-                _pendingLoads[id] = new PendingLoad(lazyLoad);
+                pending = new PendingLoad(_generation);
+                pending.Lazy = new Lazy<Task<object>>(() => LoadAssetInternalAsync(id, pending));
+                _pendingLoads[id] = pending;
+                lazyLoad = pending.Lazy;
             }
         }
 
@@ -137,18 +146,22 @@ public class AssetManager : IDisposable
     {
         lock (_cacheLock)
         {
-            if (!_loadedAssets.TryGetValue(id, out var cached))
+            if (_loadedAssets.TryGetValue(id, out var cached))
             {
+                if (cached.DecrementRefCount() > 0)
+                {
+                    return;
+                }
+
+                _loadedAssets.TryRemove(id, out _);
+                (cached.Asset as IDisposable)?.Dispose();
                 return;
             }
 
-            if (cached.DecrementRefCount() > 0)
+            if (_pendingLoads.TryGetValue(id, out var pending) && pending.AttachedCount > 0)
             {
-                return;
+                pending.AttachedCount--;
             }
-
-            _loadedAssets.TryRemove(id, out _);
-            (cached.Asset as IDisposable)?.Dispose();
         }
     }
 
@@ -163,6 +176,7 @@ public class AssetManager : IDisposable
     private void UnloadAllUnsynchronized()
     {
         _generation++;
+        _pendingLoads.Clear();
 
         foreach (var kvp in _loadedAssets)
         {
@@ -184,7 +198,7 @@ public class AssetManager : IDisposable
 
     public int GetRefCount(AssetId id) => _loadedAssets.TryGetValue(id, out var cached) ? cached.RefCount : 0;
 
-    private async Task<object> LoadAssetInternalAsync(AssetId id, int generation)
+    private async Task<object> LoadAssetInternalAsync(AssetId id, PendingLoad pending)
     {
         try
         {
@@ -193,17 +207,16 @@ public class AssetManager : IDisposable
 
             lock (_cacheLock)
             {
-                _pendingLoads.Remove(id, out var pending);
+                RemoveOwnedPendingLoad(id, pending);
 
-                if (_disposed || generation != _generation)
+                if (_disposed || pending.Generation != _generation || pending.AttachedCount <= 0)
                 {
                     (asset as IDisposable)?.Dispose();
                     return asset;
                 }
 
                 var cached = new CachedAsset(asset);
-                var attachedCount = pending?.AttachedCount ?? 1;
-                for (var i = 0; i < attachedCount; i++)
+                for (var i = 0; i < pending.AttachedCount; i++)
                 {
                     cached.IncrementRefCount();
                 }
@@ -217,10 +230,18 @@ public class AssetManager : IDisposable
         {
             lock (_cacheLock)
             {
-                _pendingLoads.Remove(id);
+                RemoveOwnedPendingLoad(id, pending);
             }
 
             throw;
+        }
+    }
+
+    private void RemoveOwnedPendingLoad(AssetId id, PendingLoad pending)
+    {
+        if (_pendingLoads.TryGetValue(id, out var current) && ReferenceEquals(current, pending))
+        {
+            _pendingLoads.Remove(id);
         }
     }
 
@@ -231,13 +252,15 @@ public class AssetManager : IDisposable
 
     private sealed class PendingLoad
     {
-        public PendingLoad(Lazy<Task<object>> lazy)
+        public PendingLoad(int generation)
         {
-            Lazy = lazy;
+            Generation = generation;
             AttachedCount = 1;
         }
 
-        public Lazy<Task<object>> Lazy { get; }
+        public Lazy<Task<object>> Lazy { get; set; } = null!;
+
+        public int Generation { get; }
 
         public int AttachedCount { get; set; }
     }

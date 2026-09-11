@@ -90,6 +90,56 @@ public class AssetManagerTests : IDisposable
     }
 
     [Fact]
+    public async Task Unload_BeforeLoadCompletes_DiscardsResultInsteadOfPublishing()
+    {
+        var gate = new TaskCompletionSource();
+        var manager = new AssetManager(async p =>
+        {
+            await gate.Task;
+            return new LoadedMesh(CreateTestVertices(), new uint[] { 0, 1, 2 });
+        });
+        var id = manager.Import(CreateTestMeshFile("unload-before-complete.mesh"));
+
+        var loadTask = manager.LoadMeshAsync(id);
+        manager.Unload(id);
+        gate.SetResult();
+
+        var mesh = await loadTask;
+
+        Assert.NotNull(mesh);
+        Assert.Equal(0, manager.LoadedAssetCount);
+        Assert.False(manager.IsLoaded(id));
+
+        manager.Dispose();
+    }
+
+    [Fact]
+    public async Task Unload_BeforeLoadCompletes_WithMultipleAttachers_PublishesRemainingCount()
+    {
+        var gate = new TaskCompletionSource();
+        var manager = new AssetManager(async p =>
+        {
+            await gate.Task;
+            return new LoadedMesh(CreateTestVertices(), new uint[] { 0, 1, 2 });
+        });
+        var id = manager.Import(CreateTestMeshFile("unload-before-complete-partial.mesh"));
+
+        var loadTask1 = manager.LoadMeshAsync(id);
+        var loadTask2 = manager.LoadMeshAsync(id);
+        var loadTask3 = manager.LoadMeshAsync(id);
+
+        manager.Unload(id);
+        gate.SetResult();
+
+        await Task.WhenAll(loadTask1, loadTask2, loadTask3);
+
+        Assert.Equal(1, manager.LoadedAssetCount);
+        Assert.Equal(2, manager.GetRefCount(id));
+
+        manager.Dispose();
+    }
+
+    [Fact]
     public async Task IsLoaded_AfterLoading_ReturnsTrue()
     {
         var id = _assetManager.Import(CreateTestMeshFile("loaded.mesh"));
@@ -143,6 +193,42 @@ public class AssetManagerTests : IDisposable
         Assert.NotNull(mesh);
         Assert.Equal(0, manager.LoadedAssetCount);
         Assert.False(manager.IsLoaded(id));
+
+        manager.Dispose();
+    }
+
+    [Fact]
+    public async Task LoadMeshAsync_AfterUnloadAllDuringInFlightLoad_StartsFreshLoad()
+    {
+        var loadCount = 0;
+        var staleGate = new TaskCompletionSource();
+        var manager = new AssetManager(async p =>
+        {
+            var attempt = Interlocked.Increment(ref loadCount);
+            if (attempt == 1)
+            {
+                await staleGate.Task;
+            }
+
+            return new LoadedMesh(CreateTestVertices(), new uint[] { 0, 1, 2 });
+        });
+        var id = manager.Import(CreateTestMeshFile("unload-all-then-reload.mesh"));
+
+        var staleLoadTask = manager.LoadMeshAsync(id);
+        manager.UnloadAll();
+
+        var freshMesh = await manager.LoadMeshAsync(id);
+
+        Assert.Equal(1, manager.LoadedAssetCount);
+        Assert.Equal(1, manager.GetRefCount(id));
+
+        staleGate.SetResult();
+        var staleMesh = await staleLoadTask;
+
+        Assert.NotSame(freshMesh, staleMesh);
+        Assert.Equal(2, loadCount);
+        Assert.Equal(1, manager.LoadedAssetCount);
+        Assert.Equal(1, manager.GetRefCount(id));
 
         manager.Dispose();
     }
@@ -253,6 +339,14 @@ public class AssetManagerTests : IDisposable
         Assert.Throws<ArgumentException>(() => _assetManager.Import(null!));
         Assert.Throws<ArgumentException>(() => _assetManager.Import(""));
         Assert.Throws<ArgumentException>(() => _assetManager.Import("   "));
+    }
+
+    [Fact]
+    public void Import_AfterDispose_ThrowsObjectDisposedException()
+    {
+        _assetManager.Dispose();
+
+        Assert.Throws<ObjectDisposedException>(() => _assetManager.Import(CreateTestMeshFile("post-dispose-import.mesh")));
     }
 
     [Fact]
