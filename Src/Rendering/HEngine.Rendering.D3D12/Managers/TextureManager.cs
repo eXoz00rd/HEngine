@@ -5,6 +5,7 @@ using HEngine.Rendering.Devices;
 using Microsoft.Extensions.Logging;
 using Silk.NET.Core.Native;
 using Silk.NET.Direct3D12;
+using HEngine.Rendering.Direct3D12;
 using Silk.NET.DXGI;
 
 namespace HEngine.Rendering.Managers;
@@ -207,7 +208,7 @@ public sealed class TextureManager : ITextureManager
 
         var srvDesc = new ShaderResourceViewDesc
         {
-            Format = loadResult.DxgiFormat,
+            Format = loadResult.Format.ToDxgi(),
             ViewDimension = SrvDimension.Texture2D,
             Shader4ComponentMapping = 0x00001688,
         };
@@ -270,7 +271,7 @@ public sealed class TextureManager : ITextureManager
             Height = (uint)loadResult.Height,
             DepthOrArraySize = 1,
             MipLevels = (ushort)mipLevels,
-            Format = loadResult.DxgiFormat,
+            Format = loadResult.Format.ToDxgi(),
             SampleDesc = new SampleDesc { Count = 1, Quality = 0 },
             Layout = TextureLayout.LayoutUnknown,
             Flags = ResourceFlags.None
@@ -301,7 +302,7 @@ public sealed class TextureManager : ITextureManager
         // Create SRV
         var srvDesc = new ShaderResourceViewDesc
         {
-            Format = loadResult.DxgiFormat,
+            Format = loadResult.Format.ToDxgi(),
             ViewDimension = SrvDimension.Texture2D,
             Shader4ComponentMapping = 0x00001688, // D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING
         };
@@ -311,7 +312,7 @@ public sealed class TextureManager : ITextureManager
         _device.CreateShaderResourceView(texture, in srvDesc, srvHandle.CpuHandle);
 
         _logger?.LogDebug("GPU texture created: {W}x{H}, {Mips} mips, format={Format}",
-            loadResult.Width, loadResult.Height, mipLevels, loadResult.DxgiFormat);
+            loadResult.Width, loadResult.Height, mipLevels, loadResult.Format.ToDxgi());
 
         return texture;
     }
@@ -409,7 +410,7 @@ public sealed class TextureManager : ITextureManager
             width: 1,
             height: 1,
             mipLevels: 1,
-            dxgiFormat: Format.FormatR8G8B8A8Unorm,
+            format: TextureFormat.R8G8B8A8Unorm,
             bytesPerPixel: 4,
             isCompressed: false,
             sourcePath: name);

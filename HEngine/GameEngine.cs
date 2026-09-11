@@ -105,6 +105,7 @@ public class GameEngine : IDisposable
         var builder = new EngineBuilder(config);
         return builder.AddRuntime()
             .AddRendering()
+            .AddDirectX12Backend()
             .AddLogging()
             .Build();
     }

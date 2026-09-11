@@ -18,6 +18,7 @@
   </Folder>
   <Folder Name="/4-Backends/">
     <Project Path="Src/Platform/HEngine.Platform.Windows/HEngine.Platform.Windows.csproj" />
+    <Project Path="Src/Rendering/HEngine.Rendering.D3D12/HEngine.Rendering.D3D12.csproj" />
   </Folder>
   <Folder Name="/5-Composition/">
     <Project Path="Src/Runtime/HEngine.Runtime/HEngine.Runtime.csproj" />
@@ -43,6 +44,7 @@
   </Folder>
   <Folder Name="/Tests/4-Backends/">
     <Project Path="Tests/HEngine.Platform.Windows.Tests/HEngine.Platform.Windows.Tests.csproj" />
+    <Project Path="Tests/HEngine.Rendering.D3D12.Tests/HEngine.Rendering.D3D12.Tests.csproj" />
   </Folder>
   <Folder Name="/Tests/5-Composition/">
     <Project Path="Tests/HEngine.Runtime.Tests/HEngine.Runtime.Tests.csproj" />

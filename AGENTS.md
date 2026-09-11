@@ -35,26 +35,34 @@ dotnet build HEngine.slnx -c Debug
 dotnet test HEngine.slnx
 ```
 
-Two test projects: `Tests/HEngine.Core.Tests` (platform-agnostic) and `Tests/HEngine.Rendering.Tests`. Narrow the loop when iterating:
+One test project per module, named after it. Narrow the loop when iterating:
 
 ```bash
-dotnet test Tests/HEngine.Core.Tests/HEngine.Core.Tests.csproj --filter FullyQualifiedName~HEngine.Core.Tests.Managers.WorldManagerTests
+dotnet test Tests/HEngine.ECS.Tests/HEngine.ECS.Tests.csproj --filter FullyQualifiedName~HEngine.ECS.Tests.Managers.WorldManagerTests
 ```
 
-Measure performance-sensitive changes in `Benchmarks/HEngine.Core.Benchmarks` rather than asserting timings in unit tests.
+Measure performance-sensitive changes in `Benchmarks/HEngine.ECS.Benchmarks` rather than asserting timings in unit tests.
 
-.NET 10 throughout. Core builds anywhere; the rendering layer needs Windows and a DirectX 12 GPU. There is no `Samples/` directory and no Native AOT configuration.
+.NET 10 throughout. Everything except the Direct3D 12 backend builds and tests anywhere; `HEngine.Rendering.D3D12.Tests` needs Windows and a DirectX 12 GPU. There is no `Samples/` directory and no Native AOT configuration.
 
 ## 3. Layout
 
 ```
-Src/Core/HEngine.Core/           platform-agnostic: ECS, transforms, queries, math, contracts
-Src/Rendering/HEngine.Rendering/ DirectX 12 via Silk.NET
-HEngine/                         composition root + demo scene
+Src/Core/HEngine.Foundation/         no dependencies
+Src/Core/HEngine.ECS/                entities, components, queries, systems
+Src/Core/HEngine.Scene/              transforms, hierarchy, camera, culling
+Src/Core/HEngine.Assets/             asset database and importers
+Src/Core/HEngine.Platform/           window, input and clock contracts
+Src/Core/HEngine.Serialization/      scene and prefab format
+Src/Rendering/HEngine.Rendering/     backend-agnostic rendering, no graphics API
+Src/Rendering/HEngine.Rendering.D3D12/  Direct3D 12 via Silk.NET
+Src/Platform/HEngine.Platform.Windows/  window, input and clock via Silk.NET
+Src/Runtime/HEngine.Runtime/         composition, game loop, configuration
+HEngine/                             host + demo scene
 Tests/ · Benchmarks/
 ```
 
-Contracts live in Core, implementations in Rendering; Core must never reference a rendering API. Place new code where `docs/TARGET_ARCHITECTURE.md` says it belongs, not where the current structure suggests.
+Dependencies flow strictly downward and the host alone picks a backend; `HEngine.Architecture.Tests` enforces both, so the solution's numbered folders are the layering, not decoration. Contracts live with the module that owns the domain, implementations in the backend. Place new code where `docs/TARGET_ARCHITECTURE.md` says it belongs, not where the current structure suggests.
 
 ## 4. Code rules
 

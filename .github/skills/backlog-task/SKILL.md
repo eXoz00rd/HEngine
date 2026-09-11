@@ -73,17 +73,17 @@ git checkout -b fix/short-description
 ## 4. Implement
 
 - Read the relevant source before editing; confirm the actual bug/gap matches the issue description (don't assume the issue text is 100% precise).
-- Follow `AGENTS.md` / `CONTRIBUTING.md`: no new comments unless the logic is genuinely non-obvious, no new build warnings, `ref` access for ECS mutation, SRT transform order, contracts in Core / implementations in Rendering, DI failures must be loud not silent.
-- Add or update targeted tests for the changed behavior in the matching test project (`Tests/HEngine.Core.Tests` or `Tests/HEngine.Rendering.Tests`).
+- Follow `AGENTS.md` / `CONTRIBUTING.md`: no new comments unless the logic is genuinely non-obvious, no new build warnings, `ref` access for ECS mutation, SRT transform order, contracts with the module owning the domain / implementations in the backend, DI failures must be loud not silent.
+- Add or update targeted tests for the changed behavior in the test project matching the module you touched (one per module, named after it).
 
 ## 5. Validate
 
 ```bash
 dotnet build HEngine.slnx -c Debug
-dotnet test Tests/HEngine.Core.Tests/HEngine.Core.Tests.csproj --filter "FullyQualifiedName~<TouchedArea>"
+dotnet test Tests/<Module>.Tests/<Module>.Tests.csproj --filter "FullyQualifiedName~<TouchedArea>"
 ```
 
-- Escalate to the full test project (and `HEngine.Rendering.Tests` if touched) before opening the PR.
+- Escalate to `dotnet test HEngine.slnx` before opening the PR.
 - No new build warnings — check the build output, not just the exit code.
 - For rendering-path changes, remember green tests are not proof; call it out in the test plan if visual confirmation wasn't possible in this environment.
 

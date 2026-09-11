@@ -8,6 +8,7 @@ using HEngine.Rendering;
 using HEngine.Rendering.Configuration;
 using HEngine.Rendering.Components;
 using HEngine.Rendering.Contracts;
+using HEngine.Rendering.Direct3D12.Extensions;
 using HEngine.Rendering.Extensions;
 using HEngine.Rendering.PostProcessing;
 using HEngine.Rendering.Systems;
@@ -27,6 +28,7 @@ namespace HEngine.Runtime.Tests
             services.AddHEngineRuntime(configuration);
             services.AddHEngineRendering(
                 configuration.Rendering, configuration.PBR, configuration.Shadow, configuration.PostProcessing);
+            services.AddHEngineRenderingD3D12();
             services.AddLogging(builder => builder.SetMinimumLevel(LogLevel.None));
 
             return services;

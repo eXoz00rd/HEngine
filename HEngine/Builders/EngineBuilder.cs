@@ -1,4 +1,5 @@
-﻿using HEngine.Rendering.Extensions;
+﻿using HEngine.Rendering.Direct3D12.Extensions;
+using HEngine.Rendering.Extensions;
 using HEngine.Runtime.Configuration;
 using HEngine.Runtime.Extensions;
 using Microsoft.Extensions.DependencyInjection;
@@ -27,6 +28,12 @@ public class EngineBuilder
     {
         _services.AddHEngineRendering(
             _configuration.Rendering, _configuration.PBR, _configuration.Shadow, _configuration.PostProcessing);
+        return this;
+    }
+
+    public EngineBuilder AddDirectX12Backend()
+    {
+        _services.AddHEngineRenderingD3D12();
         return this;
     }
 

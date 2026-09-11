@@ -2,6 +2,7 @@
 
     <PropertyGroup>
         <IsPackable>false</IsPackable>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     </PropertyGroup>
 
     <ItemGroup>
@@ -17,6 +18,7 @@
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
             <PrivateAssets>all</PrivateAssets>
         </PackageReference>
+        <PackageReference Include="StbImageWriteSharp"/>
         <PackageReference Include="xunit"/>
         <PackageReference Include="xunit.runner.visualstudio">
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -30,7 +32,6 @@
 
     <ItemGroup>
         <ProjectReference Include="..\..\Src\Rendering\HEngine.Rendering.D3D12\HEngine.Rendering.D3D12.csproj"/>
-        <ProjectReference Include="..\..\Src\Runtime\HEngine.Runtime\HEngine.Runtime.csproj"/>
     </ItemGroup>
 
 </Project>

@@ -75,8 +75,7 @@ Two documents there are required reading before making architectural changes:
 [`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on `windows-latest` for pushes and pull requests targeting `main`, `master` and `develop`:
 
 1. Restore + Release build with `ContinuousIntegrationBuild=true`
-2. `HEngine.Core.Tests`
-3. `HEngine.Rendering.Tests`
+2. `dotnet test HEngine.slnx` — every test project in the solution
 
 CI must be green before merging.
 
