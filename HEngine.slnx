@@ -47,4 +47,7 @@
   <Folder Name="/Tests/4-Rendering/">
     <Project Path="Tests/HEngine.Rendering.Tests/HEngine.Rendering.Tests.csproj" />
   </Folder>
+  <Folder Name="/Tests/Architecture/">
+    <Project Path="Tests/HEngine.Architecture.Tests/HEngine.Architecture.Tests.csproj" />
+  </Folder>
 </Solution>

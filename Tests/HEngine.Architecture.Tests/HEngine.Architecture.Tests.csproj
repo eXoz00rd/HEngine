@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0-windows</TargetFramework>
+        <IsPackable>false</IsPackable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="coverlet.collector">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+        <PackageReference Include="Microsoft.NET.Test.Sdk"/>
+        <PackageReference Include="xunit"/>
+        <PackageReference Include="xunit.runner.visualstudio">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+    </ItemGroup>
+
+    <ItemGroup>
+        <Using Include="Xunit"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\Src\Core\HEngine.Foundation\HEngine.Foundation.csproj"/>
+        <ProjectReference Include="..\..\Src\Core\HEngine.ECS\HEngine.ECS.csproj"/>
+        <ProjectReference Include="..\..\Src\Core\HEngine.Scene\HEngine.Scene.csproj"/>
+        <ProjectReference Include="..\..\Src\Core\HEngine.Assets\HEngine.Assets.csproj"/>
+        <ProjectReference Include="..\..\Src\Core\HEngine.Platform\HEngine.Platform.csproj"/>
+        <ProjectReference Include="..\..\Src\Core\HEngine.Serialization\HEngine.Serialization.csproj"/>
+        <ProjectReference Include="..\..\Src\Core\HEngine.Core\HEngine.Core.csproj"/>
+        <ProjectReference Include="..\..\Src\Platform\HEngine.Platform.Windows\HEngine.Platform.Windows.csproj"/>
+        <ProjectReference Include="..\..\Src\Rendering\HEngine.Rendering\HEngine.Rendering.csproj"/>
+    </ItemGroup>
+
+</Project>
