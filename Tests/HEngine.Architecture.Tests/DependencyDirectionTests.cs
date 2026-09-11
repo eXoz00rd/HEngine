@@ -63,16 +63,16 @@ public class DependencyDirectionTests
             .Select(path => (Path.GetFileNameWithoutExtension(path), path));
     }
 
-    // Only top-level "<N>-<Name>" solution folders carry a layer; "Hosts" is a composition
-    // layer, not a module, so it is intentionally excluded despite matching the pattern.
+    private const string HostsFolderName = "Hosts";
+
     private static IReadOnlyDictionary<string, int> GetModuleLayers(string solutionFile)
     {
         var layerByModule = new Dictionary<string, int>();
 
         foreach (var folder in XDocument.Load(solutionFile).Descendants("Folder"))
         {
-            var match = Regex.Match(folder.Attribute("Name")!.Value, @"^/(\d+)-(?!Hosts\b)");
-            if (!match.Success)
+            var match = Regex.Match(folder.Attribute("Name")!.Value, @"^/(\d+)-(.+)/$");
+            if (!match.Success || match.Groups[2].Value == HostsFolderName)
                 continue;
 
             var layer = int.Parse(match.Groups[1].Value);
