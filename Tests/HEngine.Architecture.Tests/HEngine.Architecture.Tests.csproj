@@ -29,9 +29,9 @@
         <ProjectReference Include="..\..\Src\Core\HEngine.Assets\HEngine.Assets.csproj"/>
         <ProjectReference Include="..\..\Src\Core\HEngine.Platform\HEngine.Platform.csproj"/>
         <ProjectReference Include="..\..\Src\Core\HEngine.Serialization\HEngine.Serialization.csproj"/>
-        <ProjectReference Include="..\..\Src\Core\HEngine.Core\HEngine.Core.csproj"/>
-        <ProjectReference Include="..\..\Src\Platform\HEngine.Platform.Windows\HEngine.Platform.Windows.csproj"/>
         <ProjectReference Include="..\..\Src\Rendering\HEngine.Rendering\HEngine.Rendering.csproj"/>
+        <ProjectReference Include="..\..\Src\Platform\HEngine.Platform.Windows\HEngine.Platform.Windows.csproj"/>
+        <ProjectReference Include="..\..\Src\Runtime\HEngine.Runtime\HEngine.Runtime.csproj"/>
     </ItemGroup>
 
 </Project>

@@ -5,11 +5,14 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\Core\HEngine.Core\HEngine.Core.csproj"/>
+        <ProjectReference Include="..\..\Core\HEngine.ECS\HEngine.ECS.csproj"/>
+        <ProjectReference Include="..\..\Core\HEngine.Scene\HEngine.Scene.csproj"/>
         <ProjectReference Include="..\..\Core\HEngine.Assets\HEngine.Assets.csproj"/>
     </ItemGroup>
 
     <ItemGroup>
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection"/>
+        <PackageReference Include="Microsoft.Extensions.Logging"/>
         <PackageReference Include="Silk.NET.Core"/>
         <PackageReference Include="Silk.NET.Direct3D.Compilers"/>
         <PackageReference Include="Silk.NET.Direct3D11"/>

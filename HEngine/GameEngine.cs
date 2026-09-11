@@ -1,8 +1,9 @@
 ﻿using System.Numerics;
 using HEngine.Builders;
 using HEngine.Core.Components.Rendering;
-using HEngine.Core.Configuration;
+using HEngine.Runtime.Configuration;
 using HEngine.Core.Contracts;
+using HEngine.Runtime.Contracts;
 using HEngine.Core.Managers;
 using HEngine.Core.Primitives;
 using HEngine.Core.Rendering.Contracts;
@@ -102,7 +103,7 @@ public class GameEngine : IDisposable
     public static GameEngine Create(EngineConfiguration? config = null)
     {
         var builder = new EngineBuilder(config);
-        return builder.AddCore()
+        return builder.AddRuntime()
             .AddRendering()
             .AddLogging()
             .Build();

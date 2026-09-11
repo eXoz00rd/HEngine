@@ -1,10 +1,11 @@
 using System.Linq;
 using System.Numerics;
-using HEngine.Core.Configuration;
-using HEngine.Core.Extensions;
+using HEngine.Runtime.Configuration;
+using HEngine.Runtime.Extensions;
 using HEngine.Core.Managers;
 using HEngine.Core.Rendering.Contracts;
 using HEngine.Rendering;
+using HEngine.Rendering.Configuration;
 using HEngine.Rendering.Components;
 using HEngine.Rendering.Contracts;
 using HEngine.Rendering.Extensions;
@@ -14,7 +15,7 @@ using HEngine.Rendering.Systems.Implementations;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-namespace HEngine.Rendering.Tests
+namespace HEngine.Runtime.Tests
 {
     public class CompositionTests
     {
@@ -23,8 +24,9 @@ namespace HEngine.Rendering.Tests
             var services = new ServiceCollection();
             var configuration = config ?? new EngineConfiguration();
 
-            services.AddHEngineCore(configuration);
-            services.AddHEngineRendering(configuration);
+            services.AddHEngineRuntime(configuration);
+            services.AddHEngineRendering(
+                configuration.Rendering, configuration.PBR, configuration.Shadow, configuration.PostProcessing);
             services.AddLogging(builder => builder.SetMinimumLevel(LogLevel.None));
 
             return services;

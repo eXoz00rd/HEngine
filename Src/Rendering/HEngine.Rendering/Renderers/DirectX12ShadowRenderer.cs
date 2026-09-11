@@ -1,6 +1,6 @@
-using System.Numerics;
+﻿using System.Numerics;
 using System.Runtime.InteropServices;
-using HEngine.Core.Configuration;
+using HEngine.Rendering.Configuration;
 using HEngine.Core.Rendering.Contracts;
 using HEngine.Rendering.Data;
 using HEngine.Rendering.DirectX12;

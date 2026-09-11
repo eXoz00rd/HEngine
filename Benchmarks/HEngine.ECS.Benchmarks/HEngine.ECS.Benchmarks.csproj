@@ -8,7 +8,8 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\Src\Core\HEngine.Core\HEngine.Core.csproj"/>
+        <ProjectReference Include="..\..\Src\Core\HEngine.ECS\HEngine.ECS.csproj"/>
+        <ProjectReference Include="..\..\Src\Core\HEngine.Scene\HEngine.Scene.csproj"/>
     </ItemGroup>
 
     <ItemGroup>

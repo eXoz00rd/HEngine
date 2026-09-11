@@ -1,6 +1,6 @@
 ﻿using System.Buffers;
 using System.Numerics;
-using HEngine.Core.Configuration;
+using HEngine.Rendering.Configuration;
 using HEngine.Core.Rendering.Contracts;
 using HEngine.Core.Rendering.Data;
 using HEngine.Rendering.Batches;

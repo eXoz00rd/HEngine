@@ -1,5 +1,5 @@
 ﻿using HEngine.Core.Components.Rendering;
-using HEngine.Core.Configuration;
+using HEngine.Rendering.Configuration;
 using HEngine.Core.Managers;
 using HEngine.Rendering.Shadows;
 using HEngine.Core.Rendering.Contracts;

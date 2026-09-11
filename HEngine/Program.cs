@@ -1,5 +1,5 @@
 ﻿using HEngine;
-using HEngine.Core.Configuration;
+using HEngine.Runtime.Configuration;
 
 var config = new EngineConfiguration();
 config.Shadow.Enabled = true;

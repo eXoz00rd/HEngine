@@ -1,4 +1,4 @@
-﻿namespace HEngine.Core.Contracts;
+﻿namespace HEngine.Runtime.Contracts;
 
 public interface IGameLoop
 {

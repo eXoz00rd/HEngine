@@ -129,7 +129,7 @@ public class ShadowManagerTests
     [Fact(DisplayName = "ShadowSettings defaults are sensible")]
     public void ShadowSettings_DefaultValues()
     {
-        var settings = new HEngine.Core.Configuration.ShadowSettings();
+        var settings = new HEngine.Rendering.Configuration.ShadowSettings();
         Assert.False(settings.Enabled);
         Assert.Equal(2048, settings.Resolution);
         Assert.Equal(4, settings.CascadeCount);

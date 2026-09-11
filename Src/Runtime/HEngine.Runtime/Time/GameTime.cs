@@ -1,6 +1,6 @@
 ﻿using System.Diagnostics;
 
-namespace HEngine.Core.Time;
+namespace HEngine.Runtime.Time;
 
 public class GameTime {
     private readonly Stopwatch _stopwatch = new();

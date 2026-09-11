@@ -1,9 +1,9 @@
-﻿using HEngine.Core.Contracts;
+﻿using HEngine.Runtime.Contracts;
 using HEngine.Core.Managers;
 using HEngine.Core.Rendering.Contracts;
 using Microsoft.Extensions.Logging;
 
-namespace HEngine.Core.Time;
+namespace HEngine.Runtime.Time;
 
 public class GameLoop : IGameLoop
 {

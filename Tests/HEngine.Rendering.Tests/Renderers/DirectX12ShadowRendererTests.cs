@@ -1,5 +1,5 @@
 ﻿using System.Numerics;
-using HEngine.Core.Configuration;
+using HEngine.Rendering.Configuration;
 using HEngine.Core.Rendering.Contracts;
 using HEngine.Rendering.Managers;
 using HEngine.Rendering.Renderers;

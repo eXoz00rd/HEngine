@@ -1,8 +1,8 @@
-﻿using HEngine.Core.Configuration;
-using HEngine.Core.Contracts;
+﻿using HEngine.Core.Contracts;
 using HEngine.Core.Managers;
 using HEngine.Core.Rendering.Contracts;
 using HEngine.Rendering.Batches;
+using HEngine.Rendering.Configuration;
 using HEngine.Rendering.Contracts;
 using HEngine.Rendering.Devices;
 using HEngine.Rendering.Factories;
@@ -19,8 +19,14 @@ namespace HEngine.Rendering.Extensions;
 
 public static class ServiceCollectionExtensions
 {
-    public static IServiceCollection AddHEngineRendering(this IServiceCollection services, EngineConfiguration config)
+    public static IServiceCollection AddHEngineRendering(this IServiceCollection services,
+        RenderingSettings rendering, PbrSettings pbr, ShadowSettings shadow, PostProcessingSettings postProcessing)
     {
+        services.AddSingleton(rendering);
+        services.AddSingleton(pbr);
+        services.AddSingleton(shadow);
+        services.AddSingleton(postProcessing);
+
         services.AddSingleton<InputState>();
         services.AddSingleton<ICameraInputProvider, SilkCameraInputProvider>();
 
@@ -68,10 +74,6 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ISpriteRenderingSystem, SpriteRenderingSystem>();
         services.AddSingleton<IMeshRenderingSystem, MeshRenderingSystem>();
         services.AddSingleton<IRenderingSystem, RenderingSystem>();
-
-        services.AddSingleton(config.Shadow);
-        services.AddSingleton(config.PBR);
-        services.AddSingleton(config.PostProcessing);
 
         services.AddSingleton<ShadowMapManager>();
         services.AddSingleton<ShadowPipelineStateManager>();

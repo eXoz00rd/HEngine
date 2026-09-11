@@ -1,27 +1,11 @@
-﻿using System.Numerics;
+using System.Numerics;
 
-namespace HEngine.Core.Configuration;
+namespace HEngine.Rendering.Configuration;
 
 public enum ProjectionMode
 {
     Orthographic,
     Perspective
-}
-
-public class EngineConfiguration {
-    public WindowSettings Window { get; set; } = new();
-    public RenderingSettings Rendering { get; set; } = new();
-    public PbrSettings PBR { get; set; } = new();
-    public ShadowSettings Shadow { get; set; } = new();
-    public PostProcessingSettings PostProcessing { get; set; } = new();
-}
-
-public class WindowSettings {
-    public int Width { get; set; } = 1280;
-    public int Height { get; set; } = 720;
-    public string Title { get; set; } = "HEngine";
-    public bool Fullscreen { get; set; } = false;
-    public bool VSync { get; set; } = true;
 }
 
 public class RenderingSettings {

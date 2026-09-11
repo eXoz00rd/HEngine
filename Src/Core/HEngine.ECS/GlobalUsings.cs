@@ -1,3 +1,3 @@
 global using System.Runtime.CompilerServices;
 
-[assembly: InternalsVisibleTo("HEngine.Core.Benchmarks")]
+[assembly: InternalsVisibleTo("HEngine.ECS.Benchmarks")]
