@@ -82,6 +82,22 @@ public class WorldLifecycleTests : IDisposable {
     }
 
     [Fact]
+    public void Resume_WithUnconsumedPendingStep_ShouldClearPendingStep()
+    {
+        _worldManager.Load();
+        _worldManager.EnterPlay();
+        _worldManager.Pause();
+        _worldManager.Step();
+
+        _worldManager.Resume();
+
+        Assert.False(_worldManager.HasPendingStep);
+
+        _worldManager.Pause();
+        Assert.False(_worldManager.HasPendingStep);
+    }
+
+    [Fact]
     public void Step_WhilePaused_ShouldStayPausedAndSetPendingStep()
     {
         _worldManager.Load();

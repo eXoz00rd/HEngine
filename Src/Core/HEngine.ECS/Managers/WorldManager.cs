@@ -51,6 +51,7 @@ public class WorldManager : IDisposable {
     {
         ThrowIfDisposed();
         RequireState(WorldLifecycleState.Pause, nameof(Resume));
+        HasPendingStep = false;
         LifecycleState = WorldLifecycleState.Play;
     }
 
