@@ -1,4 +1,3 @@
-using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
 
@@ -84,6 +83,16 @@ public class DependencyDirectionTests
         return layerByModule;
     }
 
-    private static string FindRepoRoot([CallerFilePath] string sourceFilePath = "")
-        => Path.GetFullPath(Path.Combine(Path.GetDirectoryName(sourceFilePath)!, "..", ".."));
+    private static string FindRepoRoot()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+
+        while (directory != null && !File.Exists(Path.Combine(directory.FullName, "HEngine.slnx")))
+            directory = directory.Parent;
+
+        if (directory == null)
+            throw new InvalidOperationException("Could not locate repository root (HEngine.slnx not found).");
+
+        return directory.FullName;
+    }
 }
