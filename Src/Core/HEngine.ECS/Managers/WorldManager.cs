@@ -23,6 +23,73 @@ public class WorldManager : IDisposable {
     public EntityManager EntityManager { get; }
     public ComponentManager ComponentManager { get; }
     public QueryBuilder QueryBuilder { get; }
+    public WorldLifecycleState LifecycleState { get; private set; } = WorldLifecycleState.Empty;
+    public bool HasPendingStep { get; private set; }
+
+    public void Load()
+    {
+        ThrowIfDisposed();
+        RequireState(WorldLifecycleState.Empty, nameof(Load));
+        LifecycleState = WorldLifecycleState.Edit;
+    }
+
+    public void EnterPlay()
+    {
+        ThrowIfDisposed();
+        RequireState(WorldLifecycleState.Edit, nameof(EnterPlay));
+        LifecycleState = WorldLifecycleState.Play;
+    }
+
+    public void Pause()
+    {
+        ThrowIfDisposed();
+        RequireState(WorldLifecycleState.Play, nameof(Pause));
+        LifecycleState = WorldLifecycleState.Pause;
+    }
+
+    public void Resume()
+    {
+        ThrowIfDisposed();
+        RequireState(WorldLifecycleState.Pause, nameof(Resume));
+        LifecycleState = WorldLifecycleState.Play;
+    }
+
+    public void Step()
+    {
+        ThrowIfDisposed();
+        RequireState(WorldLifecycleState.Pause, nameof(Step));
+        HasPendingStep = true;
+    }
+
+    public bool ConsumePendingStep()
+    {
+        ThrowIfDisposed();
+
+        if (!HasPendingStep)
+            return false;
+
+        HasPendingStep = false;
+        return true;
+    }
+
+    public void ExitPlay()
+    {
+        ThrowIfDisposed();
+
+        if (LifecycleState is not (WorldLifecycleState.Play or WorldLifecycleState.Pause))
+            throw new InvalidOperationException(
+                $"Cannot exit play: world is in {LifecycleState} state, expected Play or Pause.");
+
+        HasPendingStep = false;
+        LifecycleState = WorldLifecycleState.Edit;
+    }
+
+    private void RequireState(WorldLifecycleState expected, string operationName)
+    {
+        if (LifecycleState != expected)
+            throw new InvalidOperationException(
+                $"Cannot {operationName}: world is in {LifecycleState} state, expected {expected}.");
+    }
 
     public void Dispose()
     {

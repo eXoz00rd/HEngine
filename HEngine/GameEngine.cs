@@ -132,6 +132,8 @@ public class GameEngine : IDisposable
         {
             _logger.LogInformation("Initializing game engine...");
 
+            _worldManager.Load();
+
             _renderManager.Initialize(
                 _config.Window.Width,
                 _config.Window.Height,
@@ -167,6 +169,8 @@ public class GameEngine : IDisposable
             _worldManager.AddSystem(_renderingSystem);
 
             new DemoScene(_worldManager, _materialManager, _config, _logger).Populate();
+
+            _worldManager.EnterPlay();
 
             _logger.LogInformation("Game engine initialized successfully");
         }
