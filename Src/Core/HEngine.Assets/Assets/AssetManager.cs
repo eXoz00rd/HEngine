@@ -4,10 +4,15 @@ namespace HEngine.Assets.Assets;
 
 public class AssetManager : IDisposable
 {
-    private readonly ConcurrentDictionary<string, CachedAsset> _loadedAssets = new();
-    private readonly ConcurrentDictionary<string, Task<object>> _loadingTasks = new();
+    private readonly ConcurrentDictionary<AssetId, CachedAsset> _loadedAssets = new();
+    private readonly Dictionary<AssetId, PendingLoad> _pendingLoads = new();
+    private readonly Dictionary<AssetId, string> _importedPaths = new();
+    private readonly Dictionary<string, AssetId> _idsByNormalizedPath = new(StringComparer.Ordinal);
+    private readonly object _importLock = new();
+    private readonly object _cacheLock = new();
     private readonly Func<string, Task<LoadedMesh>> _meshLoader;
     private bool _disposed;
+    private int _generation;
 
     public AssetManager(Func<string, Task<LoadedMesh>> meshLoader)
     {
@@ -18,73 +23,169 @@ public class AssetManager : IDisposable
 
     public void Dispose()
     {
-        if (_disposed)
+        lock (_cacheLock)
         {
-            return;
-        }
+            if (_disposed)
+            {
+                return;
+            }
 
-        UnloadAll();
-        _disposed = true;
+            _disposed = true;
+            UnloadAllUnsynchronized();
+        }
     }
 
-    public async Task<LoadedMesh> LoadMeshAsync(string path)
+    public AssetId Import(string path)
     {
-        if (_disposed)
-        {
-            throw new ObjectDisposedException(nameof(AssetManager));
-        }
-
         if (string.IsNullOrWhiteSpace(path))
         {
             throw new ArgumentException("Path cannot be null or empty", nameof(path));
         }
 
-        path = NormalizePath(path);
+        var absolutePath = Path.GetFullPath(path);
+        var key = NormalizeKey(absolutePath);
 
-        if (_loadedAssets.TryGetValue(path, out var cached))
+        lock (_cacheLock)
         {
-            cached.IncrementRefCount();
-            return (LoadedMesh)cached.Asset;
-        }
+            if (_disposed)
+            {
+                throw new ObjectDisposedException(nameof(AssetManager));
+            }
 
-        var loadingTask = _loadingTasks.GetOrAdd(path, _ => LoadAssetInternalAsync(path));
+            lock (_importLock)
+            {
+                if (_idsByNormalizedPath.TryGetValue(key, out var existingId))
+                {
+                    return existingId;
+                }
 
-        try
-        {
-            var asset = await loadingTask;
-            return (LoadedMesh)asset;
-        }
-        finally
-        {
-            _loadingTasks.TryRemove(path, out _);
+                var id = AssetId.New();
+                _importedPaths[id] = absolutePath;
+                _idsByNormalizedPath[key] = id;
+                return id;
+            }
         }
     }
 
-    public void Unload(string path)
+    public void Move(AssetId id, string newPath)
     {
-        if (string.IsNullOrWhiteSpace(path))
+        if (string.IsNullOrWhiteSpace(newPath))
         {
-            return;
+            throw new ArgumentException("Path cannot be null or empty", nameof(newPath));
         }
 
-        path = NormalizePath(path);
+        var newAbsolutePath = Path.GetFullPath(newPath);
+        var newKey = NormalizeKey(newAbsolutePath);
 
-        if (!_loadedAssets.TryGetValue(path, out var cached))
+        lock (_cacheLock)
         {
-            return;
+            if (_disposed)
+            {
+                throw new ObjectDisposedException(nameof(AssetManager));
+            }
+
+            lock (_importLock)
+            {
+                if (!_importedPaths.TryGetValue(id, out var oldPath))
+                {
+                    throw new KeyNotFoundException($"Asset id '{id}' has not been imported.");
+                }
+
+                if (_idsByNormalizedPath.TryGetValue(newKey, out var owner) && !owner.Equals(id))
+                {
+                    throw new InvalidOperationException(
+                        $"Cannot move asset '{id}' to '{newPath}': that path is already owned by asset '{owner}'.");
+                }
+
+                _idsByNormalizedPath.Remove(NormalizeKey(oldPath));
+                _importedPaths[id] = newAbsolutePath;
+                _idsByNormalizedPath[newKey] = id;
+            }
+        }
+    }
+
+    public string ResolvePath(AssetId id)
+    {
+        lock (_importLock)
+        {
+            if (!_importedPaths.TryGetValue(id, out var path))
+            {
+                throw new KeyNotFoundException($"Asset id '{id}' has not been imported.");
+            }
+
+            return path;
+        }
+    }
+
+    public async Task<LoadedMesh> LoadMeshAsync(AssetId id)
+    {
+        Lazy<Task<object>> lazyLoad;
+        lock (_cacheLock)
+        {
+            if (_disposed)
+            {
+                throw new ObjectDisposedException(nameof(AssetManager));
+            }
+
+            if (_loadedAssets.TryGetValue(id, out var cached))
+            {
+                cached.IncrementRefCount();
+                return (LoadedMesh)cached.Asset;
+            }
+
+            if (_pendingLoads.TryGetValue(id, out var pending))
+            {
+                pending.AttachedCount++;
+                lazyLoad = pending.Lazy;
+            }
+            else
+            {
+                pending = new PendingLoad(_generation);
+                pending.Lazy = new Lazy<Task<object>>(() => LoadAssetInternalAsync(id, pending));
+                _pendingLoads[id] = pending;
+                lazyLoad = pending.Lazy;
+            }
         }
 
-        if (cached.DecrementRefCount() > 0)
-        {
-            return;
-        }
+        return (LoadedMesh)await lazyLoad.Value;
+    }
 
-        _loadedAssets.TryRemove(path, out _);
-        (cached.Asset as IDisposable)?.Dispose();
+    public void Unload(AssetId id)
+    {
+        lock (_cacheLock)
+        {
+            if (_loadedAssets.TryGetValue(id, out var cached))
+            {
+                if (cached.DecrementRefCount() > 0)
+                {
+                    return;
+                }
+
+                _loadedAssets.TryRemove(id, out _);
+                (cached.Asset as IDisposable)?.Dispose();
+                return;
+            }
+
+            if (_pendingLoads.TryGetValue(id, out var pending) && pending.AttachedCount > 0)
+            {
+                pending.AttachedCount--;
+            }
+        }
     }
 
     public void UnloadAll()
     {
+        lock (_cacheLock)
+        {
+            UnloadAllUnsynchronized();
+        }
+    }
+
+    private void UnloadAllUnsynchronized()
+    {
+        _generation++;
+        _pendingLoads.Clear();
+
         foreach (var kvp in _loadedAssets)
         {
             (kvp.Value.Asset as IDisposable)?.Dispose();
@@ -93,53 +194,83 @@ public class AssetManager : IDisposable
         _loadedAssets.Clear();
     }
 
-    public bool IsLoaded(string path)
+    public bool IsLoaded(AssetId id) => _loadedAssets.ContainsKey(id);
+
+    public bool IsLoading(AssetId id)
     {
-        if (string.IsNullOrWhiteSpace(path))
+        lock (_cacheLock)
         {
-            return false;
+            return _pendingLoads.ContainsKey(id);
+        }
+    }
+
+    public int GetRefCount(AssetId id) => _loadedAssets.TryGetValue(id, out var cached) ? cached.RefCount : 0;
+
+    private async Task<object> LoadAssetInternalAsync(AssetId id, PendingLoad pending)
+    {
+        try
+        {
+            var path = ResolvePath(id);
+            var asset = await Task.Run(() => _meshLoader(path));
+
+            lock (_cacheLock)
+            {
+                RemoveOwnedPendingLoad(id, pending);
+
+                if (_disposed || pending.Generation != _generation || pending.AttachedCount <= 0)
+                {
+                    (asset as IDisposable)?.Dispose();
+                    return asset;
+                }
+
+                var cached = new CachedAsset(asset);
+                for (var i = 0; i < pending.AttachedCount; i++)
+                {
+                    cached.IncrementRefCount();
+                }
+
+                _loadedAssets[id] = cached;
+            }
+
+            return asset;
+        }
+        catch
+        {
+            lock (_cacheLock)
+            {
+                RemoveOwnedPendingLoad(id, pending);
+            }
+
+            throw;
+        }
+    }
+
+    private void RemoveOwnedPendingLoad(AssetId id, PendingLoad pending)
+    {
+        if (_pendingLoads.TryGetValue(id, out var current) && ReferenceEquals(current, pending))
+        {
+            _pendingLoads.Remove(id);
+        }
+    }
+
+    private static string NormalizeKey(string absolutePath)
+    {
+        return absolutePath.ToLowerInvariant();
+    }
+
+    private sealed class PendingLoad
+    {
+        public PendingLoad(int generation)
+        {
+            Generation = generation;
+            AttachedCount = 1;
         }
 
-        path = NormalizePath(path);
-        return _loadedAssets.ContainsKey(path);
-    }
+        public Lazy<Task<object>> Lazy { get; set; } = null!;
 
-    public bool IsLoading(string path)
-    {
-        if (string.IsNullOrWhiteSpace(path))
-        {
-            return false;
-        }
+        public int Generation { get; }
 
-        path = NormalizePath(path);
-        return _loadingTasks.ContainsKey(path);
-    }
-
-    public int GetRefCount(string path)
-    {
-        if (string.IsNullOrWhiteSpace(path))
-        {
-            return 0;
-        }
-
-        path = NormalizePath(path);
-        return _loadedAssets.TryGetValue(path, out var cached) ? cached.RefCount : 0;
-    }
-
-    private async Task<object> LoadAssetInternalAsync(string path)
-    {
-        var asset = await Task.Run(() => _meshLoader(path));
-
-        var cached = new CachedAsset(asset);
-        cached.IncrementRefCount();
-        _loadedAssets[path] = cached;
-
-        return asset;
-    }
-
-    private static string NormalizePath(string path)
-    {
-        return Path.GetFullPath(path).ToLowerInvariant();
+        public int AttachedCount { get; set; }
     }
 
     private class CachedAsset

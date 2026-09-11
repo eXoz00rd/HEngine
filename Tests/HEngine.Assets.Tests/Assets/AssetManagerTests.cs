@@ -32,11 +32,11 @@ public class AssetManagerTests : IDisposable
     }
 
     [Fact]
-    public async Task LoadMeshAsync_ValidPath_LoadsSuccessfully()
+    public async Task LoadMeshAsync_ValidId_LoadsSuccessfully()
     {
-        var path = CreateTestMeshFile("test.mesh");
+        var id = _assetManager.Import(CreateTestMeshFile("test.mesh"));
 
-        var mesh = await _assetManager.LoadMeshAsync(path);
+        var mesh = await _assetManager.LoadMeshAsync(id);
 
         Assert.NotNull(mesh);
         Assert.NotNull(mesh.Vertices);
@@ -45,104 +45,240 @@ public class AssetManagerTests : IDisposable
     }
 
     [Fact]
-    public async Task LoadMeshAsync_SamePath_ReturnsCachedAsset()
+    public async Task LoadMeshAsync_SameId_ReturnsCachedAsset()
     {
-        var path = CreateTestMeshFile("cached.mesh");
+        var id = _assetManager.Import(CreateTestMeshFile("cached.mesh"));
 
-        var mesh1 = await _assetManager.LoadMeshAsync(path);
-        var mesh2 = await _assetManager.LoadMeshAsync(path);
+        var mesh1 = await _assetManager.LoadMeshAsync(id);
+        var mesh2 = await _assetManager.LoadMeshAsync(id);
 
         Assert.Same(mesh1, mesh2);
         Assert.Equal(1, _assetManager.LoadedAssetCount);
     }
 
     [Fact]
-    public async Task LoadMeshAsync_SamePath_IncrementsRefCount()
+    public async Task LoadMeshAsync_SameId_IncrementsRefCount()
     {
-        var path = CreateTestMeshFile("refcount.mesh");
+        var id = _assetManager.Import(CreateTestMeshFile("refcount.mesh"));
 
-        await _assetManager.LoadMeshAsync(path);
-        Assert.Equal(1, _assetManager.GetRefCount(path));
+        await _assetManager.LoadMeshAsync(id);
+        Assert.Equal(1, _assetManager.GetRefCount(id));
 
-        await _assetManager.LoadMeshAsync(path);
-        Assert.Equal(2, _assetManager.GetRefCount(path));
+        await _assetManager.LoadMeshAsync(id);
+        Assert.Equal(2, _assetManager.GetRefCount(id));
 
-        await _assetManager.LoadMeshAsync(path);
-        Assert.Equal(3, _assetManager.GetRefCount(path));
+        await _assetManager.LoadMeshAsync(id);
+        Assert.Equal(3, _assetManager.GetRefCount(id));
     }
 
     [Fact]
     public async Task Unload_DecrementRefCount_RemovesWhenZero()
     {
-        var path = CreateTestMeshFile("unload.mesh");
+        var id = _assetManager.Import(CreateTestMeshFile("unload.mesh"));
 
-        await _assetManager.LoadMeshAsync(path);
-        await _assetManager.LoadMeshAsync(path);
-        Assert.Equal(2, _assetManager.GetRefCount(path));
+        await _assetManager.LoadMeshAsync(id);
+        await _assetManager.LoadMeshAsync(id);
+        Assert.Equal(2, _assetManager.GetRefCount(id));
 
-        _assetManager.Unload(path);
-        Assert.Equal(1, _assetManager.GetRefCount(path));
-        Assert.True(_assetManager.IsLoaded(path));
+        _assetManager.Unload(id);
+        Assert.Equal(1, _assetManager.GetRefCount(id));
+        Assert.True(_assetManager.IsLoaded(id));
 
-        _assetManager.Unload(path);
-        Assert.Equal(0, _assetManager.GetRefCount(path));
-        Assert.False(_assetManager.IsLoaded(path));
+        _assetManager.Unload(id);
+        Assert.Equal(0, _assetManager.GetRefCount(id));
+        Assert.False(_assetManager.IsLoaded(id));
+    }
+
+    [Fact]
+    public async Task Unload_BeforeLoadCompletes_DiscardsResultInsteadOfPublishing()
+    {
+        var gate = new TaskCompletionSource();
+        var manager = new AssetManager(async p =>
+        {
+            await gate.Task;
+            return new LoadedMesh(CreateTestVertices(), new uint[] { 0, 1, 2 });
+        });
+        var id = manager.Import(CreateTestMeshFile("unload-before-complete.mesh"));
+
+        var loadTask = manager.LoadMeshAsync(id);
+        manager.Unload(id);
+        gate.SetResult();
+
+        var mesh = await loadTask;
+
+        Assert.NotNull(mesh);
+        Assert.Equal(0, manager.LoadedAssetCount);
+        Assert.False(manager.IsLoaded(id));
+
+        manager.Dispose();
+    }
+
+    [Fact]
+    public async Task Unload_BeforeLoadCompletes_WithMultipleAttachers_PublishesRemainingCount()
+    {
+        var gate = new TaskCompletionSource();
+        var manager = new AssetManager(async p =>
+        {
+            await gate.Task;
+            return new LoadedMesh(CreateTestVertices(), new uint[] { 0, 1, 2 });
+        });
+        var id = manager.Import(CreateTestMeshFile("unload-before-complete-partial.mesh"));
+
+        var loadTask1 = manager.LoadMeshAsync(id);
+        var loadTask2 = manager.LoadMeshAsync(id);
+        var loadTask3 = manager.LoadMeshAsync(id);
+
+        manager.Unload(id);
+        gate.SetResult();
+
+        await Task.WhenAll(loadTask1, loadTask2, loadTask3);
+
+        Assert.Equal(1, manager.LoadedAssetCount);
+        Assert.Equal(2, manager.GetRefCount(id));
+
+        manager.Dispose();
     }
 
     [Fact]
     public async Task IsLoaded_AfterLoading_ReturnsTrue()
     {
-        var path = CreateTestMeshFile("loaded.mesh");
+        var id = _assetManager.Import(CreateTestMeshFile("loaded.mesh"));
 
-        Assert.False(_assetManager.IsLoaded(path));
+        Assert.False(_assetManager.IsLoaded(id));
 
-        await _assetManager.LoadMeshAsync(path);
+        await _assetManager.LoadMeshAsync(id);
 
-        Assert.True(_assetManager.IsLoaded(path));
+        Assert.True(_assetManager.IsLoaded(id));
     }
 
     [Fact]
     public async Task UnloadAll_RemovesAllAssets()
     {
-        var path1 = CreateTestMeshFile("asset1.mesh");
-        var path2 = CreateTestMeshFile("asset2.mesh");
-        var path3 = CreateTestMeshFile("asset3.mesh");
+        var id1 = _assetManager.Import(CreateTestMeshFile("asset1.mesh"));
+        var id2 = _assetManager.Import(CreateTestMeshFile("asset2.mesh"));
+        var id3 = _assetManager.Import(CreateTestMeshFile("asset3.mesh"));
 
-        await _assetManager.LoadMeshAsync(path1);
-        await _assetManager.LoadMeshAsync(path2);
-        await _assetManager.LoadMeshAsync(path3);
+        await _assetManager.LoadMeshAsync(id1);
+        await _assetManager.LoadMeshAsync(id2);
+        await _assetManager.LoadMeshAsync(id3);
 
         Assert.Equal(3, _assetManager.LoadedAssetCount);
 
         _assetManager.UnloadAll();
 
         Assert.Equal(0, _assetManager.LoadedAssetCount);
-        Assert.False(_assetManager.IsLoaded(path1));
-        Assert.False(_assetManager.IsLoaded(path2));
-        Assert.False(_assetManager.IsLoaded(path3));
+        Assert.False(_assetManager.IsLoaded(id1));
+        Assert.False(_assetManager.IsLoaded(id2));
+        Assert.False(_assetManager.IsLoaded(id3));
     }
 
     [Fact]
-    public async Task LoadMeshAsync_NullPath_ThrowsArgumentException()
+    public async Task UnloadAll_DuringInFlightLoad_DoesNotRepopulateCache()
     {
-        await Assert.ThrowsAsync<ArgumentException>(() => _assetManager.LoadMeshAsync(null!));
-        await Assert.ThrowsAsync<ArgumentException>(() => _assetManager.LoadMeshAsync(""));
-        await Assert.ThrowsAsync<ArgumentException>(() => _assetManager.LoadMeshAsync("   "));
+        var gate = new TaskCompletionSource();
+        var manager = new AssetManager(async p =>
+        {
+            await gate.Task;
+            return new LoadedMesh(CreateTestVertices(), new uint[] { 0, 1, 2 });
+        });
+        var id = manager.Import(CreateTestMeshFile("unload-all-race.mesh"));
+
+        var loadTask = manager.LoadMeshAsync(id);
+
+        manager.UnloadAll();
+        gate.SetResult();
+
+        var mesh = await loadTask;
+
+        Assert.NotNull(mesh);
+        Assert.Equal(0, manager.LoadedAssetCount);
+        Assert.False(manager.IsLoaded(id));
+
+        manager.Dispose();
+    }
+
+    [Fact]
+    public async Task LoadMeshAsync_AfterUnloadAllDuringInFlightLoad_StartsFreshLoad()
+    {
+        var loadCount = 0;
+        var staleGate = new TaskCompletionSource();
+        var manager = new AssetManager(async p =>
+        {
+            var attempt = Interlocked.Increment(ref loadCount);
+            if (attempt == 1)
+            {
+                await staleGate.Task;
+            }
+
+            return new LoadedMesh(CreateTestVertices(), new uint[] { 0, 1, 2 });
+        });
+        var id = manager.Import(CreateTestMeshFile("unload-all-then-reload.mesh"));
+
+        var staleLoadTask = manager.LoadMeshAsync(id);
+        manager.UnloadAll();
+
+        var freshMesh = await manager.LoadMeshAsync(id);
+
+        Assert.Equal(1, manager.LoadedAssetCount);
+        Assert.Equal(1, manager.GetRefCount(id));
+
+        staleGate.SetResult();
+        var staleMesh = await staleLoadTask;
+
+        Assert.NotSame(freshMesh, staleMesh);
+        Assert.Equal(2, loadCount);
+        Assert.Equal(1, manager.LoadedAssetCount);
+        Assert.Equal(1, manager.GetRefCount(id));
+
+        manager.Dispose();
+    }
+
+    [Fact]
+    public async Task LoadMeshAsync_UnimportedId_ThrowsKeyNotFoundException()
+    {
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => _assetManager.LoadMeshAsync(AssetId.New()));
     }
 
     [Fact]
     public async Task LoadMeshAsync_AfterDispose_ThrowsObjectDisposedException()
     {
-        var path = CreateTestMeshFile("disposed.mesh");
+        var id = _assetManager.Import(CreateTestMeshFile("disposed.mesh"));
         _assetManager.Dispose();
 
-        await Assert.ThrowsAsync<ObjectDisposedException>(() => _assetManager.LoadMeshAsync(path));
+        await Assert.ThrowsAsync<ObjectDisposedException>(() => _assetManager.LoadMeshAsync(id));
+    }
+
+    [Fact]
+    public async Task LoadMeshAsync_RetryAfterFailure_StartsFreshLoad()
+    {
+        var attempt = 0;
+        var manager = new AssetManager(async p =>
+        {
+            Interlocked.Increment(ref attempt);
+            await Task.Delay(10);
+            if (attempt == 1)
+            {
+                throw new InvalidOperationException("simulated failure");
+            }
+
+            return new LoadedMesh(CreateTestVertices(), new uint[] { 0, 1, 2 });
+        });
+        var id = manager.Import(CreateTestMeshFile("retry.mesh"));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => manager.LoadMeshAsync(id));
+        Assert.False(manager.IsLoading(id));
+
+        var mesh = await manager.LoadMeshAsync(id);
+
+        Assert.NotNull(mesh);
+        Assert.Equal(2, attempt);
+
+        manager.Dispose();
     }
 
     [Fact]
     public async Task LoadMeshAsync_ConcurrentRequests_LoadsOnlyOnce()
     {
-        var path = CreateTestMeshFile("concurrent.mesh");
         var loadCount = 0;
 
         var manager = new AssetManager(async p =>
@@ -151,17 +287,19 @@ public class AssetManagerTests : IDisposable
             await Task.Delay(100);
             return new LoadedMesh(CreateTestVertices(), new uint[] { 0, 1, 2 });
         });
+        var id = manager.Import(CreateTestMeshFile("concurrent.mesh"));
 
         var tasks = new Task<LoadedMesh>[10];
         for (var i = 0; i < tasks.Length; i++)
         {
-            tasks[i] = manager.LoadMeshAsync(path);
+            tasks[i] = manager.LoadMeshAsync(id);
         }
 
         var results = await Task.WhenAll(tasks);
 
         Assert.Equal(1, loadCount);
         Assert.Equal(1, manager.LoadedAssetCount);
+        Assert.Equal(tasks.Length, manager.GetRefCount(id));
 
         for (var i = 1; i < results.Length; i++)
         {
@@ -174,75 +312,158 @@ public class AssetManagerTests : IDisposable
     [Fact]
     public async Task LoadMeshAsync_DifferentPaths_LoadsSeparately()
     {
-        var path1 = CreateTestMeshFile("mesh1.mesh");
-        var path2 = CreateTestMeshFile("mesh2.mesh");
+        var id1 = _assetManager.Import(CreateTestMeshFile("mesh1.mesh"));
+        var id2 = _assetManager.Import(CreateTestMeshFile("mesh2.mesh"));
 
-        var mesh1 = await _assetManager.LoadMeshAsync(path1);
-        var mesh2 = await _assetManager.LoadMeshAsync(path2);
+        var mesh1 = await _assetManager.LoadMeshAsync(id1);
+        var mesh2 = await _assetManager.LoadMeshAsync(id2);
 
         Assert.NotSame(mesh1, mesh2);
         Assert.Equal(2, _assetManager.LoadedAssetCount);
     }
 
     [Fact]
-    public async Task LoadMeshAsync_PathNormalization_TreatsSamePathsAsIdentical()
+    public void Import_PathNormalization_ReturnsSameId()
     {
         var path = CreateTestMeshFile("normalize.mesh");
-        var path1 = path.ToLower();
-        var path2 = path.ToUpper();
 
-        var mesh1 = await _assetManager.LoadMeshAsync(path1);
-        var mesh2 = await _assetManager.LoadMeshAsync(path2);
+        var id1 = _assetManager.Import(path.ToLower());
+        var id2 = _assetManager.Import(path.ToUpper());
 
-        Assert.Same(mesh1, mesh2);
+        Assert.Equal(id1, id2);
+    }
+
+    [Fact]
+    public void Import_NullOrEmptyPath_ThrowsArgumentException()
+    {
+        Assert.Throws<ArgumentException>(() => _assetManager.Import(null!));
+        Assert.Throws<ArgumentException>(() => _assetManager.Import(""));
+        Assert.Throws<ArgumentException>(() => _assetManager.Import("   "));
+    }
+
+    [Fact]
+    public void Import_AfterDispose_ThrowsObjectDisposedException()
+    {
+        _assetManager.Dispose();
+
+        Assert.Throws<ObjectDisposedException>(() => _assetManager.Import(CreateTestMeshFile("post-dispose-import.mesh")));
+    }
+
+    [Fact]
+    public void IsLoaded_UnimportedId_ReturnsFalse()
+    {
+        Assert.False(_assetManager.IsLoaded(AssetId.New()));
+    }
+
+    [Fact]
+    public void IsLoading_UnimportedId_ReturnsFalse()
+    {
+        Assert.False(_assetManager.IsLoading(AssetId.New()));
+    }
+
+    [Fact]
+    public void GetRefCount_UnimportedId_ReturnsZero()
+    {
+        Assert.Equal(0, _assetManager.GetRefCount(AssetId.New()));
+    }
+
+    [Fact]
+    public void Unload_UnimportedId_DoesNotThrow()
+    {
+        _assetManager.Unload(AssetId.New());
+    }
+
+    [Fact]
+    public void Move_RepointsPath_KeepsSameId()
+    {
+        var oldPath = CreateTestMeshFile("moved-source.mesh");
+        var newPath = CreateTestMeshFile("moved-destination.mesh");
+        var id = _assetManager.Import(oldPath);
+
+        _assetManager.Move(id, newPath);
+
+        Assert.Equal(newPath, _assetManager.ResolvePath(id));
+        Assert.Equal(id, _assetManager.Import(newPath));
+    }
+
+    [Fact]
+    public async Task Move_AfterLoad_SubsequentLoadReturnsSameCachedAsset()
+    {
+        var oldPath = CreateTestMeshFile("moved-loaded-source.mesh");
+        var newPath = CreateTestMeshFile("moved-loaded-destination.mesh");
+        var id = _assetManager.Import(oldPath);
+
+        var beforeMove = await _assetManager.LoadMeshAsync(id);
+
+        _assetManager.Move(id, newPath);
+        var afterMove = await _assetManager.LoadMeshAsync(id);
+
+        Assert.Same(beforeMove, afterMove);
         Assert.Equal(1, _assetManager.LoadedAssetCount);
+        Assert.Equal(2, _assetManager.GetRefCount(id));
     }
 
     [Fact]
-    public void IsLoaded_NullOrEmptyPath_ReturnsFalse()
+    public void ResolvePath_UnimportedId_ThrowsKeyNotFoundException()
     {
-        Assert.False(_assetManager.IsLoaded(null!));
-        Assert.False(_assetManager.IsLoaded(""));
-        Assert.False(_assetManager.IsLoaded("   "));
+        Assert.Throws<KeyNotFoundException>(() => _assetManager.ResolvePath(AssetId.New()));
     }
 
     [Fact]
-    public void IsLoading_NullOrEmptyPath_ReturnsFalse()
+    public void Move_UnimportedId_ThrowsKeyNotFoundException()
     {
-        Assert.False(_assetManager.IsLoading(null!));
-        Assert.False(_assetManager.IsLoading(""));
-        Assert.False(_assetManager.IsLoading("   "));
+        Assert.Throws<KeyNotFoundException>(() => _assetManager.Move(AssetId.New(), CreateTestMeshFile("target.mesh")));
     }
 
     [Fact]
-    public void GetRefCount_NullOrEmptyPath_ReturnsZero()
+    public void Move_AfterDispose_ThrowsObjectDisposedException()
     {
-        Assert.Equal(0, _assetManager.GetRefCount(null!));
-        Assert.Equal(0, _assetManager.GetRefCount(""));
-        Assert.Equal(0, _assetManager.GetRefCount("   "));
+        var id = _assetManager.Import(CreateTestMeshFile("pre-dispose-move-source.mesh"));
+        _assetManager.Dispose();
+
+        Assert.Throws<ObjectDisposedException>(() => _assetManager.Move(id, CreateTestMeshFile("post-dispose-move-target.mesh")));
     }
 
     [Fact]
-    public void Unload_NullOrEmptyPath_DoesNotThrow()
+    public void Move_DestinationOwnedByAnotherId_ThrowsInvalidOperationException()
     {
-        _assetManager.Unload(null!);
-        _assetManager.Unload("");
-        _assetManager.Unload("   ");
+        var pathA = CreateTestMeshFile("owner-a.mesh");
+        var pathB = CreateTestMeshFile("owner-b.mesh");
+        var idA = _assetManager.Import(pathA);
+        var idB = _assetManager.Import(pathB);
+
+        Assert.Throws<InvalidOperationException>(() => _assetManager.Move(idA, pathB));
+
+        Assert.Equal(pathA, _assetManager.ResolvePath(idA));
+        Assert.Equal(pathB, _assetManager.ResolvePath(idB));
+        Assert.Equal(idB, _assetManager.Import(pathB));
+    }
+
+    [Fact]
+    public void Import_RelativePath_ResolvesToAbsolutePath()
+    {
+        var absolutePath = CreateTestMeshFile("relative-target.mesh");
+        var relativePath = Path.GetRelativePath(Directory.GetCurrentDirectory(), absolutePath);
+
+        var id = _assetManager.Import(relativePath);
+
+        Assert.Equal(absolutePath, _assetManager.ResolvePath(id));
+        Assert.True(Path.IsPathFullyQualified(_assetManager.ResolvePath(id)));
     }
 
     [Fact]
     public async Task LoadMeshAsync_MultipleConcurrentDifferentAssets_LoadsAllCorrectly()
     {
-        var paths = new[]
+        var ids = new[]
         {
-            CreateTestMeshFile("multi1.mesh"),
-            CreateTestMeshFile("multi2.mesh"),
-            CreateTestMeshFile("multi3.mesh"),
-            CreateTestMeshFile("multi4.mesh"),
-            CreateTestMeshFile("multi5.mesh")
+            _assetManager.Import(CreateTestMeshFile("multi1.mesh")),
+            _assetManager.Import(CreateTestMeshFile("multi2.mesh")),
+            _assetManager.Import(CreateTestMeshFile("multi3.mesh")),
+            _assetManager.Import(CreateTestMeshFile("multi4.mesh")),
+            _assetManager.Import(CreateTestMeshFile("multi5.mesh"))
         };
 
-        var tasks = paths.Select(p => _assetManager.LoadMeshAsync(p)).ToArray();
+        var tasks = ids.Select(id => _assetManager.LoadMeshAsync(id)).ToArray();
         var results = await Task.WhenAll(tasks);
 
         Assert.Equal(5, _assetManager.LoadedAssetCount);
@@ -252,18 +473,37 @@ public class AssetManagerTests : IDisposable
     [Fact]
     public async Task Dispose_WhileLoading_CompletesGracefully()
     {
-        var path = CreateTestMeshFile("disposing.mesh");
         var manager = new AssetManager(async p =>
         {
             await Task.Delay(200);
             return new LoadedMesh(CreateTestVertices(), new uint[] { 0, 1, 2 });
         });
+        var id = manager.Import(CreateTestMeshFile("disposing.mesh"));
 
-        var loadTask = manager.LoadMeshAsync(path);
+        var loadTask = manager.LoadMeshAsync(id);
         await Task.Delay(50);
         manager.Dispose();
 
         await Task.Delay(300);
+    }
+
+    [Fact]
+    public async Task Dispose_LoadCompletesAfterDispose_DoesNotLeakIntoCache()
+    {
+        var manager = new AssetManager(async p =>
+        {
+            await Task.Delay(100);
+            return new LoadedMesh(CreateTestVertices(), new uint[] { 0, 1, 2 });
+        });
+        var id = manager.Import(CreateTestMeshFile("post-dispose.mesh"));
+
+        var loadTask = manager.LoadMeshAsync(id);
+        manager.Dispose();
+
+        var mesh = await loadTask;
+
+        Assert.NotNull(mesh);
+        Assert.Equal(0, manager.LoadedAssetCount);
     }
 
     private string CreateTestMeshFile(string filename)

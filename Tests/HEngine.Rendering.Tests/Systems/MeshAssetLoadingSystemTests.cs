@@ -3,6 +3,7 @@ using HEngine.Assets.Assets;
 using HEngine.Core.Managers;
 using HEngine.Core.Primitives;
 using HEngine.Core.Rendering.Data;
+using HEngine.Rendering.Assets;
 using HEngine.Rendering.Components;
 using HEngine.Rendering.Systems;
 
@@ -32,7 +33,7 @@ public class MeshAssetLoadingSystemTests : IDisposable
     public async Task Update_WithNotLoadedAsset_StartsLoading()
     {
         var entity = _world.CreateEntity();
-        _world.AddComponent(entity, new MeshAsset("test.mesh"));
+        _world.AddComponent(entity, new MeshAsset(_assetManager.Import("test.mesh")));
 
         _system.Update(0.016f);
 
@@ -46,7 +47,7 @@ public class MeshAssetLoadingSystemTests : IDisposable
     public async Task Update_WaitsForLoad_AssetBecomesLoaded()
     {
         var entity = _world.CreateEntity();
-        _world.AddComponent(entity, new MeshAsset("test.mesh"));
+        _world.AddComponent(entity, new MeshAsset(_assetManager.Import("test.mesh")));
 
         _system.Update(0.016f);
 
@@ -73,7 +74,7 @@ public class MeshAssetLoadingSystemTests : IDisposable
         system.Initialize(_world, failingAssetManager);
 
         var entity = _world.CreateEntity();
-        _world.AddComponent(entity, new MeshAsset("nonexistent.mesh"));
+        _world.AddComponent(entity, new MeshAsset(failingAssetManager.Import("nonexistent.mesh")));
 
         system.Update(0.016f);
 
@@ -97,7 +98,7 @@ public class MeshAssetLoadingSystemTests : IDisposable
         for (var i = 0; i < 5; i++)
         {
             var entity = _world.CreateEntity();
-            _world.AddComponent(entity, new MeshAsset($"mesh{i}.mesh"));
+            _world.AddComponent(entity, new MeshAsset(_assetManager.Import($"mesh{i}.mesh")));
             entities.Add(entity);
         }
 
@@ -131,10 +132,46 @@ public class MeshAssetLoadingSystemTests : IDisposable
     }
 
     [Fact]
+    public async Task Update_IdImportedThroughExposedAssetManager_Loads()
+    {
+        var tempDirectory = Path.Combine(Path.GetTempPath(), "HEngineMeshAssetLoadingSystemTests_" + Guid.NewGuid());
+        var meshPath = Path.Combine(tempDirectory, "test.mesh");
+        SimpleMeshFormat.Save(meshPath, CreateTestVertices(), new uint[] { 0, 1, 2 });
+
+        try
+        {
+            var system = new MeshAssetLoadingSystem();
+            system.Initialize(_world);
+
+            var id = system.AssetManager!.Import(meshPath);
+            var entity = _world.CreateEntity();
+            _world.AddComponent(entity, new MeshAsset(id));
+
+            system.Update(0.016f);
+            await Task.Delay(200);
+            system.Update(0.016f);
+
+            var asset = _world.GetComponent<MeshAsset>(entity);
+            Assert.Equal(AssetLoadState.Loaded, asset.LoadState);
+            Assert.NotNull(asset.Vertices);
+            Assert.NotNull(asset.Indices);
+
+            system.Dispose();
+        }
+        finally
+        {
+            if (Directory.Exists(tempDirectory))
+            {
+                Directory.Delete(tempDirectory, true);
+            }
+        }
+    }
+
+    [Fact]
     public async Task Update_AfterEntityRemoved_DoesNotCrash()
     {
         var entity = _world.CreateEntity();
-        _world.AddComponent(entity, new MeshAsset("test.mesh"));
+        _world.AddComponent(entity, new MeshAsset(_assetManager.Import("test.mesh")));
 
         _system.Update(0.016f);
         _world.DestroyEntity(entity);
@@ -145,7 +182,7 @@ public class MeshAssetLoadingSystemTests : IDisposable
     }
 
     [Fact]
-    public async Task Update_SamePathMultipleTimes_UsesCache()
+    public async Task Update_SameAssetMultipleTimes_UsesCache()
     {
         var loadCount = 0;
         var countingAssetManager = new AssetManager(async path =>
@@ -154,6 +191,7 @@ public class MeshAssetLoadingSystemTests : IDisposable
             await Task.Delay(50);
             return new LoadedMesh(CreateTestVertices(), new uint[] { 0, 1, 2 });
         });
+        var assetId = countingAssetManager.Import("same.mesh");
 
         var system = new MeshAssetLoadingSystem();
         system.Initialize(_world, countingAssetManager);
@@ -162,9 +200,9 @@ public class MeshAssetLoadingSystemTests : IDisposable
         var entity2 = _world.CreateEntity();
         var entity3 = _world.CreateEntity();
 
-        _world.AddComponent(entity1, new MeshAsset("same.mesh"));
-        _world.AddComponent(entity2, new MeshAsset("same.mesh"));
-        _world.AddComponent(entity3, new MeshAsset("same.mesh"));
+        _world.AddComponent(entity1, new MeshAsset(assetId));
+        _world.AddComponent(entity2, new MeshAsset(assetId));
+        _world.AddComponent(entity3, new MeshAsset(assetId));
 
         system.Update(0.016f);
 
@@ -188,7 +226,7 @@ public class MeshAssetLoadingSystemTests : IDisposable
     [Fact]
     public void MeshAsset_IsLoaded_ReturnsTrueWhenLoadedWithData()
     {
-        var asset = new MeshAsset("test.mesh")
+        var asset = new MeshAsset(_assetManager.Import("test.mesh"))
         {
             LoadState = AssetLoadState.Loaded,
             Vertices = CreateTestVertices(),
@@ -201,7 +239,7 @@ public class MeshAssetLoadingSystemTests : IDisposable
     [Fact]
     public void MeshAsset_IsLoaded_ReturnsFalseWhenNotLoaded()
     {
-        var asset = new MeshAsset("test.mesh");
+        var asset = new MeshAsset(_assetManager.Import("test.mesh"));
 
         Assert.False(asset.IsLoaded);
     }
@@ -209,7 +247,7 @@ public class MeshAssetLoadingSystemTests : IDisposable
     [Fact]
     public void MeshAsset_HasFailed_ReturnsTrueWhenFailed()
     {
-        var asset = new MeshAsset("test.mesh")
+        var asset = new MeshAsset(_assetManager.Import("test.mesh"))
         {
             LoadState = AssetLoadState.Failed,
             ErrorMessage = "Test error"
@@ -221,7 +259,7 @@ public class MeshAssetLoadingSystemTests : IDisposable
     [Fact]
     public void MeshAsset_IsLoading_ReturnsTrueWhenLoading()
     {
-        var asset = new MeshAsset("test.mesh")
+        var asset = new MeshAsset(_assetManager.Import("test.mesh"))
         {
             LoadState = AssetLoadState.Loading
         };
@@ -230,16 +268,20 @@ public class MeshAssetLoadingSystemTests : IDisposable
     }
 
     [Fact]
-    public void MeshAsset_Constructor_ThrowsOnNullPath()
+    public void MeshAsset_Constructor_KeepsGivenAssetId()
     {
-        Assert.Throws<ArgumentNullException>(() => new MeshAsset(null!));
+        var id = AssetId.New();
+
+        var asset = new MeshAsset(id);
+
+        Assert.Equal(id, asset.AssetId);
     }
 
     [Fact]
     public async Task Dispose_WaitsForLoadingTasks_CompletesGracefully()
     {
         var entity = _world.CreateEntity();
-        _world.AddComponent(entity, new MeshAsset("test.mesh"));
+        _world.AddComponent(entity, new MeshAsset(_assetManager.Import("test.mesh")));
 
         _system.Update(0.016f);
 
@@ -253,7 +295,7 @@ public class MeshAssetLoadingSystemTests : IDisposable
     public async Task Update_RapidSuccessiveCalls_DoesNotStartDuplicateLoads()
     {
         var entity = _world.CreateEntity();
-        _world.AddComponent(entity, new MeshAsset("test.mesh"));
+        _world.AddComponent(entity, new MeshAsset(_assetManager.Import("test.mesh")));
 
         _system.Update(0.016f);
         _system.Update(0.016f);

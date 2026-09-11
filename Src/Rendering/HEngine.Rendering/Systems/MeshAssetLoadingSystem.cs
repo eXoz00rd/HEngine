@@ -18,6 +18,8 @@ public class MeshAssetLoadingSystem : ISystem
     private readonly object _updateLock = new();
     private bool _disposed;
 
+    public AssetManager? AssetManager => _assetManager;
+
     public void Initialize(WorldManager world)
     {
         _world = world ?? throw new ArgumentNullException(nameof(world));
@@ -58,7 +60,7 @@ public class MeshAssetLoadingSystem : ISystem
                     }
                 }
 
-                var task = LoadMeshAsync(entity, meshAsset.AssetPath);
+                var task = LoadMeshAsync(entity, meshAsset.AssetId);
                 _loadingTasks[entity] = task;
             }
         }
@@ -81,11 +83,11 @@ public class MeshAssetLoadingSystem : ISystem
         _disposed = true;
     }
 
-    private async Task LoadMeshAsync(Entity entity, string assetPath)
+    private async Task LoadMeshAsync(Entity entity, AssetId assetId)
     {
         try
         {
-            var mesh = await _assetManager!.LoadMeshAsync(assetPath);
+            var mesh = await _assetManager!.LoadMeshAsync(assetId);
 
             lock (_updateLock)
             {
