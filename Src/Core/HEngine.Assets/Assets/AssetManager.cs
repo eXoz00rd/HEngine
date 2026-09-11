@@ -42,28 +42,28 @@ public class AssetManager : IDisposable
             throw new ArgumentException("Path cannot be null or empty", nameof(path));
         }
 
+        var absolutePath = Path.GetFullPath(path);
+        var key = NormalizeKey(absolutePath);
+
         lock (_cacheLock)
         {
             if (_disposed)
             {
                 throw new ObjectDisposedException(nameof(AssetManager));
             }
-        }
 
-        var absolutePath = Path.GetFullPath(path);
-        var key = NormalizeKey(absolutePath);
-
-        lock (_importLock)
-        {
-            if (_idsByNormalizedPath.TryGetValue(key, out var existingId))
+            lock (_importLock)
             {
-                return existingId;
-            }
+                if (_idsByNormalizedPath.TryGetValue(key, out var existingId))
+                {
+                    return existingId;
+                }
 
-            var id = AssetId.New();
-            _importedPaths[id] = absolutePath;
-            _idsByNormalizedPath[key] = id;
-            return id;
+                var id = AssetId.New();
+                _importedPaths[id] = absolutePath;
+                _idsByNormalizedPath[key] = id;
+                return id;
+            }
         }
     }
 
