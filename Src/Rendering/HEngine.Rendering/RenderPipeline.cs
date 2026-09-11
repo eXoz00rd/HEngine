@@ -1,7 +1,7 @@
 ﻿using HEngine.Core.Components.Rendering;
 using HEngine.Core.Configuration;
 using HEngine.Core.Managers;
-using HEngine.Core.Mathematics;
+using HEngine.Rendering.Shadows;
 using HEngine.Core.Rendering.Contracts;
 using HEngine.Core.Rendering.Data;
 using HEngine.Rendering.Contracts;

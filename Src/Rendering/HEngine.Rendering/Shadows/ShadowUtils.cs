@@ -1,7 +1,7 @@
 ﻿using System.Numerics;
 using HEngine.Core.Components.Rendering;
 
-namespace HEngine.Core.Mathematics;
+namespace HEngine.Rendering.Shadows;
 
 /// <summary>
 /// Provides utility methods for shadow mapping: PSSM splits, light-space VP matrices and pixel snapping.

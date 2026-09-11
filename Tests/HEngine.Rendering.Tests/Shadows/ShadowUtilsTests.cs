@@ -1,6 +1,6 @@
 ﻿using System.Numerics;
 using HEngine.Core.Components.Rendering;
-using HEngine.Core.Mathematics;
+using HEngine.Rendering.Shadows;
 
 namespace HEngine.Core.Tests.Math;
 
