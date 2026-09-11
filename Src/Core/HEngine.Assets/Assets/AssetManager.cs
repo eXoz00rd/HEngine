@@ -77,22 +77,30 @@ public class AssetManager : IDisposable
         var newAbsolutePath = Path.GetFullPath(newPath);
         var newKey = NormalizeKey(newAbsolutePath);
 
-        lock (_importLock)
+        lock (_cacheLock)
         {
-            if (!_importedPaths.TryGetValue(id, out var oldPath))
+            if (_disposed)
             {
-                throw new KeyNotFoundException($"Asset id '{id}' has not been imported.");
+                throw new ObjectDisposedException(nameof(AssetManager));
             }
 
-            if (_idsByNormalizedPath.TryGetValue(newKey, out var owner) && !owner.Equals(id))
+            lock (_importLock)
             {
-                throw new InvalidOperationException(
-                    $"Cannot move asset '{id}' to '{newPath}': that path is already owned by asset '{owner}'.");
-            }
+                if (!_importedPaths.TryGetValue(id, out var oldPath))
+                {
+                    throw new KeyNotFoundException($"Asset id '{id}' has not been imported.");
+                }
 
-            _idsByNormalizedPath.Remove(NormalizeKey(oldPath));
-            _importedPaths[id] = newAbsolutePath;
-            _idsByNormalizedPath[newKey] = id;
+                if (_idsByNormalizedPath.TryGetValue(newKey, out var owner) && !owner.Equals(id))
+                {
+                    throw new InvalidOperationException(
+                        $"Cannot move asset '{id}' to '{newPath}': that path is already owned by asset '{owner}'.");
+                }
+
+                _idsByNormalizedPath.Remove(NormalizeKey(oldPath));
+                _importedPaths[id] = newAbsolutePath;
+                _idsByNormalizedPath[newKey] = id;
+            }
         }
     }
 

@@ -416,6 +416,15 @@ public class AssetManagerTests : IDisposable
     }
 
     [Fact]
+    public void Move_AfterDispose_ThrowsObjectDisposedException()
+    {
+        var id = _assetManager.Import(CreateTestMeshFile("pre-dispose-move-source.mesh"));
+        _assetManager.Dispose();
+
+        Assert.Throws<ObjectDisposedException>(() => _assetManager.Move(id, CreateTestMeshFile("post-dispose-move-target.mesh")));
+    }
+
+    [Fact]
     public void Move_DestinationOwnedByAnotherId_ThrowsInvalidOperationException()
     {
         var pathA = CreateTestMeshFile("owner-a.mesh");
