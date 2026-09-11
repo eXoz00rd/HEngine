@@ -1,24 +1,16 @@
 using System.Runtime.CompilerServices;
+using System.Text.RegularExpressions;
 using System.Xml.Linq;
 
 namespace HEngine.Architecture.Tests;
 
 public class DependencyDirectionTests
 {
-    private static readonly IReadOnlyDictionary<string, int> LayerByModule = new Dictionary<string, int>
-    {
-        ["HEngine.Foundation"] = 1,
-        ["HEngine.ECS"] = 1,
-        ["HEngine.Scene"] = 2,
-        ["HEngine.Assets"] = 2,
-        ["HEngine.Platform"] = 2,
-        ["HEngine.Serialization"] = 2,
-        ["HEngine.Core"] = 3,
-        ["HEngine.Platform.Windows"] = 4,
-        ["HEngine.Rendering"] = 4,
-    };
+    private static readonly string RepoRoot = FindRepoRoot();
+    private static readonly string OwnProjectFile = Path.Combine(RepoRoot, "Tests", "HEngine.Architecture.Tests", "HEngine.Architecture.Tests.csproj");
 
-    private static readonly string OwnProjectFile = FindOwnProjectFile();
+    private static readonly IReadOnlyDictionary<string, int> LayerByModule =
+        GetModuleLayers(Path.Combine(RepoRoot, "HEngine.slnx"));
 
     private static readonly IReadOnlyDictionary<string, string> ModuleProjectPaths =
         GetProjectReferences(OwnProjectFile).ToDictionary(reference => reference.Name, reference => reference.Path);
@@ -34,18 +26,31 @@ public class DependencyDirectionTests
 
         foreach (var (referencedName, _) in GetProjectReferences(projectPath))
         {
-            if (!LayerByModule.TryGetValue(referencedName, out var referencedLayer))
-                continue;
+            Assert.True(LayerByModule.TryGetValue(referencedName, out var referencedLayer),
+                $"{moduleName} references {referencedName}, which is not one of HEngine.slnx's registered layered modules — register it in the solution's numbered folders or fix the reference.");
 
             Assert.True(referencedLayer < layer,
                 $"{moduleName} (layer {layer}) must not reference {referencedName} (layer {referencedLayer}) — dependencies must flow strictly downward.");
         }
     }
 
-    [Fact(DisplayName = "This project is the only one allowed to reference every module")]
-    public void ThisProject_References_EveryModule()
+    [Fact(DisplayName = "HEngine.Architecture.Tests is the only project referencing every module")]
+    public void ThisProject_Is_TheOnlyProject_ReferencingEveryModule()
     {
         Assert.Equal(LayerByModule.Keys.OrderBy(name => name), ModuleProjectPaths.Keys.OrderBy(name => name));
+
+        var otherProjects = Directory.EnumerateFiles(RepoRoot, "*.csproj", SearchOption.AllDirectories)
+            .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}")
+                        && !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}")
+                        && !string.Equals(path, OwnProjectFile, StringComparison.OrdinalIgnoreCase));
+
+        foreach (var project in otherProjects)
+        {
+            var referencedNames = GetProjectReferences(project).Select(reference => reference.Name).ToHashSet();
+
+            Assert.False(LayerByModule.Keys.All(referencedNames.Contains),
+                $"{Path.GetFileNameWithoutExtension(project)} references every module, but only HEngine.Architecture.Tests should.");
+        }
     }
 
     private static IEnumerable<(string Name, string Path)> GetProjectReferences(string csprojPath)
@@ -58,6 +63,27 @@ public class DependencyDirectionTests
             .Select(path => (Path.GetFileNameWithoutExtension(path), path));
     }
 
-    private static string FindOwnProjectFile([CallerFilePath] string sourceFilePath = "")
-        => Path.Combine(Path.GetDirectoryName(sourceFilePath)!, "HEngine.Architecture.Tests.csproj");
+    // Only top-level "<N>-<Name>" solution folders carry a layer; "Hosts" is a composition
+    // layer, not a module, so it is intentionally excluded despite matching the pattern.
+    private static IReadOnlyDictionary<string, int> GetModuleLayers(string solutionFile)
+    {
+        var layerByModule = new Dictionary<string, int>();
+
+        foreach (var folder in XDocument.Load(solutionFile).Descendants("Folder"))
+        {
+            var match = Regex.Match(folder.Attribute("Name")!.Value, @"^/(\d+)-(?!Hosts\b)");
+            if (!match.Success)
+                continue;
+
+            var layer = int.Parse(match.Groups[1].Value);
+
+            foreach (var project in folder.Elements("Project"))
+                layerByModule[Path.GetFileNameWithoutExtension(project.Attribute("Path")!.Value)] = layer;
+        }
+
+        return layerByModule;
+    }
+
+    private static string FindRepoRoot([CallerFilePath] string sourceFilePath = "")
+        => Path.GetFullPath(Path.Combine(Path.GetDirectoryName(sourceFilePath)!, "..", ".."));
 }
