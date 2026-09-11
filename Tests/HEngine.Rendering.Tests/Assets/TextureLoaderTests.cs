@@ -1,5 +1,4 @@
 ﻿using HEngine.Rendering.Assets;
-using Silk.NET.DXGI;
 using StbImageWriteSharp;
 
 namespace HEngine.Rendering.Tests.Assets;
@@ -32,7 +31,7 @@ public class TextureLoaderTests : IDisposable
 
         Assert.Equal(8, result.Width);
         Assert.Equal(8, result.Height);
-        Assert.Equal(Format.FormatR8G8B8A8Unorm, result.DxgiFormat);
+        Assert.Equal(TextureFormat.R8G8B8A8Unorm, result.Format);
         Assert.Equal(4, result.BytesPerPixel);
         Assert.False(result.IsCompressed);
         Assert.Equal(1, result.MipLevels);
@@ -95,7 +94,7 @@ public class TextureLoaderTests : IDisposable
 
         Assert.Equal(4, result.Width);
         Assert.Equal(4, result.Height);
-        Assert.Equal(Format.FormatR8G8B8A8Unorm, result.DxgiFormat);
+        Assert.Equal(TextureFormat.R8G8B8A8Unorm, result.Format);
     }
 
     // ─── Async Loading ───────────────────────────────────────────────
@@ -175,7 +174,7 @@ public class TextureLoaderTests : IDisposable
 
         Assert.Equal(4, result.Width);
         Assert.Equal(4, result.Height);
-        Assert.Equal(Format.FormatR8G8B8A8Unorm, result.DxgiFormat);
+        Assert.Equal(TextureFormat.R8G8B8A8Unorm, result.Format);
         Assert.False(result.IsCompressed);
     }
 
@@ -187,7 +186,7 @@ public class TextureLoaderTests : IDisposable
 
         Assert.Equal(4, result.Width);
         Assert.Equal(4, result.Height);
-        Assert.Equal(Format.FormatBC1Unorm, result.DxgiFormat);
+        Assert.Equal(TextureFormat.BC1Unorm, result.Format);
         Assert.True(result.IsCompressed);
     }
 

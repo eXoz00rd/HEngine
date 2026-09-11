@@ -22,3 +22,4 @@ Each record: `NNNN-short-slug.md`, with Status / Context / Decision / Consequenc
 | [0006](0006-component-ids-are-stable-strings.md) | Component type identifiers are stable strings, not GUIDs | Accepted |
 | [0007](0007-verification-loop-first.md) | The verification loop is built before the work that needs it | Accepted |
 | [0008](0008-solution-migrates-to-slnx.md) | The solution migrates to .slnx | Accepted |
+| [0009](0009-d3d12-namespace-avoids-silk-collision.md) | New code in the Direct3D 12 backend uses the `Direct3D12` namespace segment | Accepted |

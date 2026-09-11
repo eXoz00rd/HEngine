@@ -48,7 +48,7 @@ Find high-signal review findings that would ship incorrect runtime behavior even
 
 ### Architecture boundaries
 
-- `HEngine.Core` must remain free of rendering API references.
+- Backend-agnostic modules must remain free of graphics API references; only `HEngine.Rendering.D3D12` and `HEngine.Platform.Windows` may name Silk.NET.
 - Contracts belong in Core; rendering implementations belong in Rendering.
 - Reuse existing configuration and service registration patterns instead of introducing ad hoc paths.
 

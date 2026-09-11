@@ -1,6 +1,6 @@
 using System.Numerics;
 using HEngine.Core.Components.Transform;
-using HEngine.Core.Configuration;
+using HEngine.Runtime.Configuration;
 using HEngine.Core.Managers;
 using HEngine.Rendering.Components;
 using HEngine.Rendering.Data;

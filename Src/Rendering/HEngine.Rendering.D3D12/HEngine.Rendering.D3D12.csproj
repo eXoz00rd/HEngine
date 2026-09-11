@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\Core\HEngine.Scene\HEngine.Scene.csproj"/>
+        <ProjectReference Include="..\HEngine.Rendering\HEngine.Rendering.csproj"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection"/>
+        <PackageReference Include="Microsoft.Extensions.Logging"/>
+        <PackageReference Include="Silk.NET.Core"/>
+        <PackageReference Include="Silk.NET.Direct3D.Compilers"/>
+        <PackageReference Include="Silk.NET.Direct3D11"/>
+        <PackageReference Include="Silk.NET.Direct3D12"/>
+        <PackageReference Include="Silk.NET.DXGI"/>
+        <PackageReference Include="Silk.NET.Input"/>
+        <PackageReference Include="Silk.NET.Windowing"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Include="Shaders\*.hlsl" CopyToOutputDirectory="PreserveNewest"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <ClCompile Include="Shaders\Bloom.hlsl"/>
+        <ClCompile Include="Shaders\FXAA.hlsl"/>
+        <ClCompile Include="Shaders\PBR.hlsl"/>
+        <ClCompile Include="Shaders\PostProcessBlit.hlsl"/>
+        <ClCompile Include="Shaders\ShadowPass.hlsl"/>
+        <ClCompile Include="Shaders\ToneMapping.hlsl"/>
+    </ItemGroup>
+
+</Project>

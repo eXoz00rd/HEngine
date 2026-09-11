@@ -1,5 +1,5 @@
 ﻿using System.Numerics;
-using HEngine.Core.Configuration;
+using HEngine.Rendering.Configuration;
 using HEngine.Core.Rendering.Contracts;
 using HEngine.Rendering.Contracts;
 using HEngine.Rendering.Factories;
@@ -10,7 +10,7 @@ namespace HEngine.Rendering.Managers;
 
 public class RenderManager : IRenderManagerContext
 {
-    private readonly EngineConfiguration _config;
+    private readonly RenderingSettings _renderingSettings;
     private readonly IRenderContextFactory _contextFactory;
     private readonly ILogger<RenderManager> _logger;
     private readonly IRenderer _renderer;
@@ -18,12 +18,12 @@ public class RenderManager : IRenderManagerContext
     private bool _disposed;
     private IRenderContext? _renderContext;
 
-    public RenderManager(IRenderer renderer, IRenderContextFactory contextFactory, EngineConfiguration config,
+    public RenderManager(IRenderer renderer, IRenderContextFactory contextFactory, RenderingSettings renderingSettings,
         ILogger<RenderManager> logger)
     {
         _renderer = renderer ?? throw new ArgumentNullException(nameof(renderer));
         _contextFactory = contextFactory ?? throw new ArgumentNullException(nameof(contextFactory));
-        _config = config ?? throw new ArgumentNullException(nameof(config));
+        _renderingSettings = renderingSettings ?? throw new ArgumentNullException(nameof(renderingSettings));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -55,7 +55,7 @@ public class RenderManager : IRenderManagerContext
             var h = height <= 0 ? 1 : height;
             var aspect = h == 0 ? 1.0f : (float)w / h;
 
-            var renderCfg = _config.Rendering;
+            var renderCfg = _renderingSettings;
             _renderContext.ClearColor = renderCfg.ClearColor;
             _renderContext.ViewMatrix = Matrix4x4.Identity;
 
