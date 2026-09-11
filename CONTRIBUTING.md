@@ -34,7 +34,7 @@ We don't push directly to `master` — it's protected by a repository ruleset (n
 ## Pull requests
 
 - Title: short summary of the change, same style as a commit's first line.
-- Keep PRs small and focused: roughly **≤400 changed lines** and **≤15 files**. Split larger changes.
+- Keep PRs small and focused: one coherent change per PR. Split larger changes.
 - Description structure:
 
 ```

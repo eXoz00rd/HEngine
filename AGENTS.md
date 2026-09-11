@@ -98,7 +98,7 @@ A subsystem is done when it is **reachable from the game loop and its effect is 
 
 - One task at a time; finish it before starting another.
 - Write Polish documents in Polish, not translated from English (§8).
-- Keep pull requests small: roughly ≤400 changed lines and ≤15 files.
+- Keep pull requests small and focused on one coherent change.
 - Do not commit until the work has been reviewed and you get an explicit go-ahead.
 - Ask when a requirement or expected behaviour is unclear rather than assuming.
 - Prefer the Rider MCP tools over raw console commands; fall back to the console when they fail.

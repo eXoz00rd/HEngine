@@ -53,7 +53,7 @@ gh project item-list 2 --owner eXoz00rd --format json --limit 50 --field Status 
 
 - Prefer `bug` label over `enhancement`/`architecture`-only issues when both are available — correctness fixes first.
 - Read the full issue body (`gh issue view <number>`) before starting. `AGENTS.md` is the always-present entrypoint for repo conventions; if your checkout has a `docs/ENGINE_STATE_ANALYSIS.md` (it's gitignored, so not every checkout will), read it too when the issue touches a subsystem's runtime behavior — repo docs may be aspirational.
-- Pick one task that fits in **≤400 changed lines / ≤15 files** (see `CONTRIBUTING.md`). If an issue is bigger than that, scope down to a coherent slice and say so in the PR body, or ask the user before splitting.
+- Pick one task that is a single coherent change (see `CONTRIBUTING.md`). If an issue bundles multiple unrelated changes, scope down to a coherent slice and say so in the PR body, or ask the user before splitting.
 - If several issues are similarly ranked and it's not obvious which to do, ask the user rather than guessing.
 - **If the chosen task is still a draft item (no issue number)**, promote it to a real GitHub Issue before branching — file it with `gh issue create` using the draft's title/body, add it to the board (`gh project item-add`), then delete the old draft card (`gh project item-delete --id <draft-item-id> --project-id PVT_kwHOBpFBus4Bgi9N`) so it isn't duplicated.
 - Once picked, move the issue's board status to **In progress** (see §0) before starting implementation.
