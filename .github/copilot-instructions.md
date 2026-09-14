@@ -17,7 +17,7 @@ Use them for all repository reviews alongside `AGENTS.md` and any matching skill
 
 - `docs/ENGINE_STATE_ANALYSIS.md` is the factual reference for current runtime behavior when repository docs disagree
 - Backend-agnostic modules must stay platform-agnostic and must not depend on rendering APIs; only `HEngine.Rendering.D3D12` and `HEngine.Platform.Windows` may name Silk.NET
-- Contracts belong in Core, implementations belong in Rendering
+- Contracts belong to the module that owns the domain; backend implementations belong in `HEngine.Rendering.D3D12` or `HEngine.Platform.Windows`
 - New subsystems are only complete when they are registered in DI, wired into the runtime path, and their effect is observable
 - `GameLoop`, `SystemManager`, `RenderPipeline`, and `GameEngine.Initialize()` are the primary reachability checkpoints for runtime features
 
