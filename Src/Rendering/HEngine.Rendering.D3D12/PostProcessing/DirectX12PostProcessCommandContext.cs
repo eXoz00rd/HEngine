@@ -16,8 +16,8 @@ namespace HEngine.Rendering.PostProcessing;
 /// PSO to run the ToneMapping fullscreen pass, actually touching the GPU instead of
 /// only recording call counts like <see cref="NullPostProcessCommandContext"/>.
 ///
-/// Not yet registered in DI or called from <see cref="RenderPipeline"/> — the main scene still
-/// renders straight to the swap chain, so there is nowhere to redirect it from yet (tracks #45).
+/// Registered by the Direct3D 12 backend and resolved by <see cref="RenderPipeline"/>, though the
+/// main scene still renders straight to the swap chain, so there is nothing to redirect yet (tracks #45).
 /// Only supports the ToneMapping pass; other <see cref="IPostProcessEffect"/>s are not backed by
 /// a real shader here (see <see cref="SetConstantFloat"/>/<see cref="SetConstantInt"/>/<see cref="SetConstantFloat4"/>).
 /// </summary>
