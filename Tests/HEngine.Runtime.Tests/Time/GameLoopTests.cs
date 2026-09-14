@@ -37,8 +37,11 @@ public class GameLoopTests
 
         loop.Run();
 
-        renderManager.Received(1).UpdateInput();
-        renderPipeline.Received(1).RenderFrame();
+        Received.InOrder(() =>
+        {
+            renderManager.UpdateInput();
+            renderPipeline.RenderFrame();
+        });
         Assert.False(loop.IsRunning);
     }
 
