@@ -43,7 +43,7 @@ dotnet test Tests/HEngine.ECS.Tests/HEngine.ECS.Tests.csproj --filter FullyQuali
 
 Measure performance-sensitive changes in `Benchmarks/HEngine.ECS.Benchmarks` rather than asserting timings in unit tests.
 
-.NET 10 throughout. Everything except the Direct3D 12 backend builds and tests anywhere; `HEngine.Rendering.D3D12.Tests` needs Windows and a DirectX 12 GPU. There is no `Samples/` directory and no Native AOT configuration.
+.NET 10 throughout. Everything except the Direct3D 12 backend builds and tests anywhere; `HEngine.Rendering.D3D12.Tests` needs Windows and a DirectX 12 GPU. There is no `Samples/` directory. The host sets `PublishAot`, but nothing publishes it — CI only builds and tests, so that setting is untested.
 
 ## 3. Layout
 

@@ -46,7 +46,7 @@ public static class ServiceCollectionExtensions
         {
             var shadowRenderingSystem = new ShadowRenderingSystem();
             shadowRenderingSystem.Initialize(provider.GetRequiredService<WorldManager>());
-            shadowRenderingSystem.SetShadowRenderer(provider.GetRequiredService<IShadowRenderer>());
+            shadowRenderingSystem.SetShadowRenderer(provider.GetService<IShadowRenderer>());
             return shadowRenderingSystem;
         });
 

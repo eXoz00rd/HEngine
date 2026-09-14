@@ -16,7 +16,7 @@ using HEngine.Rendering.Systems.Implementations;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-namespace HEngine.Runtime.Tests
+namespace HEngine.Rendering.D3D12.Tests
 {
     public class CompositionTests
     {

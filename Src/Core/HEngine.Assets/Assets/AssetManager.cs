@@ -119,7 +119,7 @@ public class AssetManager : IDisposable
 
     public async Task<LoadedMesh> LoadMeshAsync(AssetId id)
     {
-        Lazy<Task<object>> lazyLoad;
+        Task<object> load;
         lock (_cacheLock)
         {
             if (_disposed)
@@ -136,18 +136,18 @@ public class AssetManager : IDisposable
             if (_pendingLoads.TryGetValue(id, out var pending))
             {
                 pending.AttachedCount++;
-                lazyLoad = pending.Lazy;
+                load = pending.Task;
             }
             else
             {
                 pending = new PendingLoad(_generation);
-                pending.Lazy = new Lazy<Task<object>>(() => LoadAssetInternalAsync(id, pending));
                 _pendingLoads[id] = pending;
-                lazyLoad = pending.Lazy;
+                pending.Task = LoadAssetInternalAsync(id, pending);
+                load = pending.Task;
             }
         }
 
-        return (LoadedMesh)await lazyLoad.Value;
+        return (LoadedMesh)await load;
     }
 
     public void Unload(AssetId id)
@@ -266,7 +266,7 @@ public class AssetManager : IDisposable
             AttachedCount = 1;
         }
 
-        public Lazy<Task<object>> Lazy { get; set; } = null!;
+        public Task<object> Task { get; set; } = null!;
 
         public int Generation { get; }
 

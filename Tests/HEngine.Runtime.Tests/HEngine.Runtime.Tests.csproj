@@ -29,7 +29,6 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\Src\Rendering\HEngine.Rendering.D3D12\HEngine.Rendering.D3D12.csproj"/>
         <ProjectReference Include="..\..\Src\Runtime\HEngine.Runtime\HEngine.Runtime.csproj"/>
     </ItemGroup>
 

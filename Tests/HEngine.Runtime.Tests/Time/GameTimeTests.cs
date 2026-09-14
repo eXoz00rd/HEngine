@@ -26,14 +26,15 @@ public class GameTimeTests
         Assert.Equal(3, gameTime.FrameCount);
     }
 
-    [Fact(DisplayName = "Update never reports a delta beyond the stall clamp")]
+    [Fact(DisplayName = "A frame longer than the stall threshold is clamped to the fallback step")]
     public void Update_Clamps_Stalled_Frames()
     {
         var gameTime = new GameTime();
 
+        Thread.Sleep(150);
         gameTime.Update();
 
-        Assert.True(gameTime.DeltaTime <= 0.1f);
+        Assert.Equal(0.016f, gameTime.DeltaTime);
     }
 
     [Fact(DisplayName = "Reset returns every counter to its initial value")]
