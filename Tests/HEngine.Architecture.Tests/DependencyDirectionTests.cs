@@ -58,9 +58,11 @@ public class DependencyDirectionTests
 
         return XDocument.Load(csprojPath)
             .Descendants("ProjectReference")
-            .Select(element => Path.GetFullPath(Path.Combine(directory, element.Attribute("Include")!.Value)))
+            .Select(element => Path.GetFullPath(Path.Combine(directory, Normalize(element.Attribute("Include")!.Value))))
             .Select(path => (Path.GetFileNameWithoutExtension(path), path));
     }
+
+    private static string Normalize(string msbuildPath) => msbuildPath.Replace('\\', Path.DirectorySeparatorChar);
 
     private const string HostsFolderName = "Hosts";
 

@@ -7,8 +7,9 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\Src\Core\HEngine.Core\HEngine.Core.csproj" />
       <ProjectReference Include="..\Src\Rendering\HEngine.Rendering\HEngine.Rendering.csproj" />
+      <ProjectReference Include="..\Src\Rendering\HEngine.Rendering.D3D12\HEngine.Rendering.D3D12.csproj" />
+      <ProjectReference Include="..\Src\Runtime\HEngine.Runtime\HEngine.Runtime.csproj" />
     </ItemGroup>
 
     <ItemGroup>

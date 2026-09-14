@@ -1,14 +1,16 @@
 ﻿using System.Numerics;
 using HEngine.Builders;
 using HEngine.Core.Components.Rendering;
-using HEngine.Core.Configuration;
+using HEngine.Runtime.Configuration;
 using HEngine.Core.Contracts;
+using HEngine.Runtime.Contracts;
 using HEngine.Core.Managers;
 using HEngine.Core.Primitives;
 using HEngine.Core.Rendering.Contracts;
 using HEngine.Core.Systems;
 using HEngine.Rendering.Managers;
 using HEngine.Rendering.PostProcessing;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace HEngine;
@@ -62,6 +64,7 @@ public class GameEngine : IDisposable
     private readonly WorldManager _worldManager;
     private readonly MaterialManager _materialManager;
     private readonly PostProcessStack _postProcessStack;
+    private ServiceProvider? _ownedServices;
     private bool _disposed;
 
     public GameEngine(
@@ -97,13 +100,22 @@ public class GameEngine : IDisposable
 
         _logger.LogInformation("Disposing game engine");
         _disposed = true;
+
+        _ownedServices?.Dispose();
+        _ownedServices = null;
+    }
+
+    internal void OwnServiceProvider(ServiceProvider services)
+    {
+        _ownedServices = services ?? throw new ArgumentNullException(nameof(services));
     }
 
     public static GameEngine Create(EngineConfiguration? config = null)
     {
         var builder = new EngineBuilder(config);
-        return builder.AddCore()
+        return builder.AddRuntime()
             .AddRendering()
+            .AddDirectX12Backend()
             .AddLogging()
             .Build();
     }

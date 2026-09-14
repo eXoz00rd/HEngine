@@ -1,6 +1,7 @@
-﻿using HEngine.Core.Configuration;
-using HEngine.Core.Extensions;
+﻿using HEngine.Rendering.Direct3D12.Extensions;
 using HEngine.Rendering.Extensions;
+using HEngine.Runtime.Configuration;
+using HEngine.Runtime.Extensions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -17,15 +18,22 @@ public class EngineBuilder
         _configuration = configuration ?? new EngineConfiguration();
     }
 
-    public EngineBuilder AddCore()
+    public EngineBuilder AddRuntime()
     {
-        _services.AddHEngineCore(_configuration);
+        _services.AddHEngineRuntime(_configuration);
         return this;
     }
 
     public EngineBuilder AddRendering()
     {
-        _services.AddHEngineRendering(_configuration);
+        _services.AddHEngineRendering(
+            _configuration.Rendering, _configuration.PBR, _configuration.Shadow, _configuration.PostProcessing);
+        return this;
+    }
+
+    public EngineBuilder AddDirectX12Backend()
+    {
+        _services.AddHEngineRenderingD3D12();
         return this;
     }
 
@@ -55,6 +63,16 @@ public class EngineBuilder
         var serviceProvider = _services.BuildServiceProvider(
             new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });
 
-        return serviceProvider.GetRequiredService<GameEngine>();
+        try
+        {
+            var engine = serviceProvider.GetRequiredService<GameEngine>();
+            engine.OwnServiceProvider(serviceProvider);
+            return engine;
+        }
+        catch
+        {
+            serviceProvider.Dispose();
+            throw;
+        }
     }
 }

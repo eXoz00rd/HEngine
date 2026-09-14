@@ -13,20 +13,21 @@
     <Project Path="Src/Core/HEngine.Platform/HEngine.Platform.csproj" />
     <Project Path="Src/Core/HEngine.Serialization/HEngine.Serialization.csproj" />
   </Folder>
-  <Folder Name="/3-Core/">
-    <Project Path="Src/Core/HEngine.Core/HEngine.Core.csproj" />
-  </Folder>
-  <Folder Name="/4-Platform/">
-    <Project Path="Src/Platform/HEngine.Platform.Windows/HEngine.Platform.Windows.csproj" />
-  </Folder>
-  <Folder Name="/4-Rendering/">
+  <Folder Name="/3-Rendering/">
     <Project Path="Src/Rendering/HEngine.Rendering/HEngine.Rendering.csproj" />
   </Folder>
-  <Folder Name="/5-Hosts/">
+  <Folder Name="/4-Backends/">
+    <Project Path="Src/Platform/HEngine.Platform.Windows/HEngine.Platform.Windows.csproj" />
+    <Project Path="Src/Rendering/HEngine.Rendering.D3D12/HEngine.Rendering.D3D12.csproj" />
+  </Folder>
+  <Folder Name="/5-Composition/">
+    <Project Path="Src/Runtime/HEngine.Runtime/HEngine.Runtime.csproj" />
+  </Folder>
+  <Folder Name="/6-Hosts/">
     <Project Path="HEngine/HEngine.csproj" />
   </Folder>
   <Folder Name="/Benchmarks/">
-    <Project Path="Benchmarks/HEngine.Core.Benchmarks/HEngine.Core.Benchmarks.csproj" />
+    <Project Path="Benchmarks/HEngine.ECS.Benchmarks/HEngine.ECS.Benchmarks.csproj" />
   </Folder>
   <Folder Name="/Tests/1-Foundation/">
     <Project Path="Tests/HEngine.Foundation.Tests/HEngine.Foundation.Tests.csproj" />
@@ -38,14 +39,15 @@
     <Project Path="Tests/HEngine.Platform.Tests/HEngine.Platform.Tests.csproj" />
     <Project Path="Tests/HEngine.Serialization.Tests/HEngine.Serialization.Tests.csproj" />
   </Folder>
-  <Folder Name="/Tests/3-Core/">
-    <Project Path="Tests/HEngine.Core.Tests/HEngine.Core.Tests.csproj" />
-  </Folder>
-  <Folder Name="/Tests/4-Platform/">
-    <Project Path="Tests/HEngine.Platform.Windows.Tests/HEngine.Platform.Windows.Tests.csproj" />
-  </Folder>
-  <Folder Name="/Tests/4-Rendering/">
+  <Folder Name="/Tests/3-Rendering/">
     <Project Path="Tests/HEngine.Rendering.Tests/HEngine.Rendering.Tests.csproj" />
+  </Folder>
+  <Folder Name="/Tests/4-Backends/">
+    <Project Path="Tests/HEngine.Platform.Windows.Tests/HEngine.Platform.Windows.Tests.csproj" />
+    <Project Path="Tests/HEngine.Rendering.D3D12.Tests/HEngine.Rendering.D3D12.Tests.csproj" />
+  </Folder>
+  <Folder Name="/Tests/5-Composition/">
+    <Project Path="Tests/HEngine.Runtime.Tests/HEngine.Runtime.Tests.csproj" />
   </Folder>
   <Folder Name="/Tests/Architecture/">
     <Project Path="Tests/HEngine.Architecture.Tests/HEngine.Architecture.Tests.csproj" />

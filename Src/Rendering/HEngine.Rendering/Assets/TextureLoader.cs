@@ -1,5 +1,4 @@
-﻿using Silk.NET.DXGI;
-using StbImageSharp;
+﻿using StbImageSharp;
 
 namespace HEngine.Rendering.Assets;
 
@@ -45,7 +44,7 @@ public sealed class TextureLoader
             width: image.Width,
             height: image.Height,
             mipLevels: 1,
-            dxgiFormat: Format.FormatR8G8B8A8Unorm,
+            format: TextureFormat.R8G8B8A8Unorm,
             bytesPerPixel: 4,
             isCompressed: false,
             sourcePath: filePath);
@@ -95,7 +94,7 @@ public sealed class TextureLoader
             mipMapCount = 1;
 
         // Determine format from FourCC
-        var (dxgiFormat, blockSize, isCompressed) = DecodeDdsFormat(fourCC, pfFlags, rgbBitCount);
+        var (format, blockSize, isCompressed) = DecodeDdsFormat(fourCC, pfFlags, rgbBitCount);
 
         // Read all remaining data as pixel data
         var dataSize = (int)(stream.Length - stream.Position);
@@ -109,13 +108,13 @@ public sealed class TextureLoader
             width: (int)width,
             height: (int)height,
             mipLevels: (int)mipMapCount,
-            dxgiFormat: dxgiFormat,
+            format: format,
             bytesPerPixel: bpp,
             isCompressed: isCompressed,
             sourcePath: filePath);
     }
 
-    private static (Format format, int blockSize, bool isCompressed) DecodeDdsFormat(
+    private static (TextureFormat format, int blockSize, bool isCompressed) DecodeDdsFormat(
         uint fourCC, uint pfFlags, uint rgbBitCount)
     {
         const uint DDPF_FOURCC = 0x4;
@@ -125,13 +124,13 @@ public sealed class TextureLoader
         {
             return fourCC switch
             {
-                0x31545844 => (Format.FormatBC1Unorm, 8, true),   // "DXT1"
-                0x33545844 => (Format.FormatBC2Unorm, 16, true),  // "DXT3"
-                0x35545844 => (Format.FormatBC3Unorm, 16, true),  // "DXT5"
-                0x55344342 => (Format.FormatBC4Unorm, 8, true),   // "BC4U"
-                0x53344342 => (Format.FormatBC4Unorm, 8, true),   // "BC4S" (fallback to Unorm)
-                0x55354342 => (Format.FormatBC5Unorm, 16, true),  // "BC5U"
-                0x53354342 => (Format.FormatBC5Unorm, 16, true),  // "BC5S" (fallback to Unorm)
+                0x31545844 => (TextureFormat.BC1Unorm, 8, true),   // "DXT1"
+                0x33545844 => (TextureFormat.BC2Unorm, 16, true),  // "DXT3"
+                0x35545844 => (TextureFormat.BC3Unorm, 16, true),  // "DXT5"
+                0x55344342 => (TextureFormat.BC4Unorm, 8, true),   // "BC4U"
+                0x53344342 => (TextureFormat.BC4Unorm, 8, true),   // "BC4S" (fallback to Unorm)
+                0x55354342 => (TextureFormat.BC5Unorm, 16, true),  // "BC5U"
+                0x53354342 => (TextureFormat.BC5Unorm, 16, true),  // "BC5S" (fallback to Unorm)
                 _ => throw new NotSupportedException($"Unsupported DDS FourCC: 0x{fourCC:X8}")
             };
         }
@@ -140,8 +139,8 @@ public sealed class TextureLoader
         {
             return rgbBitCount switch
             {
-                32 => (Format.FormatR8G8B8A8Unorm, 0, false),
-                24 => (Format.FormatR8G8B8A8Unorm, 0, false), // Will need expansion
+                32 => (TextureFormat.R8G8B8A8Unorm, 0, false),
+                24 => (TextureFormat.R8G8B8A8Unorm, 0, false), // Will need expansion
                 _ => throw new NotSupportedException($"Unsupported DDS RGB bit count: {rgbBitCount}")
             };
         }

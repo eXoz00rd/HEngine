@@ -2,7 +2,7 @@
 using HEngine.Core.Components.Rendering;
 using HEngine.Core.Components.Transform;
 using HEngine.Core.Contracts;
-using HEngine.Core.Mathematics;
+using HEngine.Rendering.Shadows;
 using HEngine.Core.Managers;
 using HEngine.Core.Rendering.Contracts;
 using HEngine.Core.Rendering.Data;

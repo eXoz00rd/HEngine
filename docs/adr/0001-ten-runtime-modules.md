@@ -23,5 +23,5 @@ The three merges were rejected for specific reasons rather than on principle:
 
 - Roughly ten project files rather than seven, plus one test project each (§5.5).
 - Adding a module must stay cheap for this to be sustainable — §5.6 sets the bar: touch only new files, one solution entry, one registration call. If adding a module ever requires editing an existing one, Z4 has been broken and this decision becomes a liability.
-- Extraction proceeds bottom-up along the §3.1 graph, never the reverse. `HEngine.ECS` (#62) and `HEngine.Scene` (#64, #67) are done; the rest are tracked on the project board.
+- Extraction proceeds bottom-up along the §3.1 graph, never the reverse. All ten modules now exist: the last two, `HEngine.Runtime` (#123) and `HEngine.Rendering.D3D12` (#124), landed together with the removal of `HEngine.Core`, whose contents moved to the modules that own them.
 - `Foundation` is a deliberate exception to the bottom-up order — see [0003](0003-foundation-deferred.md).
