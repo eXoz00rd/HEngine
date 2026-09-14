@@ -63,8 +63,16 @@ public class EngineBuilder
         var serviceProvider = _services.BuildServiceProvider(
             new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });
 
-        var engine = serviceProvider.GetRequiredService<GameEngine>();
-        engine.OwnServiceProvider(serviceProvider);
-        return engine;
+        try
+        {
+            var engine = serviceProvider.GetRequiredService<GameEngine>();
+            engine.OwnServiceProvider(serviceProvider);
+            return engine;
+        }
+        catch
+        {
+            serviceProvider.Dispose();
+            throw;
+        }
     }
 }
