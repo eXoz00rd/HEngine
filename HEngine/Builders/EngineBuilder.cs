@@ -63,6 +63,8 @@ public class EngineBuilder
         var serviceProvider = _services.BuildServiceProvider(
             new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });
 
-        return serviceProvider.GetRequiredService<GameEngine>();
+        var engine = serviceProvider.GetRequiredService<GameEngine>();
+        engine.OwnServiceProvider(serviceProvider);
+        return engine;
     }
 }
