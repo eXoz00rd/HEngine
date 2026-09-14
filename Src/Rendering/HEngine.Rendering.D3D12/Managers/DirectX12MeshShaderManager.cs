@@ -95,6 +95,8 @@ public class DirectX12MeshShaderManager : IDisposable
         lock (_reloadLock)
         {
             _variantCache.Clear();
+            _vertexShader = default;
+            _pixelShader = default;
             LoadAndCompileShaders(_currentVariant);
             ShaderReloaded?.Invoke();
         }
