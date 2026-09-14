@@ -57,8 +57,6 @@ public class DirectX12MeshShaderManager : IDisposable
             _fileWatcher.ShaderFileChanged -= OnShaderFileChanged;
         }
 
-        _vertexShader.Dispose();
-        _pixelShader.Dispose();
         _variantCache.Dispose();
         _variantCompiler.Dispose();
         _diskCache.Dispose();
@@ -116,9 +114,6 @@ public class DirectX12MeshShaderManager : IDisposable
 
             if (_variantCache.TryGetVariant(variant, out var compiledVariant) && compiledVariant != null)
             {
-                _vertexShader.Dispose();
-                _pixelShader.Dispose();
-
                 _vertexShader = compiledVariant.VertexShader;
                 _pixelShader = compiledVariant.PixelShader;
 
@@ -195,9 +190,6 @@ public class DirectX12MeshShaderManager : IDisposable
                 newPixelShader = _variantCompiler.CompileShader(shaderCode, "PSMain", "ps_5_0", variant, _shaderFileName);
                 _diskCache.SaveCachedShader(shaderPath, shaderCode, "PSMain", "ps_5_0", variantKey, newPixelShader);
             }
-
-            _vertexShader.Dispose();
-            _pixelShader.Dispose();
 
             _vertexShader = newVertexShader;
             _pixelShader = newPixelShader;

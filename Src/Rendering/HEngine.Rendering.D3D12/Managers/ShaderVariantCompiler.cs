@@ -53,7 +53,6 @@ public sealed class ShaderVariantCompiler : IDisposable
         unsafe
         {
             D3DShaderMacro[]? macros = null;
-            D3DShaderMacro* macrosPtr = null;
 
             if (defines.Count > 0)
             {
@@ -74,15 +73,8 @@ public sealed class ShaderVariantCompiler : IDisposable
                 fixed (byte* shaderPtr = shaderBytes)
                 fixed (byte* entryPointPtr = entryPointBytes)
                 fixed (byte* targetPtr = targetBytes)
+                fixed (D3DShaderMacro* macrosPtr = macros)
                 {
-                    if (macros != null)
-                    {
-                        fixed (D3DShaderMacro* macroPtr = macros)
-                        {
-                            macrosPtr = macroPtr;
-                        }
-                    }
-
                     ID3D10Blob* shaderBlob = null;
                     ID3D10Blob* errorBlob = null;
 
