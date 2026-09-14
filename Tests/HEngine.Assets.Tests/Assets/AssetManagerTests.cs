@@ -202,11 +202,13 @@ public class AssetManagerTests : IDisposable
     {
         var loadCount = 0;
         var staleGate = new TaskCompletionSource();
+        var staleLoadStarted = new TaskCompletionSource();
         var manager = new AssetManager(async p =>
         {
             var attempt = Interlocked.Increment(ref loadCount);
             if (attempt == 1)
             {
+                staleLoadStarted.SetResult();
                 await staleGate.Task;
             }
 
@@ -215,6 +217,7 @@ public class AssetManagerTests : IDisposable
         var id = manager.Import(CreateTestMeshFile("unload-all-then-reload.mesh"));
 
         var staleLoadTask = manager.LoadMeshAsync(id);
+        await staleLoadStarted.Task;
         manager.UnloadAll();
 
         var freshMesh = await manager.LoadMeshAsync(id);
