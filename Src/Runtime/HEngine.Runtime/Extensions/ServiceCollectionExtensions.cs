@@ -2,6 +2,8 @@ using HEngine.ECS.Extensions;
 using HEngine.Runtime.Configuration;
 using HEngine.Runtime.Contracts;
 using HEngine.Runtime.Time;
+using HEngine.Scene.Extensions;
+using HEngine.Serialization.Extensions;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace HEngine.Runtime.Extensions;
@@ -14,6 +16,8 @@ public static class ServiceCollectionExtensions
 
         services.AddSingleton<GameTime>();
         services.AddHEngineECS();
+        services.AddHEngineScene();
+        services.AddHEngineSerialization();
 
         services.AddSingleton<IGameLoop, GameLoop>();
 

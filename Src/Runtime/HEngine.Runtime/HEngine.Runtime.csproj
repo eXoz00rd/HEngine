@@ -9,6 +9,8 @@
     <ItemGroup>
         <ProjectReference Include="..\..\Core\HEngine.ECS\HEngine.ECS.csproj"/>
         <ProjectReference Include="..\..\Core\HEngine.Platform\HEngine.Platform.csproj"/>
+        <ProjectReference Include="..\..\Core\HEngine.Scene\HEngine.Scene.csproj"/>
+        <ProjectReference Include="..\..\Core\HEngine.Serialization\HEngine.Serialization.csproj"/>
         <ProjectReference Include="..\..\Rendering\HEngine.Rendering\HEngine.Rendering.csproj"/>
     </ItemGroup>
 

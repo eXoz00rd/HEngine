@@ -4,6 +4,7 @@ using HEngine.Runtime.Configuration;
 using HEngine.Runtime.Extensions;
 using HEngine.Core.Managers;
 using HEngine.Core.Rendering.Contracts;
+using HEngine.Core.Systems;
 using HEngine.Rendering;
 using HEngine.Rendering.Configuration;
 using HEngine.Rendering.Components;
@@ -13,6 +14,7 @@ using HEngine.Rendering.Extensions;
 using HEngine.Rendering.PostProcessing;
 using HEngine.Rendering.Systems;
 using HEngine.Rendering.Systems.Implementations;
+using HEngine.Serialization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -178,6 +180,30 @@ namespace HEngine.Rendering.D3D12.Tests
 
             Assert.IsType<RenderPipeline>(provider.GetRequiredService<IRenderPipeline>());
             Assert.IsType<RenderingSystem>(provider.GetRequiredService<IRenderingSystem>());
+        }
+
+        [Fact(DisplayName = "Scene systems are added to the production world, so the SystemManager driven by the game loop ticks them")]
+        public void Composition_Adds_Scene_Systems_To_The_World()
+        {
+            using var provider = BuildProductionServiceCollection().BuildServiceProvider();
+
+            var world = provider.GetRequiredService<WorldManager>();
+
+            Assert.True(world.HasSystem<FreeCameraSystem>());
+            Assert.True(world.HasSystem<TransformHierarchySystem>());
+            Assert.True(world.HasSystem<FrustumCullingSystem>());
+            Assert.Equal(3, provider.GetRequiredService<SystemManager>().GetSystemCount());
+        }
+
+        [Fact(DisplayName = "SceneSerializer and ComponentSerializerRegistry resolve from the production container as shared singletons")]
+        public void Composition_Resolves_Serialization_Services_As_Singletons()
+        {
+            using var provider = BuildProductionServiceCollection().BuildServiceProvider();
+
+            Assert.Same(provider.GetRequiredService<SceneSerializer>(), provider.GetRequiredService<SceneSerializer>());
+            Assert.Same(
+                provider.GetRequiredService<ComponentSerializerRegistry>(),
+                provider.GetRequiredService<ComponentSerializerRegistry>());
         }
 
         [Fact(DisplayName = "Production composition fails to build when a required dependency's registration is removed")]
