@@ -18,9 +18,8 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddHEngineSystem<T>(this IServiceCollection services, int priority = 0,
         bool enabled = true) where T : class, ISystem
     {
-        services.AddSingleton<T>();
         services.AddSingleton<ISystemRegistration>(provider =>
-            new SystemRegistration<T>(provider.GetRequiredService<T>(), priority, enabled));
+            new SystemRegistration<T>(ActivatorUtilities.CreateInstance<T>(provider), priority, enabled));
 
         return services;
     }

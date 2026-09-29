@@ -26,7 +26,32 @@ public class ServiceCollectionExtensionsTests
         var world = provider.GetRequiredService<WorldManager>();
 
         Assert.True(world.HasSystem<FirstSystem>());
-        Assert.Same(provider.GetRequiredService<FirstSystem>(), world.GetSystem<FirstSystem>());
+        Assert.NotNull(world.GetSystem<FirstSystem>());
+    }
+
+    [Fact(DisplayName = "A system registered with AddHEngineSystem is not independently resolvable from the container, so only the world disposes it")]
+    public void RegisteredSystem_IsNotIndependentlyResolvable()
+    {
+        using var provider = BuildProvider(services => services.AddHEngineSystem<FirstSystem>());
+
+        Assert.Null(provider.GetService<FirstSystem>());
+    }
+
+    [Fact(DisplayName = "A system registered with AddHEngineSystem is disposed exactly once when the provider is disposed")]
+    public void RegisteredSystem_IsDisposedExactlyOnce()
+    {
+        var services = new ServiceCollection();
+        services.AddHEngineECS();
+        services.AddHEngineSystem<CountingDisposeSystem>();
+
+        var provider = services.BuildServiceProvider(
+            new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });
+        var world = provider.GetRequiredService<WorldManager>();
+        var system = (CountingDisposeSystem)world.GetSystem<CountingDisposeSystem>()!;
+
+        provider.Dispose();
+
+        Assert.Equal(1, system.DisposeCount);
     }
 
     [Fact(DisplayName = "Systems registered with AddHEngineSystem tick in descending priority order regardless of registration order")]
@@ -59,11 +84,12 @@ public class ServiceCollectionExtensionsTests
         Assert.Empty(tickLog);
     }
 
-    [Fact(DisplayName = "A registered system with an unregistered dependency fails provider validation at startup")]
-    public void RegisteredSystem_WithMissingDependency_FailsValidation()
+    [Fact(DisplayName = "A registered system with an unregistered dependency fails as soon as the world resolves it")]
+    public void RegisteredSystem_WithMissingDependency_FailsOnWorldResolution()
     {
-        Assert.Throws<AggregateException>(() =>
-            BuildProvider(services => services.AddHEngineSystem<SystemWithMissingDependency>()));
+        using var provider = BuildProvider(services => services.AddHEngineSystem<SystemWithMissingDependency>());
+
+        Assert.Throws<InvalidOperationException>(() => provider.GetRequiredService<WorldManager>());
     }
 
     private abstract class LoggingSystem : ISystem
@@ -102,6 +128,24 @@ public class ServiceCollectionExtensionsTests
     {
         public SecondSystem(List<string> tickLog) : base(tickLog, nameof(SecondSystem))
         {
+        }
+    }
+
+    private sealed class CountingDisposeSystem : ISystem
+    {
+        public int DisposeCount { get; private set; }
+
+        public void Initialize(WorldManager worldManager)
+        {
+        }
+
+        public void Update(float deltaTime)
+        {
+        }
+
+        public void Dispose()
+        {
+            DisposeCount++;
         }
     }
 

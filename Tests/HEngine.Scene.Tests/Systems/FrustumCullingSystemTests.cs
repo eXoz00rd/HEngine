@@ -77,4 +77,24 @@ public class FrustumCullingSystemTests
         system.Update(0.016f);
         Assert.False(world.HasComponent<Culled>(e));
     }
+
+    [Fact(DisplayName = "All entities outside the frustum are culled in a single update, not just the first")]
+    public void Multiple_Entities_Changing_State_Are_All_Culled()
+    {
+        var world = CreateWorldWithDefaultCamera();
+        var first = world.CreateEntity();
+        world.AddComponent(first, new Transform(new Vector3(1000, 0, 0)));
+        world.AddComponent(first, new BoundingBox(Vector3.Zero, new Vector3(0.5f)));
+
+        var second = world.CreateEntity();
+        world.AddComponent(second, new Transform(new Vector3(-1000, 0, 0)));
+        world.AddComponent(second, new BoundingBox(Vector3.Zero, new Vector3(0.5f)));
+
+        var system = new FrustumCullingSystem();
+        system.Initialize(world);
+        system.Update(0.016f);
+
+        Assert.True(world.HasComponent<Culled>(first));
+        Assert.True(world.HasComponent<Culled>(second));
+    }
 }

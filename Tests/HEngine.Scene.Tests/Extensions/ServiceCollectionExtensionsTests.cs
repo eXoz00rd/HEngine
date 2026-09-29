@@ -80,10 +80,12 @@ public class ServiceCollectionExtensionsTests
         Assert.Equal(new Vector3(0, 0, 0), world.GetComponent<Camera>(cameraEntity).Position);
     }
 
-    [Fact(DisplayName = "AddHEngineScene without a camera input provider fails provider validation at startup")]
-    public void AddHEngineScene_WithoutCameraInput_FailsValidation()
+    [Fact(DisplayName = "AddHEngineScene without a camera input provider fails as soon as the world resolves it")]
+    public void AddHEngineScene_WithoutCameraInput_FailsOnWorldResolution()
     {
-        Assert.Throws<AggregateException>(() => BuildProvider(withCameraInput: false));
+        using var provider = BuildProvider(withCameraInput: false);
+
+        Assert.Throws<InvalidOperationException>(() => provider.GetRequiredService<WorldManager>());
     }
 
     private sealed class FakeInput : ICameraInputProvider

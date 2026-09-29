@@ -32,25 +32,25 @@ public sealed class FrustumCullingSystem : ISystem
         var viewProj = view * proj;
         var frustum = Frustum.FromViewProjection(viewProj);
         
-        var query = _world.CreateQuery<Transform, BoundingBox>();
-        foreach (var item in query)
+        var entities = _world.CreateQuery<Transform, BoundingBox>().GetEntities();
+        foreach (var entity in entities)
         {
-            ref var transform = ref item.Component1;
-            ref var bounds = ref item.Component2;
+            ref var transform = ref _world.GetComponent<Transform>(entity);
+            ref var bounds = ref _world.GetComponent<BoundingBox>(entity);
 
             var worldMatrix = transform.GetWorldMatrix(_world);
             var worldAabb = TransformAabb(bounds, worldMatrix);
 
             bool inside = frustum.Intersects(worldAabb);
-            bool hasCulled = _world.HasComponent<Culled>(item.Entity);
+            bool hasCulled = _world.HasComponent<Culled>(entity);
 
             if (!inside && !hasCulled)
             {
-                _world.AddComponent(item.Entity, new Culled());
+                _world.AddComponent(entity, new Culled());
             }
             else if (inside && hasCulled)
             {
-                _world.RemoveComponent<Culled>(item.Entity);
+                _world.RemoveComponent<Culled>(entity);
             }
         }
     }

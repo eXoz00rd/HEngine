@@ -13,15 +13,18 @@ public class WorldManager : IDisposable {
     private readonly SystemManager _systemManager;
     private bool _disposed;
 
-    public WorldManager(SystemManager systemManager, IEnumerable<ISystemRegistration>? systemRegistrations = null)
+    public WorldManager(SystemManager systemManager) : this(systemManager, [])
+    {
+    }
+
+    public WorldManager(SystemManager systemManager, IEnumerable<ISystemRegistration> systemRegistrations)
     {
         _systemManager = systemManager ?? throw new ArgumentNullException(nameof(systemManager));
+        ArgumentNullException.ThrowIfNull(systemRegistrations);
+
         EntityManager = new EntityManager();
         ComponentManager = new ComponentManager(EntityManager);
         QueryBuilder = new QueryBuilder(ComponentManager, EntityManager);
-
-        if (systemRegistrations is null)
-            return;
 
         foreach (var registration in systemRegistrations)
             registration.AddTo(this);
