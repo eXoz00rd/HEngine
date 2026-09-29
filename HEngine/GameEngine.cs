@@ -2,12 +2,10 @@
 using HEngine.Builders;
 using HEngine.Core.Components.Rendering;
 using HEngine.Runtime.Configuration;
-using HEngine.Core.Contracts;
 using HEngine.Runtime.Contracts;
 using HEngine.Core.Managers;
 using HEngine.Core.Primitives;
 using HEngine.Core.Rendering.Contracts;
-using HEngine.Core.Systems;
 using HEngine.Rendering.Managers;
 using HEngine.Rendering.PostProcessing;
 using Microsoft.Extensions.DependencyInjection;
@@ -55,7 +53,6 @@ file sealed class CameraAdapter : ICamera
 
 public class GameEngine : IDisposable
 {
-    private readonly ICameraInputProvider _cameraInput;
     private readonly EngineConfiguration _config;
     private readonly IGameLoop _gameLoop;
     private readonly ILogger<GameEngine> _logger;
@@ -73,7 +70,6 @@ public class GameEngine : IDisposable
         IRenderManager renderManager,
         IRenderingSystem renderingSystem,
         EngineConfiguration config,
-        ICameraInputProvider cameraInput,
         MaterialManager materialManager,
         PostProcessStack postProcessStack,
         ILogger<GameEngine> logger)
@@ -83,7 +79,6 @@ public class GameEngine : IDisposable
         _renderManager = renderManager ?? throw new ArgumentNullException(nameof(renderManager));
         _renderingSystem = renderingSystem ?? throw new ArgumentNullException(nameof(renderingSystem));
         _config = config ?? throw new ArgumentNullException(nameof(config));
-        _cameraInput = cameraInput ?? throw new ArgumentNullException(nameof(cameraInput));
         _materialManager = materialManager ?? throw new ArgumentNullException(nameof(materialManager));
         _postProcessStack = postProcessStack ?? throw new ArgumentNullException(nameof(postProcessStack));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -169,14 +164,6 @@ public class GameEngine : IDisposable
             var cameraAdapter = new CameraAdapter(_worldManager, camEntity);
             _renderManager.SetActiveCamera(cameraAdapter);
             _logger.LogInformation("Camera entity {Entity} registered with RenderManager", camEntity);
-
-            var freeCameraSystem = new FreeCameraSystem(_cameraInput)
-            {
-                Enabled = true,
-                MoveSpeed = 5f,
-                LookSpeed = 0.0025f
-            };
-            _worldManager.AddSystem(freeCameraSystem, 10);
 
             _worldManager.AddSystem(_renderingSystem);
 

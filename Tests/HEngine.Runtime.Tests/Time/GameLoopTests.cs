@@ -1,6 +1,10 @@
+using HEngine.Core.Contracts;
 using HEngine.Core.Managers;
 using HEngine.Core.Rendering.Contracts;
+using HEngine.ECS.Extensions;
 using HEngine.Runtime.Time;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 
@@ -9,7 +13,7 @@ namespace HEngine.Runtime.Tests.Time;
 public class GameLoopTests
 {
     private static GameLoop CreateLoop(IRenderManager renderManager, IRenderPipeline renderPipeline) =>
-        new(new GameTime(), new SystemManager(), renderPipeline, renderManager, NullLogger<GameLoop>.Instance);
+        new(new GameTime(), new WorldManager(new SystemManager()), renderPipeline, renderManager, NullLogger<GameLoop>.Instance);
 
     [Fact(DisplayName = "Run renders no frame when the render manager already wants to close")]
     public void Run_DoesNotRenderFrame_WhenShouldCloseIsAlreadyTrue()
@@ -71,5 +75,40 @@ public class GameLoopTests
         loop.Stop();
 
         Assert.False(loop.IsRunning);
+    }
+
+    [Fact(DisplayName = "Resolving GameLoop from DI also constructs WorldManager, so its registered systems are present before the loop ever runs")]
+    public void GameLoop_ResolvedFromContainer_HasWorldSystemsRegisteredBeforeRunning()
+    {
+        var services = new ServiceCollection();
+        services.AddHEngineECS();
+        services.AddHEngineSystem<TickCountingSystem>();
+        services.AddSingleton(new GameTime());
+        services.AddSingleton(Substitute.For<IRenderManager>());
+        services.AddSingleton(Substitute.For<IRenderPipeline>());
+        services.AddSingleton<ILogger<GameLoop>>(NullLogger<GameLoop>.Instance);
+        services.AddSingleton<GameLoop>();
+
+        using var provider = services.BuildServiceProvider(
+            new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });
+
+        provider.GetRequiredService<GameLoop>();
+
+        Assert.True(provider.GetRequiredService<WorldManager>().HasSystem<TickCountingSystem>());
+    }
+
+    private sealed class TickCountingSystem : ISystem
+    {
+        public void Initialize(WorldManager worldManager)
+        {
+        }
+
+        public void Update(float deltaTime)
+        {
+        }
+
+        public void Dispose()
+        {
+        }
     }
 }

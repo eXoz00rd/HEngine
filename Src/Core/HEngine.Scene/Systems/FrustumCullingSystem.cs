@@ -12,6 +12,7 @@ namespace HEngine.Core.Systems;
 public sealed class FrustumCullingSystem : ISystem
 {
     private WorldManager? _world;
+    private readonly List<(Entity Entity, bool Inside)> _pendingCulledChanges = [];
 
     public void Initialize(WorldManager worldManager)
     {
@@ -31,7 +32,9 @@ public sealed class FrustumCullingSystem : ISystem
         var proj = camera.GetProjectionMatrix();
         var viewProj = view * proj;
         var frustum = Frustum.FromViewProjection(viewProj);
-        
+
+        _pendingCulledChanges.Clear();
+
         var query = _world.CreateQuery<Transform, BoundingBox>();
         foreach (var item in query)
         {
@@ -44,14 +47,16 @@ public sealed class FrustumCullingSystem : ISystem
             bool inside = frustum.Intersects(worldAabb);
             bool hasCulled = _world.HasComponent<Culled>(item.Entity);
 
-            if (!inside && !hasCulled)
-            {
-                _world.AddComponent(item.Entity, new Culled());
-            }
-            else if (inside && hasCulled)
-            {
-                _world.RemoveComponent<Culled>(item.Entity);
-            }
+            if (inside == hasCulled)
+                _pendingCulledChanges.Add((item.Entity, inside));
+        }
+
+        foreach (var (entity, inside) in _pendingCulledChanges)
+        {
+            if (inside)
+                _world.RemoveComponent<Culled>(entity);
+            else
+                _world.AddComponent(entity, new Culled());
         }
     }
 

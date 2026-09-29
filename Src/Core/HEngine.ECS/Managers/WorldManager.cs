@@ -1,5 +1,6 @@
 ﻿using HEngine.Core.Contracts;
 using HEngine.Core.Primitives;
+using HEngine.ECS.Contracts;
 using HEngine.ECS.Queries;
 
 namespace HEngine.Core.Managers;
@@ -12,12 +13,21 @@ public class WorldManager : IDisposable {
     private readonly SystemManager _systemManager;
     private bool _disposed;
 
-    public WorldManager(SystemManager systemManager)
+    public WorldManager(SystemManager systemManager) : this(systemManager, [])
+    {
+    }
+
+    public WorldManager(SystemManager systemManager, IEnumerable<ISystemRegistration> systemRegistrations)
     {
         _systemManager = systemManager ?? throw new ArgumentNullException(nameof(systemManager));
+        ArgumentNullException.ThrowIfNull(systemRegistrations);
+
         EntityManager = new EntityManager();
         ComponentManager = new ComponentManager(EntityManager);
         QueryBuilder = new QueryBuilder(ComponentManager, EntityManager);
+
+        foreach (var registration in systemRegistrations)
+            registration.AddTo(this);
     }
 
     public EntityManager EntityManager { get; }
