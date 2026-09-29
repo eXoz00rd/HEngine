@@ -11,13 +11,13 @@ public class GameLoop : IGameLoop
     private readonly ILogger<GameLoop> _logger;
     private readonly IRenderManager _renderManager;
     private readonly IRenderPipeline _renderPipeline;
-    private readonly SystemManager _systemManager;
+    private readonly WorldManager _worldManager;
 
-    public GameLoop(GameTime gameTime, SystemManager systemManager, IRenderPipeline renderPipeline,
+    public GameLoop(GameTime gameTime, WorldManager worldManager, IRenderPipeline renderPipeline,
         IRenderManager renderManager, ILogger<GameLoop> logger)
     {
         _gameTime = gameTime ?? throw new ArgumentNullException(nameof(gameTime));
-        _systemManager = systemManager ?? throw new ArgumentNullException(nameof(systemManager));
+        _worldManager = worldManager ?? throw new ArgumentNullException(nameof(worldManager));
         _renderPipeline = renderPipeline ?? throw new ArgumentNullException(nameof(renderPipeline));
         _renderManager = renderManager ?? throw new ArgumentNullException(nameof(renderManager));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -45,7 +45,7 @@ public class GameLoop : IGameLoop
                     1 / _gameTime.DeltaTime);
 
                 _renderManager.UpdateInput();
-                _systemManager.Update(_gameTime.DeltaTime);
+                _worldManager.Update(_gameTime.DeltaTime);
 
                 _renderPipeline.RenderFrame();
 
